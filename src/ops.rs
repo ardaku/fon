@@ -56,9 +56,6 @@ pub struct Root;
 /// Sawtooth -> Triangle function to destination, multiplied by source.
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle;
-/// Sawtooth -> Square function to destination, multiplied by source.
-#[derive(Clone, Copy, Debug)]
-pub struct Square;
 /// Apply absolute value function to destination (useful for multiplying
 /// waveforms together without octave jump), multiplied by source.
 #[derive(Clone, Copy, Debug)]
@@ -103,7 +100,7 @@ impl Blend for Add {
 impl Blend for AddSquared {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         Add::synthesize(dst, src);
-        Square::synthesize(dst, src);
+        Pow::synthesize(dst, &(2.0).into());
     }
 }
 
@@ -134,12 +131,6 @@ impl Blend for Root {
 impl Blend for Triangle {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = C::from(dst.to_f64().abs() * 2.0 - 1.0) * *src;
-    }
-}
-
-impl Blend for Square {
-    fn synthesize<C: Channel>(dst: &mut C, src: &C) {
-        *dst = C::from(dst.to_f64().signum()) * *src;
     }
 }
 
