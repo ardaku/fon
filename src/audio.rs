@@ -28,10 +28,16 @@ use core::{fmt::Debug, slice::from_raw_parts_mut};
 #[derive(Copy, Clone, Debug)]
 pub struct Hz(pub f64);
 
+impl From<f64> for Hz {
+    fn from(hz: f64) -> Hz {
+        Hz(hz)
+    }
+}
+
 /// An audio buffer (array of audio Samples at a specific sample rate in hertz).
 #[derive(Debug)]
 pub struct Audio<S: Sample> {
-    s_rate: usize,
+    s_rate: u32,
     samples: Box<[S]>,
 }
 
@@ -69,21 +75,21 @@ impl<S: Sample> Audio<S> {
     }
 
     /// Construct an `Audio` buffer with all samples set to one value.
-    pub fn with_sample(s_rate: usize, len: usize, sample: S) -> Self {
+    pub fn with_sample(s_rate: u32, len: usize, sample: S) -> Self {
         let samples = vec![sample; len].into_boxed_slice();
         Audio { s_rate, samples }
     }
 
     /// Construct an `Audio` buffer with all all samples set to the default
     /// value.
-    pub fn with_silence(s_rate: usize, len: usize) -> Self {
+    pub fn with_silence(s_rate: u32, len: usize) -> Self {
         Self::with_sample(s_rate, len, S::default())
     }
 
     /// Construct an `Audio` buffer with another `Audio` buffer.
     ///
     /// The audio format can be converted with this function.
-    pub fn with_audio<SrcS: Sample>(s_rate: usize, src: &Audio<SrcS>) -> Self
+    pub fn with_audio<SrcS: Sample>(s_rate: u32, src: &Audio<SrcS>) -> Self
     where
         S::Chan: From<SrcS::Chan>,
     {
@@ -97,14 +103,14 @@ impl<S: Sample> Audio<S> {
     /// Construct an `Audio` buffer with owned sample data.   You can get
     /// ownership of the pixel data back from the `Audio` buffer as either a
     /// `Vec<S>` or a `Box<[S]>` by calling into().
-    pub fn with_samples<B: Into<Box<[S]>>>(s_rate: usize, samples: B) -> Self {
+    pub fn with_samples<B: Into<Box<[S]>>>(s_rate: u32, samples: B) -> Self {
         let samples = samples.into();
         Audio { s_rate, samples }
     }
 
     /// Construct an `Audio` buffer from a `u8` buffer.
     #[allow(unsafe_code)]
-    pub fn with_u8_buffer<B>(s_rate: usize, buffer: B) -> Self
+    pub fn with_u8_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[u8]>>,
         S: Sample<Chan = Ch8>,
@@ -122,7 +128,7 @@ impl<S: Sample> Audio<S> {
 
     /// Construct an `Audio` buffer from a `u16` buffer.
     #[allow(unsafe_code)]
-    pub fn with_u16_buffer<B>(s_rate: usize, buffer: B) -> Self
+    pub fn with_u16_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[u16]>>,
         S: Sample<Chan = Ch16>,
@@ -150,7 +156,7 @@ impl<S: Sample> Audio<S> {
     }
 
     /// Get the sample rate of the `Audio` buffer.
-    pub fn sample_rate(&self) -> usize {
+    pub fn sample_rate(&self) -> u32 {
         self.s_rate
     }
 

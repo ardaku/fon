@@ -53,9 +53,6 @@ pub struct Pow;
 /// Raise destination to the power of the inverse of source.
 #[derive(Clone, Copy, Debug)]
 pub struct Root;
-/// Sawtooth -> Sine function to destination, multiplied by source.
-#[derive(Clone, Copy, Debug)]
-pub struct Sine;
 /// Sawtooth -> Triangle function to destination, multiplied by source.
 #[derive(Clone, Copy, Debug)]
 pub struct Triangle;
@@ -131,12 +128,6 @@ impl Blend for Pow {
 impl Blend for Root {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = C::from(dst.to_f64().powf(src.to_f64().recip()));
-    }
-}
-
-impl Blend for Sine {
-    fn synthesize<C: Channel>(dst: &mut C, src: &C) {
-        *dst = C::from((dst.to_f64() * std::f64::consts::PI).sin()) * *src;
     }
 }
 

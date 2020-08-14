@@ -7,6 +7,18 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Rust audio types and conversions.
+//!
+//! An [audio buffer](struct.Audio.html) can be cheaply converted to and from
+//! raw byte buffers, enabling interoperability with other crates.
+//!
+//! Many audio formats are supported:
+//! - Any sample rate
+//! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
+//! - [Mono], [Stereo], [5.1 Surround] and [7.1 Surround]
+//!
+//! Blending [operations](ops/index.html) is supported for all formats.
+
 pub mod chan;
 mod private;
 mod audio;
