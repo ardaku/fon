@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Jeron Aldaron Lau
+// Copyright (c) 2018-2020 Jeron Aldaron Lau
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, the MIT license
@@ -7,23 +7,13 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod chan;
-mod private;
-mod audio;
-mod config;
-pub mod mono;
-pub mod ops;
-pub mod sample;
-pub mod stereo;
-pub mod surround;
+//! Speaker/channel configuration.
 
-pub use audio::{Audio, Hz};
-pub use config::Config;
+use crate::private::Sealed;
+use std::fmt::Debug;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+/// Speaker/Channel configuration
+pub trait Config: Copy + Clone + Debug + Default + PartialEq + Sealed {
+    /// Number of channels for this configuration
+    const CHANNEL_COUNT: usize;
 }
