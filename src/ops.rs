@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 Jeron Aldaron Lau
+// Copyright (c) 2020 Jeron Aldaron Lau
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, the MIT license
@@ -29,43 +29,15 @@ pub struct Dest;
 /// Clear (set to default)
 #[derive(Clone, Copy, Debug)]
 pub struct Clear;
-/// VCA (Voltage Controlled Amplifier) mixing.  Multiplication of signals.
-/// Careful to use `Abs` on either destination or source before calling on
-/// periodic waveforms (otherwise the resulting audio will sound exactly one
-/// octave higher than expected).
+/// Amplify one sample by another
 #[derive(Clone, Copy, Debug)]
-pub struct Gain;
+pub struct Amplify;
 /// Standard audio mixing.  Addition of signals
 #[derive(Clone, Copy, Debug)]
-pub struct Add;
-/// Squared compression audio mixing.  Addition of signals squared.
+pub struct Mix;
+/// Compression of channel (based on another channel)
 #[derive(Clone, Copy, Debug)]
-pub struct AddSquared;
-/// Minimum of destination and source
-#[derive(Clone, Copy, Debug)]
-pub struct Min;
-/// Maximum of destination and source
-#[derive(Clone, Copy, Debug)]
-pub struct Max;
-/// Raise destination to the power of source
-#[derive(Clone, Copy, Debug)]
-pub struct Pow;
-/// Raise destination to the power of the inverse of source.
-#[derive(Clone, Copy, Debug)]
-pub struct Root;
-/// Sawtooth -> Triangle function to destination, multiplied by source.
-#[derive(Clone, Copy, Debug)]
-pub struct Triangle;
-/// Apply absolute value function to destination (useful for multiplying
-/// waveforms together without octave jump), multiplied by source.
-#[derive(Clone, Copy, Debug)]
-pub struct Abs;
-/// Hard clipping and amplification at source power to destination.
-#[derive(Clone, Copy, Debug)]
-pub struct ClipHard;
-/// Soft clipping and amplification at source power to destination.
-#[derive(Clone, Copy, Debug)]
-pub struct ClipSoft;
+pub struct Compress;
 
 impl Blend for Src {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
@@ -85,24 +57,45 @@ impl Blend for Clear {
     }
 }
 
-impl Blend for Gain {
+impl Blend for Amplify {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src * *dst;
     }
 }
 
-impl Blend for Add {
+impl Blend for Mix {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src + *dst;
     }
 }
 
-impl Blend for AddSquared {
-    fn synthesize<C: Channel>(dst: &mut C, src: &C) {
-        Add::synthesize(dst, src);
-        Pow::synthesize(dst, &(2.0).into());
+impl Blend for Compress {
+    fn synthesize<C: Channel>(_dst: &mut C, _src: &C) {
+        todo!()
     }
 }
+
+
+
+/// Minimum of destination and source
+#[derive(Clone, Copy, Debug)]
+pub struct Min;
+/// Maximum of destination and source
+#[derive(Clone, Copy, Debug)]
+pub struct Max;
+/// Raise destination to the power of source
+#[derive(Clone, Copy, Debug)]
+pub struct Pow;
+/// Apply absolute value function to destination (useful for multiplying
+/// waveforms together without octave jump), multiplied by source.
+#[derive(Clone, Copy, Debug)]
+pub struct Abs;
+/// Hard clipping and amplification at source power to destination.
+#[derive(Clone, Copy, Debug)]
+pub struct ClipHard;
+/// Soft clipping and amplification at source power to destination.
+#[derive(Clone, Copy, Debug)]
+pub struct ClipSoft;
 
 impl Blend for Min {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
@@ -119,18 +112,6 @@ impl Blend for Max {
 impl Blend for Pow {
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = C::from(dst.to_f64().powf(src.to_f64()));
-    }
-}
-
-impl Blend for Root {
-    fn synthesize<C: Channel>(dst: &mut C, src: &C) {
-        *dst = C::from(dst.to_f64().powf(src.to_f64().recip()));
-    }
-}
-
-impl Blend for Triangle {
-    fn synthesize<C: Channel>(dst: &mut C, src: &C) {
-        *dst = C::from(dst.to_f64().abs() * 2.0 - 1.0) * *src;
     }
 }
 

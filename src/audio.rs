@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2020 Jeron Aldaron Lau
+// Copyright (c) 2020 Jeron Aldaron Lau
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0>, the MIT license

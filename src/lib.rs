@@ -18,6 +18,15 @@
 //! - [Mono], [Stereo], [5.1 Surround] and [7.1 Surround]
 //!
 //! Blending [operations](ops/index.html) is supported for all formats.
+//!
+//! [8]: chan/struct.Ch8.html
+//! [16]: chan/struct.Ch16.html
+//! [32]: chan/struct.Ch32.html
+//! [64]: chan/struct.Ch64.html
+//! [Mono]: mono/struct.Mono.html
+//! [Stereo]: stereo/struct.Stereo.html
+//! [5.1 Surround]: surround/struct.Surround.html
+//! [7.1 Surround]: surround/struct.SurroundHD.html
 
 pub mod chan;
 mod private;

@@ -1,5 +1,8 @@
 # Fōn
-Rust audio types, resampling, converting, and mixing library.
+Rust audio types, resampling, converting, processing, and mixing library.
+ - For audio synthesis, check out [twang](https://crates.io/crates/twang)
+ - For audio recording and playback, check out
+   [wavy](https://crates.io/crates/wavy)
 
 ## Goals
 - Fast audio conversion and resampling.
