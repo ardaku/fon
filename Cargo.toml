@@ -18,8 +18,8 @@ documentation = "https://docs.rs/fon"
 homepage = "https://github.com/AldaronLau/fon/blob/master/CHANGELOG.md"
 repository = "https://github.com/AldaronLau/fon"
 readme = "README.md"
-description = "Rust audio types, resampling and mixing library."
-keywords = ["audio", "conversion", "processing", "wave", "sound"]
+description = "Rust audio types, resampling, processing and mixing library."
+keywords = ["audio", "resample", "processing", "wave", "sound"]
 categories = ["multimedia::audio", "multimedia"]
 
 [dependencies]

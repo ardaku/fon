@@ -17,7 +17,7 @@
 //! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
 //! - [Mono], [Stereo], [5.1 Surround] and [7.1 Surround]
 //!
-//! Blending [operations](ops/index.html) is supported for all formats.
+//! Blending [operations](ops/index.html) are supported for all formats.
 //!
 //! [8]: chan/struct.Ch8.html
 //! [16]: chan/struct.Ch16.html
