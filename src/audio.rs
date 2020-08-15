@@ -93,11 +93,31 @@ impl<S: Sample> Audio<S> {
     where
         S::Chan: From<SrcS::Chan>,
     {
-        let mut dst = Audio::with_silence(s_rate, src.len());
-        for (dst, src) in dst.samples.iter_mut().zip(src.samples.iter()) {
-            *dst = src.convert();
+        let src_sr = src.sample_rate();
+        if src_sr == s_rate {
+            let mut dst = Audio::with_silence(src_sr, src.len());
+            // No Resampling Necessary
+            for (dst, src) in dst.samples.iter_mut().zip(src.samples.iter()) {
+                *dst = src.convert();
+            }
+
+            dst
+        } else {
+            // Resampling Necessary
+            let sr_rat = s_rate as f64 / src_sr as f64; // Length ratio
+            let dstlen = (sr_rat * src.len() as f64) as usize;
+            let mut dst = Audio::with_silence(s_rate, dstlen);
+
+            for (i, dst) in dst.samples.iter_mut().enumerate() {
+                let i = sr_rat * i as f64;
+                let j = i.trunc() as usize;
+                let k = (j + 1).max(src.len() - 1);
+                let f = SrcS::from_channels(&[SrcS::Chan::from(i.fract())]);
+                *dst = (src.samples[j].lerp(src.samples[k], f)).convert();
+            }
+
+            dst
         }
-        dst
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get

@@ -219,6 +219,17 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
     /// Make a pixel from a slice of channels.
     fn from_channels(ch: &[Self::Chan]) -> Self;
 
+    /// Linear interpolation.
+    fn lerp(&self, rhs: Self, t: Self) -> Self {
+        let mut out = Self::default();
+        let main = out.channels_mut().iter_mut().zip(self.channels().iter());
+        let other = rhs.channels().iter().zip(t.channels().iter());
+        for ((out, this), (rhs, t)) in main.zip(other) {
+            *out = this.lerp(*rhs, *t);
+        }
+        out
+    }
+
     /// Synthesis of a sample with a slice of samples.
     fn blend_sample<O>(dst: &mut [Self], sample: &Self, op: O)
     where
