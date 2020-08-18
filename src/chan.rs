@@ -47,18 +47,22 @@ pub trait Channel:
 
 /// 8-bit sample [Channel](trait.Channel.html).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[repr(transparent)]
 pub struct Ch8(i8);
 
 /// 16-bit sample [Channel](trait.Channel.html).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[repr(transparent)]
 pub struct Ch16(i16);
 
 /// 32-bit sample [Channel](trait.Channel.html).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Ch32(f32);
 
 /// 64-bit sample [Channel](trait.Channel.html).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Ch64(f64);
 
 impl Eq for Ch32 {}

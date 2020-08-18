@@ -23,6 +23,7 @@ const SIDE_RIGHT: usize = 7;
 
 /// Sample with one [channel](chan/trait.Channel.html).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct Sample1<C: Channel, F: Config> {
     channels: [C; 1],
     _config: PhantomData<F>,
@@ -61,6 +62,7 @@ impl<C: Channel, F: Config> Sample for Sample1<C, F> {
 
 /// Sample with two [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct Sample2<C: Channel, F: Config> {
     channels: [C; 2],
     _config: PhantomData<F>,
@@ -101,13 +103,14 @@ impl<C: Channel, F: Config> Sample for Sample2<C, F> {
 
 /// Sample with four [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct Sample4<C: Channel, F: Config> {
     channels: [C; 4],
     _config: PhantomData<F>,
 }
 
 impl<C: Channel, F: Config> Sample4<C, F> {
-    /// Create a six-channel Sample.
+    /// Create a four-channel Sample.
     pub fn new<H>(one: H, two: H, three: H, four: H) -> Self
     where
         C: From<H>,
@@ -146,6 +149,7 @@ impl<C: Channel, F: Config> Sample for Sample4<C, F> {
 
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct Sample6<C: Channel, F: Config> {
     channels: [C; 6],
     _config: PhantomData<F>,
@@ -194,6 +198,7 @@ impl<C: Channel, F: Config> Sample for Sample6<C, F> {
 
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
+#[repr(transparent)]
 pub struct Sample8<C: Channel, F: Config> {
     channels: [C; 8],
     _config: PhantomData<F>,
