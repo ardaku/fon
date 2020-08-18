@@ -6,14 +6,16 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
 
 ## [0.2.0] - Unreleased
 ### Added
- - `From<Audio> for Box<[f64]>`
- - `From<Audio> for Box<[f32]>`
- - `From<Audio> for Box<[i8]>`
- - `From<Audio> for Box<[i16]>`
+ - `From<Audio> for Box<[f64]>` impl
+ - `From<Audio> for Box<[f32]>` impl
+ - `From<Audio> for Box<[i8]>` impl
+ - `From<Audio> for Box<[i16]>` impl
+ - `Audio::as_slice` method
+ - `Audio::as_slice_mut` method
 
 ### Removed
- - `From<Audio> for Box<[u8]>`
- - `From<Audio> for Box<[u16]>`
+ - `From<Audio> for Box<[u8]>` impl
+ - `From<Audio> for Box<[u16]>` impl
 
 ## [0.1.0] - 2020-08-15
 ### Added

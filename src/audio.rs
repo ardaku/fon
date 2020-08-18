@@ -42,6 +42,16 @@ pub struct Audio<S: Sample> {
 }
 
 impl<S: Sample> Audio<S> {
+    /// Get view of samples.
+    pub fn as_slice(&self) -> &[S] {
+        &self.samples
+    }
+    
+    /// Get view of samples.
+    pub fn as_slice_mut(&mut self) -> &mut [S] {
+        &mut self.samples
+    }
+
     /// Get view of samples as a `u8` slice.
     #[allow(unsafe_code)]
     pub fn as_u8_slice(&self) -> &[u8] {
