@@ -54,12 +54,12 @@ impl<S: Sample> Audio<S> {
 
     /// Returns an iterator over the samples.
     pub fn iter(&self) -> std::slice::Iter<'_, S> {
-        self.samples.iter()
+        self.as_slice().iter()
     }
     
     /// Returns an iterator that allows modifying each sample.
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, S> {
-        self.samples.iter_mut()
+        self.as_slice_mut().iter_mut()
     }
 
     /// Construct an `Audio` buffer with all samples set to one value.
@@ -116,17 +116,17 @@ impl<S: Sample> Audio<S> {
         Audio { s_rate, samples }
     }
 
-    /// Construct an `Audio` buffer from a `u8` buffer.
+    /// Construct an `Audio` buffer from an `i8` buffer.
     #[allow(unsafe_code)]
-    pub fn with_u8_buffer<B>(s_rate: u32, buffer: B) -> Self
+    pub fn with_i8_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
-        B: Into<Box<[u8]>>,
+        B: Into<Box<[i8]>>,
         S: Sample<Chan = Ch8>,
     {
-        let buffer: Box<[u8]> = buffer.into();
+        let buffer: Box<[i8]> = buffer.into();
         let len = buffer.len() / std::mem::size_of::<S>();
         assert_eq!(0, buffer.len() % std::mem::size_of::<S>());
-        let slice = Box::<[u8]>::into_raw(buffer);
+        let slice = Box::<[i8]>::into_raw(buffer);
         let samples: Box<[S]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut S;
             Box::from_raw(from_raw_parts_mut(ptr, len))
@@ -134,18 +134,56 @@ impl<S: Sample> Audio<S> {
         Audio { s_rate, samples }
     }
 
-    /// Construct an `Audio` buffer from a `u16` buffer.
+    /// Construct an `Audio` buffer from an `i16` buffer.
     #[allow(unsafe_code)]
-    pub fn with_u16_buffer<B>(s_rate: u32, buffer: B) -> Self
+    pub fn with_i16_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
-        B: Into<Box<[u16]>>,
+        B: Into<Box<[i16]>>,
         S: Sample<Chan = Ch16>,
     {
-        let buffer: Box<[u16]> = buffer.into();
-        let bytes = buffer.len() * std::mem::size_of::<u16>();
+        let buffer: Box<[i16]> = buffer.into();
+        let bytes = buffer.len() * std::mem::size_of::<i16>();
         let len = bytes / std::mem::size_of::<S>();
         assert_eq!(0, bytes % std::mem::size_of::<S>());
-        let slice = Box::<[u16]>::into_raw(buffer);
+        let slice = Box::<[i16]>::into_raw(buffer);
+        let samples: Box<[S]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut S;
+            Box::from_raw(from_raw_parts_mut(ptr, len))
+        };
+        Audio { s_rate, samples }
+    }
+    
+    /// Construct an `Audio` buffer from an `f32` buffer.
+    #[allow(unsafe_code)]
+    pub fn with_f32_buffer<B>(s_rate: u32, buffer: B) -> Self
+    where
+        B: Into<Box<[f32]>>,
+        S: Sample<Chan = Ch32>,
+    {
+        let buffer: Box<[f32]> = buffer.into();
+        let bytes = buffer.len() * std::mem::size_of::<f32>();
+        let len = bytes / std::mem::size_of::<S>();
+        assert_eq!(0, bytes % std::mem::size_of::<S>());
+        let slice = Box::<[f32]>::into_raw(buffer);
+        let samples: Box<[S]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut S;
+            Box::from_raw(from_raw_parts_mut(ptr, len))
+        };
+        Audio { s_rate, samples }
+    }
+    
+    /// Construct an `Audio` buffer from an `f64` buffer.
+    #[allow(unsafe_code)]
+    pub fn with_f64_buffer<B>(s_rate: u32, buffer: B) -> Self
+    where
+        B: Into<Box<[f64]>>,
+        S: Sample<Chan = Ch64>,
+    {
+        let buffer: Box<[f64]> = buffer.into();
+        let bytes = buffer.len() * std::mem::size_of::<f64>();
+        let len = bytes / std::mem::size_of::<S>();
+        assert_eq!(0, bytes % std::mem::size_of::<S>());
+        let slice = Box::<[f64]>::into_raw(buffer);
         let samples: Box<[S]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut S;
             Box::from_raw(from_raw_parts_mut(ptr, len))
