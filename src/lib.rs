@@ -10,7 +10,8 @@
 //! Rust audio types and conversions.
 //!
 //! An [audio buffer](struct.Audio.html) can be cheaply converted to and from
-//! raw byte buffers, enabling interoperability with other crates.
+//! raw sample (i8, i16, f32, and f64) buffers, enabling interoperability with
+//! other crates.
 //!
 //! Many audio formats are supported:
 //! - Any sample rate
@@ -38,9 +39,11 @@ pub mod ops;
 pub mod sample;
 pub mod stereo;
 pub mod surround;
+mod streaming;
 
-pub use audio::{Audio, Hz};
+pub use audio::Audio;
 pub use config::Config;
+pub use streaming::{Stream, Sink, Resampler};
 
 #[cfg(test)]
 mod tests {

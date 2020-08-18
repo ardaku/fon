@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::copy_silence` method
  - `Audio::copy_sample` method
  - `Surround4` and `Surround4x{}` aliases
+ - `Audio::sample` method
+ - `Audio::sample_mut` method
+ - `Resampler` struct
+ - `Stream` trait
+ - `Sink` trait
+ - `Audio::stream` method
+ - `Audio::drain` method
 
 ### Changed
  - `Audio::blend_sample` and `Audio::blend_audio` now take an additional `reg`
@@ -36,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::as_u8_slice_mut` method
  - `Audio::with_u8_buffer` function
  - `Audio::with_u16_buffer` function
+ - `Hz` type
+
+### Fixed
+ - Channel and Sample types not being marked `#[repr(transparent)]`
 
 ## [0.1.0] - 2020-08-15
 ### Added

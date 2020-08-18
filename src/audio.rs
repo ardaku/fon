@@ -12,6 +12,7 @@ use crate::{
     chan::{Ch16, Ch8, Ch32, Ch64},
     ops::Blend,
     sample::Sample,
+    Stream,
 };
 
 // Channel Identification
@@ -24,17 +25,7 @@ use crate::{
 // 6. Side Left
 // 7. Side Right
 
-/// Newtype for hertz.
-#[derive(Copy, Clone, Debug)]
-pub struct Hz(pub f64);
-
-impl From<f64> for Hz {
-    fn from(hz: f64) -> Hz {
-        Hz(hz)
-    }
-}
-
-/// An audio buffer (array of audio Samples at a specific sample rate in hertz).
+/// Audio buffer (array of audio `Sample`s at sample rate specified in hertz).
 #[derive(Debug)]
 pub struct Audio<S: Sample> {
     s_rate: u32,
@@ -42,6 +33,22 @@ pub struct Audio<S: Sample> {
 }
 
 impl<S: Sample> Audio<S> {
+    /// Get a sample.
+    ///
+    /// # Panics
+    /// If index is out of bounds
+    pub fn sample(&self, index: usize) -> &S {
+        self.samples().get(index).expect("Sample out of bounds")
+    }
+    
+    /// Get a mutable sample.
+    ///
+    /// # Panics
+    /// If index is out of bounds
+    pub fn sample_mut(&mut self, index: usize) -> &mut S {
+        self.samples_mut().get_mut(index).expect("Sample out of bounds")
+    }
+
     /// Get a slice of all samples.
     pub fn samples(&self) -> &[S] {
         &self.samples
@@ -232,6 +239,76 @@ impl<S: Sample> Audio<S> {
         for s in self.samples_mut().get_mut(reg).unwrap().iter_mut() {
             *s = sample;
         }
+    }
+    
+    /// Create an audio stream over this `Audio` buffer.
+    ///
+    /// # Panics
+    /// If range is out of bounds
+    pub fn stream(&self, reg: Range<usize>) -> impl Stream<S> + '_ {
+        assert!(reg.end <= self.samples().len());
+        AudioStream {
+            range: reg,
+            audio: self,
+        }
+    }
+
+    /// Create a draining audio stream over this `Audio` buffer.
+    ///
+    /// # Panics
+    /// If range is out of bounds
+    pub fn drain(&mut self, reg: Range<usize>) -> impl Stream<S> + '_ {
+        assert!(reg.end <= self.samples().len());
+        AudioDrain {
+            range: reg,
+            audio: self,
+        }
+    }
+}
+
+/// A `Stream` created with `Audio.stream()`
+struct AudioStream<'a, S: Sample> {
+    audio: &'a Audio<S>,
+    range: Range<usize>,
+}
+
+impl<S: Sample> Stream<S> for AudioStream<'_, S> {
+    /// Get the (source) sample rate of the stream.
+    fn sample_rate(&self) -> u32 {
+        self.audio.sample_rate()
+    }
+
+    /// This function is called when a sink requests a sample from the stream.
+    fn stream_sample(&mut self) -> Option<&S> {
+        if self.range.start >= self.range.end /* is empty */ {
+            return None;
+        }
+        let sample = self.audio.sample(self.range.start);
+        self.range.start += 1;
+        Some(sample)
+    }
+}
+
+/// A `Stream` created with `Audio.drain()`
+struct AudioDrain<'a, S: Sample> {
+    audio: &'a mut Audio<S>,
+    range: Range<usize>,
+}
+
+impl<S: Sample> Stream<S> for AudioDrain<'_, S> {
+    /// Get the (source) sample rate of the stream.
+    fn sample_rate(&self) -> u32 {
+        self.audio.sample_rate()
+    }
+
+    /// This function is called when a sink requests a sample from the stream.
+    fn stream_sample(&mut self) -> Option<&S> {
+        if self.range.start >= self.range.end /* is empty */ {
+            return None;
+        }
+        let sample = self.audio.sample(self.range.start);
+        self.range.start += 1;
+        Some(sample)
     }
 }
 
