@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::with_u8_buffer` function
  - `Audio::with_u16_buffer` function
  - `Hz` type
+ - `Config` type
 
 ### Fixed
  - Channel and Sample types not being marked `#[repr(transparent)]`

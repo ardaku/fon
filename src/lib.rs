@@ -33,7 +33,6 @@
 pub mod chan;
 mod private;
 mod audio;
-mod config;
 pub mod mono;
 pub mod ops;
 pub mod sample;
@@ -42,7 +41,6 @@ pub mod surround;
 mod streaming;
 
 pub use audio::Audio;
-pub use config::Config;
 pub use streaming::{Stream, Sink, Resampler};
 
 #[cfg(test)]

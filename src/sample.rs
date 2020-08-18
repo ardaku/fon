@@ -9,8 +9,8 @@
 
 //! Sample types
 
-use crate::{chan::Channel, config::Config, ops::Blend, private::Sealed};
-use std::{fmt::Debug, marker::PhantomData};
+use crate::{chan::Channel, ops::Blend, private::Sealed};
+use std::{fmt::Debug, mem::size_of};
 
 const FRONT_LEFT: usize = 0; // CENTER for MONO, SIDE_LEFT for STEREO
 const FRONT_RIGHT: usize = 1; // SIDE_RIGHT for STEREO
@@ -24,27 +24,24 @@ const SIDE_RIGHT: usize = 7;
 /// Sample with one [channel](chan/trait.Channel.html).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct Sample1<C: Channel, F: Config> {
+pub struct Sample1<C: Channel> {
     channels: [C; 1],
-    _config: PhantomData<F>,
 }
 
-impl<C: Channel, F: Config> Sample1<C, F> {
+impl<C: Channel> Sample1<C> {
     /// Create a one-channel Sample.
     pub fn new<H>(one: H) -> Self
     where
         C: From<H>,
     {
-        let _config = PhantomData;
         let one = C::from(one);
         let channels = [one];
-        Self { channels, _config }
+        Self { channels }
     }
 }
 
-impl<C: Channel, F: Config> Sample for Sample1<C, F> {
+impl<C: Channel> Sample for Sample1<C> {
     type Chan = C;
-    type Conf = F;
 
     fn channels(&self) -> &[Self::Chan] {
         &self.channels
@@ -63,28 +60,25 @@ impl<C: Channel, F: Config> Sample for Sample1<C, F> {
 /// Sample with two [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct Sample2<C: Channel, F: Config> {
+pub struct Sample2<C: Channel> {
     channels: [C; 2],
-    _config: PhantomData<F>,
 }
 
-impl<C: Channel, F: Config> Sample2<C, F> {
+impl<C: Channel> Sample2<C> {
     /// Create a two-channel Sample.
     pub fn new<H>(one: H, two: H) -> Self
     where
         C: From<H>,
     {
-        let _config = PhantomData;
         let one = C::from(one);
         let two = C::from(two);
         let channels = [one, two];
-        Self { channels, _config }
+        Self { channels }
     }
 }
 
-impl<C: Channel, F: Config> Sample for Sample2<C, F> {
+impl<C: Channel> Sample for Sample2<C> {
     type Chan = C;
-    type Conf = F;
 
     fn channels(&self) -> &[Self::Chan] {
         &self.channels
@@ -104,30 +98,27 @@ impl<C: Channel, F: Config> Sample for Sample2<C, F> {
 /// Sample with four [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct Sample4<C: Channel, F: Config> {
+pub struct Sample4<C: Channel> {
     channels: [C; 4],
-    _config: PhantomData<F>,
 }
 
-impl<C: Channel, F: Config> Sample4<C, F> {
+impl<C: Channel> Sample4<C> {
     /// Create a four-channel Sample.
     pub fn new<H>(one: H, two: H, three: H, four: H) -> Self
     where
         C: From<H>,
     {
-        let _config = PhantomData;
         let one = C::from(one);
         let two = C::from(two);
         let three = C::from(three);
         let four = C::from(four);
         let channels = [one, two, three, four];
-        Self { channels, _config }
+        Self { channels }
     }
 }
 
-impl<C: Channel, F: Config> Sample for Sample4<C, F> {
+impl<C: Channel> Sample for Sample4<C> {
     type Chan = C;
-    type Conf = F;
 
     fn channels(&self) -> &[Self::Chan] {
         &self.channels
@@ -150,18 +141,16 @@ impl<C: Channel, F: Config> Sample for Sample4<C, F> {
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct Sample6<C: Channel, F: Config> {
+pub struct Sample6<C: Channel> {
     channels: [C; 6],
-    _config: PhantomData<F>,
 }
 
-impl<C: Channel, F: Config> Sample6<C, F> {
+impl<C: Channel> Sample6<C> {
     /// Create a six-channel Sample.
     pub fn new<H>(one: H, two: H, three: H, four: H, five: H, six: H) -> Self
     where
         C: From<H>,
     {
-        let _config = PhantomData;
         let one = C::from(one);
         let two = C::from(two);
         let three = C::from(three);
@@ -169,13 +158,12 @@ impl<C: Channel, F: Config> Sample6<C, F> {
         let five = C::from(five);
         let six = C::from(six);
         let channels = [one, two, three, four, five, six];
-        Self { channels, _config }
+        Self { channels }
     }
 }
 
-impl<C: Channel, F: Config> Sample for Sample6<C, F> {
+impl<C: Channel> Sample for Sample6<C> {
     type Chan = C;
-    type Conf = F;
 
     fn channels(&self) -> &[Self::Chan] {
         &self.channels
@@ -199,12 +187,11 @@ impl<C: Channel, F: Config> Sample for Sample6<C, F> {
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
-pub struct Sample8<C: Channel, F: Config> {
+pub struct Sample8<C: Channel> {
     channels: [C; 8],
-    _config: PhantomData<F>,
 }
 
-impl<C: Channel, F: Config> Sample8<C, F> {
+impl<C: Channel> Sample8<C> {
     /// Create an eight-channel Sample.
     #[allow(clippy::too_many_arguments)]
     pub fn new<H>(
@@ -220,7 +207,6 @@ impl<C: Channel, F: Config> Sample8<C, F> {
     where
         C: From<H>,
     {
-        let _config = PhantomData;
         let one = C::from(one);
         let two = C::from(two);
         let three = C::from(three);
@@ -230,13 +216,12 @@ impl<C: Channel, F: Config> Sample8<C, F> {
         let seven = C::from(seven);
         let eight = C::from(eight);
         let channels = [one, two, three, four, five, six, seven, eight];
-        Self { channels, _config }
+        Self { channels }
     }
 }
 
-impl<C: Channel, F: Config> Sample for Sample8<C, F> {
+impl<C: Channel> Sample for Sample8<C> {
     type Chan = C;
-    type Conf = F;
 
     fn channels(&self) -> &[Self::Chan] {
         &self.channels
@@ -259,15 +244,15 @@ impl<C: Channel, F: Config> Sample for Sample8<C, F> {
     }
 }
 
-/// Sample [channel], and [configuration].
+/// Sample [channel].
 ///
 /// [channel]: ../chan/trait.Channel.html
-/// [configuration]: ../config/trait.Config.html
 pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
     /// Channel type
     type Chan: Channel;
+
     /// Number of channels
-    type Conf: Config;
+    const CHAN_COUNT: usize = size_of::<Self>() / size_of::<Self::Chan>();
 
     /// Get the channels.
     fn channels(&self) -> &[Self::Chan];
@@ -328,7 +313,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
         D::Chan: From<Self::Chan> + From<f64>,
     {
         // Convert channels
-        match (Self::Conf::CHANNEL_COUNT, D::Conf::CHANNEL_COUNT) {
+        match (Self::CHAN_COUNT, D::CHAN_COUNT) {
             // 1:1 sampling (no resample)
             (a, b) if a == b => {
                 let mut chans = [D::Chan::MID; 8];
