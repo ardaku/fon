@@ -12,6 +12,15 @@
 use crate::{chan::Channel, config::Config, ops::Blend, private::Sealed};
 use std::{fmt::Debug, marker::PhantomData};
 
+const FRONT_LEFT: usize = 0; // CENTER for MONO, SIDE_LEFT for STEREO
+const FRONT_RIGHT: usize = 1; // SIDE_RIGHT for STEREO
+const BACK_LEFT: usize = 2;
+const BACK_RIGHT: usize = 3;
+const FRONT_CENTER: usize = 4;
+const LFE: usize = 5;
+const SIDE_LEFT: usize = 6;
+const SIDE_RIGHT: usize = 7;
+
 /// Sample with one [channel](chan/trait.Channel.html).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 pub struct Sample1<C: Channel, F: Config> {
@@ -333,61 +342,76 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
             }
             (6, 1) => {
                 let mut sum = 0.0;
-                for chan in self.channels()[0..5].iter() {
-                    sum += chan.to_f64() * 0.2;
-                }
-                sum += self.channels()[5].to_f64(); // LFE
+                sum += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 5.0);
+                sum += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 5.0);
+                sum += self.channels()[BACK_LEFT].to_f64() * (1.0 / 5.0);
+                sum += self.channels()[BACK_RIGHT].to_f64() * (1.0 / 5.0);
+                sum += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 5.0);
+                sum += self.channels()[LFE].to_f64();
                 D::from_channels(&[D::Chan::from(sum)])
             }
             (8, 1) => {
                 let mut sum = 0.0;
-                for chan in self.channels()[0..7].iter() {
-                    sum += chan.to_f64() * (1.0 / 7.0);
-                }
-                sum += self.channels()[7].to_f64(); // LFE
+                sum += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[BACK_LEFT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[BACK_RIGHT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[SIDE_LEFT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[SIDE_RIGHT].to_f64() * (1.0 / 7.0);
+                sum += self.channels()[LFE].to_f64();
                 D::from_channels(&[D::Chan::from(sum)])
             }
             (6, 2) => {
-                let mut left = self.channels()[0].to_f64() * (1.0 / 3.0);
-                let mut right = self.channels()[1].to_f64() * (1.0 / 3.0);
-                left += self.channels()[2].to_f64() * (1.0 / 3.0);
-                right += self.channels()[2].to_f64() * (1.0 / 3.0);
-                left += self.channels()[3].to_f64() * (1.0 / 3.0);
-                right += self.channels()[4].to_f64() * (1.0 / 3.0);
-                left += self.channels()[5].to_f64(); // left LFE
-                right += self.channels()[5].to_f64(); // right LFE
+                let mut left = 0.0;
+                let mut right = 0.0;
+            
+                left += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 3.0);
+                right += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 3.0);
+                left += self.channels()[BACK_LEFT].to_f64() * (1.0 / 3.0);
+                right += self.channels()[BACK_RIGHT].to_f64() * (1.0 / 3.0);
+                left += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 3.0);
+                right += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 3.0);
+                left += self.channels()[LFE].to_f64();
+                right += self.channels()[LFE].to_f64();
+
                 D::from_channels(&[D::Chan::from(left), D::Chan::from(right)])
             }
             (8, 2) => {
-                let mut left = self.channels()[0].to_f64() * 0.25;
-                let mut right = self.channels()[1].to_f64() * 0.25;
-                left += self.channels()[2].to_f64() * 0.25;
-                right += self.channels()[2].to_f64() * 0.25;
-                left += self.channels()[3].to_f64() * 0.25;
-                right += self.channels()[4].to_f64() * 0.25;
-                left += self.channels()[5].to_f64(); // left LFE
-                right += self.channels()[5].to_f64(); // right LFE
-                left += self.channels()[6].to_f64() * 0.25;
-                right += self.channels()[7].to_f64() * 0.25;
+                let mut left = 0.0;
+                let mut right = 0.0;
+            
+                left += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 4.0);
+                right += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 4.0);
+                left += self.channels()[BACK_LEFT].to_f64() * (1.0 / 4.0);
+                right += self.channels()[BACK_RIGHT].to_f64() * (1.0 / 4.0);
+                left += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 4.0);
+                right += self.channels()[FRONT_CENTER].to_f64() * (1.0 / 4.0);
+                left += self.channels()[SIDE_LEFT].to_f64() * (1.0 / 4.0);
+                right += self.channels()[SIDE_RIGHT].to_f64() * (1.0 / 4.0);
+                left += self.channels()[LFE].to_f64();
+                right += self.channels()[LFE].to_f64();
+                
                 D::from_channels(&[D::Chan::from(left), D::Chan::from(right)])
             }
             (8, 6) => {
-                let mut left = self.channels()[0].to_f64() * (2.0 / 3.0);
-                let mut right = self.channels()[1].to_f64() * (2.0 / 3.0);
-                let center = self.channels()[2].to_f64();
-                let mut back_left = self.channels()[3].to_f64() * (2.0 / 3.0);
-                let mut back_right = self.channels()[4].to_f64() * (2.0 / 3.0);
-                let lfe = self.channels()[5].to_f64();
-                left += self.channels()[6].to_f64() * (1.0 / 3.0);
-                right += self.channels()[7].to_f64() * (1.0 / 3.0);
-                back_left += self.channels()[6].to_f64() * (1.0 / 3.0);
-                back_right += self.channels()[7].to_f64() * (1.0 / 3.0);
+                let mut left = self.channels()[FRONT_LEFT].to_f64() * (2.0 / 3.0);
+                let mut right = self.channels()[FRONT_RIGHT].to_f64() * (2.0 / 3.0);
+                let center = self.channels()[FRONT_CENTER].to_f64();
+                let mut back_left = self.channels()[BACK_LEFT].to_f64() * (2.0 / 3.0);
+                let mut back_right = self.channels()[BACK_RIGHT].to_f64() * (2.0 / 3.0);
+                let lfe = self.channels()[LFE].to_f64();
+                left += self.channels()[SIDE_LEFT].to_f64() * (1.0 / 3.0);
+                right += self.channels()[SIDE_RIGHT].to_f64() * (1.0 / 3.0);
+                back_left += self.channels()[SIDE_LEFT].to_f64() * (1.0 / 3.0);
+                back_right += self.channels()[SIDE_RIGHT].to_f64() * (1.0 / 3.0);
+
                 D::from_channels(&[
                     D::Chan::from(left),
                     D::Chan::from(right),
-                    D::Chan::from(center),
                     D::Chan::from(back_left),
                     D::Chan::from(back_right),
+                    D::Chan::from(center),
                     D::Chan::from(lfe),
                 ])
             }
@@ -422,50 +446,50 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
                 ])
             }
             (2, 6) => {
-                let left = self.channels()[0].to_f64();
-                let right = self.channels()[1].to_f64();
+                let left = self.channels()[FRONT_LEFT].to_f64();
+                let right = self.channels()[FRONT_RIGHT].to_f64();
                 let center = left * 0.5 + right * 0.5;
                 let lfe = D::Chan::MID.to_f64();
                 D::from_channels(&[
                     D::Chan::from(left),
                     D::Chan::from(right),
-                    D::Chan::from(center),
                     D::Chan::from(left),
                     D::Chan::from(right),
+                    D::Chan::from(center),
                     D::Chan::from(lfe),
                 ])
             }
             (2, 8) => {
-                let left = self.channels()[0].to_f64();
-                let right = self.channels()[1].to_f64();
+                let left = self.channels()[FRONT_LEFT].to_f64();
+                let right = self.channels()[FRONT_RIGHT].to_f64();
                 let center = left * 0.5 + right * 0.5;
                 let lfe = D::Chan::MID.to_f64();
                 D::from_channels(&[
                     D::Chan::from(left),
                     D::Chan::from(right),
-                    D::Chan::from(center),
                     D::Chan::from(left),
                     D::Chan::from(right),
+                    D::Chan::from(center),
                     D::Chan::from(lfe),
                     D::Chan::from(left),
                     D::Chan::from(right),
                 ])
             }
             (5, 8) => {
-                let left = self.channels()[0].to_f64();
-                let right = self.channels()[1].to_f64();
-                let center = self.channels()[2].to_f64();
-                let back_left = self.channels()[3].to_f64();
-                let back_right = self.channels()[4].to_f64();
-                let lfe = self.channels()[5].to_f64();
+                let left = self.channels()[FRONT_LEFT].to_f64();
+                let right = self.channels()[FRONT_RIGHT].to_f64();
+                let center = self.channels()[FRONT_CENTER].to_f64();
+                let back_left = self.channels()[BACK_LEFT].to_f64();
+                let back_right = self.channels()[BACK_RIGHT].to_f64();
+                let lfe = self.channels()[LFE].to_f64();
                 let side_left = (left + back_left) * 0.5;
                 let side_right = (right + back_right) * 0.5;
                 D::from_channels(&[
                     D::Chan::from(left),
                     D::Chan::from(right),
+                    D::Chan::from(back_left),
+                    D::Chan::from(back_right),
                     D::Chan::from(center),
-                    D::Chan::from(left),
-                    D::Chan::from(right),
                     D::Chan::from(lfe),
                     D::Chan::from(side_left),
                     D::Chan::from(side_right),
