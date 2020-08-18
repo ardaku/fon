@@ -15,7 +15,7 @@
 //! Many audio formats are supported:
 //! - Any sample rate
 //! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
-//! - [Mono], [Stereo], [5.1 Surround] and [7.1 Surround]
+//! - [Mono], [Stereo], [4.0 Surround], [5.1 Surround] and [7.1 Surround]
 //!
 //! Blending [operations](ops/index.html) are supported for all formats.
 //!

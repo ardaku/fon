@@ -10,8 +10,8 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `From<Audio> for Box<[f32]>` impl
  - `From<Audio> for Box<[i8]>` impl
  - `From<Audio> for Box<[i16]>` impl
- - `Audio::as_slice` method
- - `Audio::as_slice_mut` method
+ - `Audio::samples` method
+ - `Audio::samples_mut` method
  - `Audio::with_i8_buffer` function
  - `Audio::with_i16_buffer` function
  - `Audio::with_f32_buffer` function

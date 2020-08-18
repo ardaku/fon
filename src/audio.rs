@@ -42,24 +42,24 @@ pub struct Audio<S: Sample> {
 }
 
 impl<S: Sample> Audio<S> {
-    /// Get view of samples as a slice.
-    pub fn as_slice(&self) -> &[S] {
+    /// Get a slice of all samples.
+    pub fn samples(&self) -> &[S] {
         &self.samples
     }
     
-    /// Get view of samples as a mutable slice.
-    pub fn as_slice_mut(&mut self) -> &mut [S] {
+    /// Get a mutable slice of all samples.
+    pub fn samples_mut(&mut self) -> &mut [S] {
         &mut self.samples
     }
 
     /// Returns an iterator over the samples.
     pub fn iter(&self) -> std::slice::Iter<'_, S> {
-        self.as_slice().iter()
+        self.samples().iter()
     }
     
     /// Returns an iterator that allows modifying each sample.
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, S> {
-        self.as_slice_mut().iter_mut()
+        self.samples_mut().iter_mut()
     }
 
     /// Construct an `Audio` buffer with all samples set to one value.
@@ -229,7 +229,7 @@ impl<S: Sample> Audio<S> {
     /// # Panics
     /// If range is out of bounds on the `Audio` buffer.
     pub fn copy_sample(&mut self, reg: Range<usize>, sample: S) {
-        for s in self.as_slice_mut().get_mut(reg).unwrap().iter_mut() {
+        for s in self.samples_mut().get_mut(reg).unwrap().iter_mut() {
             *s = sample;
         }
     }
