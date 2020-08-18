@@ -207,13 +207,13 @@ impl<S: Sample> Audio<S> {
     }
 
     /// Blend `Audio` buffer with a single sample.
-    pub fn blend_sample<O: Blend>(&mut self, sample: S, op: O) {
-        S::blend_sample(&mut self.samples, &sample, op)
+    pub fn blend_sample<O: Blend>(&mut self, reg: Range<usize>, sample: S, op: O) {
+        S::blend_sample(&mut self.samples[reg], &sample, op)
     }
 
     /// Blend `Audio` buffer with another `Audio` buffer.
-    pub fn blend_audio<O: Blend>(&mut self, other: &Self, op: O) {
-        S::blend_slice(&mut self.samples, &other.samples, op)
+    pub fn blend_audio<O: Blend>(&mut self, reg: Range<usize>, other: &Self, op: O) {
+        S::blend_slice(&mut self.samples[reg], &other.samples, op)
     }
 
     /// Copy silence into a region of the `Audio`.

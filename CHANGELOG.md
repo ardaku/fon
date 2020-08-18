@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::copy_silence` method
  - `Audio::copy_sample` method
 
+### Changed
+ - `Audio::blend_sample` and `Audio::blend_audio` now take an additional `reg`
+   argument to enable blending on part of the `Audio` buffer.
+
 ### Removed
  - `From<Audio> for Box<[u8]>` impl
  - `From<Audio> for Box<[u16]>` impl
