@@ -221,8 +221,16 @@ impl<S: Sample> Audio<S> {
     /// # Panics
     /// If range is out of bounds on the `Audio` buffer.
     pub fn copy_silence(&mut self, reg: Range<usize>) {
-        for sample in self.as_slice_mut().get_mut(reg).unwrap().iter_mut() {
-            *sample = S::default();
+        self.copy_sample(reg, S::default())
+    }
+    
+    /// Copy sample into a region of the `Audio`.
+    ///
+    /// # Panics
+    /// If range is out of bounds on the `Audio` buffer.
+    pub fn copy_sample(&mut self, reg: Range<usize>, sample: S) {
+        for s in self.as_slice_mut().get_mut(reg).unwrap().iter_mut() {
+            *s = sample;
         }
     }
 }

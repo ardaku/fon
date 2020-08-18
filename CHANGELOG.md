@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::with_i16_buffer` function
  - `Audio::with_f32_buffer` function
  - `Audio::with_f64_buffer` function
- - `Audio::copy_silence` function
+ - `Audio::copy_silence` method
+ - `Audio::copy_sample` method
 
 ### Removed
  - `From<Audio> for Box<[u8]>` impl
