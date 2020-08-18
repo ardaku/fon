@@ -90,6 +90,51 @@ impl<C: Channel, F: Config> Sample for Sample2<C, F> {
     }
 }
 
+/// Sample with four [channel](chan/trait.Channel.html)s.
+#[derive(Default, PartialEq, Copy, Clone, Debug)]
+pub struct Sample4<C: Channel, F: Config> {
+    channels: [C; 4],
+    _config: PhantomData<F>,
+}
+
+impl<C: Channel, F: Config> Sample4<C, F> {
+    /// Create a six-channel Sample.
+    pub fn new<H>(one: H, two: H, three: H, four: H) -> Self
+    where
+        C: From<H>,
+    {
+        let _config = PhantomData;
+        let one = C::from(one);
+        let two = C::from(two);
+        let three = C::from(three);
+        let four = C::from(four);
+        let channels = [one, two, three, four];
+        Self { channels, _config }
+    }
+}
+
+impl<C: Channel, F: Config> Sample for Sample4<C, F> {
+    type Chan = C;
+    type Conf = F;
+
+    fn channels(&self) -> &[Self::Chan] {
+        &self.channels
+    }
+
+    fn channels_mut(&mut self) -> &mut [Self::Chan] {
+        &mut self.channels
+    }
+
+    fn from_channels(ch: &[Self::Chan]) -> Self {
+        let one = ch[0];
+        let two = ch[1];
+        let three = ch[2];
+        let four = ch[3];
+        Self::new::<C>(one, two, three, four)
+    }
+}
+
+
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 pub struct Sample6<C: Channel, F: Config> {

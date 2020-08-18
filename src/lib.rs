@@ -25,8 +25,9 @@
 //! [64]: chan/struct.Ch64.html
 //! [Mono]: mono/struct.Mono.html
 //! [Stereo]: stereo/struct.Stereo.html
-//! [5.1 Surround]: surround/struct.Surround.html
-//! [7.1 Surround]: surround/struct.SurroundHD.html
+//! [4.0 Surround]: surround/struct.Surround4.html
+//! [5.1 Surround]: surround/struct.Surround5.html
+//! [7.1 Surround]: surround/struct.Surround7.html
 
 pub mod chan;
 mod private;

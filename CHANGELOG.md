@@ -18,10 +18,16 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Audio::with_f64_buffer` function
  - `Audio::copy_silence` method
  - `Audio::copy_sample` method
+ - `Surround4` and `Surround4x{}` aliases
 
 ### Changed
  - `Audio::blend_sample` and `Audio::blend_audio` now take an additional `reg`
    argument to enable blending on part of the `Audio` buffer.
+ - Rename `Surround` to `Surround5`
+ - Rename `SurroundHD` to `Surround7`
+ - Rename `Surround{}` to `Surround5x{}`
+ - Rename `SurroundHD{}` to `Surround7x{}`
+ - Speaker (channel) configuration order now matches the default on Linux ALSA
 
 ### Removed
  - `From<Audio> for Box<[u8]>` impl
