@@ -7,12 +7,12 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::{fmt::Debug, slice::from_raw_parts_mut, ops::Range};
 use crate::{
     chan::{Ch16, Ch8, Ch32, Ch64},
     ops::Blend,
     sample::Sample,
 };
-use core::{fmt::Debug, slice::from_raw_parts_mut};
 
 // Channel Identification
 // 0. Front Left (Mono)
@@ -214,6 +214,16 @@ impl<S: Sample> Audio<S> {
     /// Blend `Audio` buffer with another `Audio` buffer.
     pub fn blend_audio<O: Blend>(&mut self, other: &Self, op: O) {
         S::blend_slice(&mut self.samples, &other.samples, op)
+    }
+
+    /// Copy silence into a region of the `Audio`.
+    ///
+    /// # Panics
+    /// If range is out of bounds on the `Audio` buffer.
+    pub fn copy_silence(&mut self, reg: Range<usize>) {
+        for sample in self.as_slice_mut().get_mut(reg).unwrap().iter_mut() {
+            *sample = S::default();
+        }
     }
 }
 
