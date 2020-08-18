@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
 ### Removed
  - `From<Audio> for Box<[u8]>` impl
  - `From<Audio> for Box<[u16]>` impl
+ - `Audio::as_u8_slice` method
+ - `Audio::as_u8_slice_mut` method
 
 ## [0.1.0] - 2020-08-15
 ### Added
