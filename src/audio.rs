@@ -8,7 +8,7 @@
 // except according to those terms.
 
 use crate::{
-    chan::{Ch16, Ch8},
+    chan::{Ch16, Ch8, Ch32, Ch64},
     ops::Blend,
     sample::Sample,
 };
@@ -205,25 +205,25 @@ impl<S: Sample> From<Audio<S>> for Vec<S> {
     }
 }
 
-impl<S> From<Audio<S>> for Box<[u8]>
+impl<S> From<Audio<S>> for Box<[i8]>
 where
     S: Sample<Chan = Ch8>,
 {
-    /// Get internal pixel data as boxed slice of *u8*.
+    /// Get internal pixel data as boxed slice of *i8*.
     #[allow(unsafe_code)]
     fn from(audio: Audio<S>) -> Self {
         let samples = audio.samples;
         let capacity = samples.len() * std::mem::size_of::<S>();
         let slice = Box::<[S]>::into_raw(samples);
-        let buffer: Box<[u8]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut u8;
+        let buffer: Box<[i8]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut i8;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
         };
         buffer
     }
 }
 
-impl<S> From<Audio<S>> for Box<[u16]>
+impl<S> From<Audio<S>> for Box<[i16]>
 where
     S: Sample<Chan = Ch16>,
 {
@@ -233,8 +233,45 @@ where
         let samples = audio.samples;
         let capacity = samples.len() * std::mem::size_of::<S>() / 2;
         let slice = Box::<[S]>::into_raw(samples);
-        let buffer: Box<[u16]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut u16;
+        let buffer: Box<[i16]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut i16;
+            Box::from_raw(from_raw_parts_mut(ptr, capacity))
+        };
+        buffer
+    }
+}
+
+impl<S> From<Audio<S>> for Box<[f32]>
+where
+    S: Sample<Chan = Ch32>,
+{
+    /// Get internal pixel data as boxed slice of *u16*.
+    #[allow(unsafe_code)]
+    fn from(audio: Audio<S>) -> Self {
+        let samples = audio.samples;
+        let capacity = samples.len() * std::mem::size_of::<S>() / 4;
+        let slice = Box::<[S]>::into_raw(samples);
+        let buffer: Box<[f32]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut f32;
+            Box::from_raw(from_raw_parts_mut(ptr, capacity))
+        };
+        buffer
+    }
+}
+
+
+impl<S> From<Audio<S>> for Box<[f64]>
+where
+    S: Sample<Chan = Ch64>,
+{
+    /// Get internal pixel data as boxed slice of *u16*.
+    #[allow(unsafe_code)]
+    fn from(audio: Audio<S>) -> Self {
+        let samples = audio.samples;
+        let capacity = samples.len() * std::mem::size_of::<S>() / 8;
+        let slice = Box::<[S]>::into_raw(samples);
+        let buffer: Box<[f64]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut f64;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
         };
         buffer

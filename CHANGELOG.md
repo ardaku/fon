@@ -4,6 +4,17 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
+## [0.2.0] - Unreleased
+### Added
+ - `From<Audio> for Box<[f64]>`
+ - `From<Audio> for Box<[f32]>`
+ - `From<Audio> for Box<[i8]>`
+ - `From<Audio> for Box<[i16]>`
+
+### Removed
+ - `From<Audio> for Box<[u8]>`
+ - `From<Audio> for Box<[u16]>`
+
 ## [0.1.0] - 2020-08-15
 ### Added
  - `Audio` buffer
