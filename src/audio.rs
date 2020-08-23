@@ -11,9 +11,13 @@ use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
     ops::Blend,
     sample::Sample,
-    Resampler, Stream,
+    Resampler, Sink, Stream,
 };
-use core::{fmt::Debug, ops::Range, slice::from_raw_parts_mut};
+use core::{
+    fmt::Debug,
+    ops::{Bound::*, RangeBounds},
+    slice::{from_raw_parts_mut, SliceIndex},
+};
 
 // Channel Identification
 // 0. Front Left (Mono)
@@ -216,12 +220,22 @@ impl<S: Sample> Audio<S> {
     }
 
     /// Blend `Audio` buffer with a single sample.
-    pub fn blend_sample<O: Blend>(&mut self, reg: Range<usize>, sample: S, op: O) {
+    pub fn blend_sample<O: Blend, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
+        &mut self,
+        reg: R,
+        sample: S,
+        op: O,
+    ) {
         S::blend_sample(&mut self.samples[reg], &sample, op)
     }
 
     /// Blend `Audio` buffer with another `Audio` buffer.
-    pub fn blend_audio<O: Blend>(&mut self, reg: Range<usize>, other: &Self, op: O) {
+    pub fn blend_audio<O: Blend, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
+        &mut self,
+        reg: R,
+        other: &Self,
+        op: O,
+    ) {
         S::blend_slice(&mut self.samples[reg], &other.samples, op)
     }
 
@@ -229,7 +243,7 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds on the `Audio` buffer.
-    pub fn copy_silence(&mut self, reg: Range<usize>) {
+    pub fn copy_silence<R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(&mut self, reg: R) {
         self.copy_sample(reg, S::default())
     }
 
@@ -237,7 +251,11 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds on the `Audio` buffer.
-    pub fn copy_sample(&mut self, reg: Range<usize>, sample: S) {
+    pub fn copy_sample<R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
+        &mut self,
+        reg: R,
+        sample: S,
+    ) {
         for s in self.samples_mut().get_mut(reg).unwrap().iter_mut() {
             *s = sample;
         }
@@ -247,10 +265,18 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn stream(&self, reg: Range<usize>) -> impl Stream<S> + '_ {
-        assert!(reg.end <= self.samples().len());
+    pub fn stream<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + 'a>(
+        &'a self,
+        reg: R,
+    ) -> impl Stream<S> + 'a {
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
         AudioStream {
             resampler: Resampler::new(),
+            cursor: match reg.start_bound() {
+                Unbounded => 0,
+                Included(index) => *index,
+                Excluded(index) => *index + 1,
+            },
             range: reg,
             audio: self,
         }
@@ -260,36 +286,96 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn drain(&mut self, reg: Range<usize>) -> impl Stream<S> + '_ {
-        assert!(reg.end <= self.samples().len());
+    pub fn drain<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone + 'a>(
+        &'a mut self,
+        reg: R,
+    ) -> impl Stream<S> + 'a {
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
         AudioDrain {
             resampler: Resampler::new(),
+            cursor: match reg.start_bound() {
+                Unbounded => 0,
+                Included(index) => *index,
+                Excluded(index) => *index + 1,
+            },
+            range: reg,
+            audio: self,
+        }
+    }
+
+    /// Create an audio sink to overwrite this `Audio` buffer.
+    ///
+    /// # Panics
+    /// If range is out of bounds
+    pub fn sink<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + 'a>(
+        &'a mut self,
+        reg: R,
+    ) -> impl Sink<S> + 'a {
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
+        AudioSink {
+            cursor: match reg.start_bound() {
+                Unbounded => 0,
+                Included(index) => *index,
+                Excluded(index) => *index + 1,
+            },
             range: reg,
             audio: self,
         }
     }
 }
 
-/// A `Stream` created with `Audio.stream()`
-struct AudioStream<'a, S: Sample> {
-    resampler: Resampler<S>,
-    audio: &'a Audio<S>,
-    range: Range<usize>,
+/// A `Sink` created with `Audio.sink()`
+struct AudioSink<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> {
+    audio: &'a mut Audio<S>,
+    cursor: usize,
+    range: R,
 }
 
-impl<S: Sample> Stream<S> for AudioStream<'_, S> {
+impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink<S>
+    for AudioSink<'_, S, R>
+{
+    fn sample_rate(&self) -> u32 {
+        self.audio.sample_rate()
+    }
+
+    fn sink_sample(&mut self, sample: S) {
+        if
+        /* is empty */
+        !self.range.contains(&self.cursor) {
+            panic!("Error sinking audio: Out of bounds");
+        }
+        *self.audio.sample_mut(self.cursor) = sample;
+        self.cursor += 1;
+    }
+
+    fn capacity(&self) -> usize {
+        self.audio.len()
+    }
+}
+
+/// A `Stream` created with `Audio.stream()`
+struct AudioStream<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> {
+    resampler: Resampler<S>,
+    audio: &'a Audio<S>,
+    cursor: usize,
+    range: R,
+}
+
+impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Stream<S>
+    for AudioStream<'_, S, R>
+{
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
     fn stream_sample(&mut self) -> Option<&S> {
-        if self.range.start >= self.range.end
+        if
         /* is empty */
-        {
+        !self.range.contains(&self.cursor) {
             return None;
         }
-        let sample = self.audio.sample(self.range.start);
-        self.range.start += 1;
+        let sample = self.audio.sample(self.cursor);
+        self.cursor += 1;
         Some(sample)
     }
 
@@ -299,30 +385,46 @@ impl<S: Sample> Stream<S> for AudioStream<'_, S> {
 }
 
 /// A `Stream` created with `Audio.drain()`
-struct AudioDrain<'a, S: Sample> {
+struct AudioDrain<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> {
     resampler: Resampler<S>,
     audio: &'a mut Audio<S>,
-    range: Range<usize>,
+    cursor: usize,
+    range: R,
 }
 
-impl<S: Sample> Stream<S> for AudioDrain<'_, S> {
+impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> Stream<S>
+    for AudioDrain<'_, S, R>
+{
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
     fn stream_sample(&mut self) -> Option<&S> {
-        if self.range.start >= self.range.end
+        if
         /* is empty */
-        {
+        !self.range.contains(&self.cursor) {
             return None;
         }
-        let sample = self.audio.sample(self.range.start);
-        self.range.start += 1;
+        let sample = self.audio.sample(self.cursor);
+        self.cursor += 1;
         Some(sample)
     }
 
     fn resampler(&mut self) -> &mut Resampler<S> {
         &mut self.resampler
+    }
+}
+
+impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> Drop
+    for AudioDrain<'_, S, R>
+{
+    fn drop(&mut self) {
+        let mut audio: Box<[S]> = Vec::new().into();
+        std::mem::swap(&mut audio, &mut self.audio.samples);
+        let mut audio: Vec<S> = audio.into();
+        audio.drain(self.range.clone());
+        let mut audio: Box<[S]> = audio.into();
+        std::mem::swap(&mut audio, &mut self.audio.samples);
     }
 }
 

@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Sink` trait
  - `Audio::stream` method
  - `Audio::drain` method
+ - `Audio::sink` method
 
 ### Changed
  - `Audio::blend_sample` and `Audio::blend_audio` now take an additional `reg`

@@ -28,10 +28,9 @@ impl<S: Sample> Resampler<S> {
     }
 }
 
-/// Audio sink - a type that consumes audio (as much as the audio `Stream` can
-/// produce).
+/// Audio sink - a type that consumes a *finite* number of audio samples.
 pub trait Sink<S: Sample>: Sized {
-    /// Transfer audio from a stream into the sink.
+    /// Transfer the audio from a `Stream` into a `Sink`.
     fn sink<M: Stream<S>>(&mut self, stream: &mut M) {
         stream.stream(self)
     }
@@ -41,44 +40,47 @@ pub trait Sink<S: Sample>: Sized {
 
     /// This function is called when the sink receives a sample from a stream.
     fn sink_sample(&mut self, sample: S);
+
+    /// Get the (target) capacity of the sink.  Returns the number of times it's
+    /// permitted to call `sink_sample()`.  Additional calls over capacity may
+    /// panic, but shouldn't cause undefined behavior.
+    fn capacity(&self) -> usize;
 }
 
-/// Audio stream - a type that generates a *finite* amount of audio.
+/// Audio stream - a type that generates audio (may be *infinite*, but is not
+/// required).
 pub trait Stream<S: Sample>: Sized {
-    /// Transfer the audio from a stream into the sink.
+    /// Transfer the audio from a `Stream` into a `Sink`.  Should only be called
+    /// once on a `Sink`.  Additonal calls may panic.
     fn stream<K: Sink<S>>(&mut self, sink: &mut K) {
-        // How many samples to write for each sample read.
-        let sr_ratio = sink.sample_rate() as f64 / self.sample_rate() as f64;
-        // Go through each sample.
-        while let Some(sample) = self.stream_sample() {
-            let sample = *sample;
+        // Silence
+        let zero = Sample1::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
+        // How many samples to read for each sample written.
+        let sr_ratio = self.sample_rate() as f64 / sink.sample_rate() as f64;
+
+        // Write into the entire capacity of the `Sink`.
+        for _ in 0..sink.capacity() {
             let old_phase = self.resampler().phase;
             // Increment phase
             self.resampler().phase += sr_ratio;
-            // If an in-between sample should be sinked.
+
             if self.resampler().phase >= 1.0 {
+                // Value is always overwritten, but Rust compiler can't prove it
+                let mut sample = zero;
+                // Read one or more samples to interpolate & write out
+                while self.resampler().phase >= 1.0 {
+                    sample = self.stream_sample().copied().unwrap_or(zero);
+                    self.resampler().phase = self.resampler().phase - 1.0;
+                    self.resampler().part = sample;
+                }
                 let amount = Sample1::<S::Chan>::new(old_phase).convert();
                 let sample = self.resampler().part.lerp(sample, amount);
                 sink.sink_sample(sample);
-                self.resampler().part = sample;
-                self.resampler().phase -= 1.0;
-            }
-            // Copied samples.
-            while self.resampler().phase >= 1.0 {
-                sink.sink_sample(sample);
-                self.resampler().phase -= 1.0;
+            } else {
+                // Don't read any samples - copy & write the last one
+                sink.sink_sample(self.resampler().part);
             }
         }
-    }
-
-    /// Flush any partially resampled sample (mix with silence), and push out
-    /// to the audio `Sink`.
-    fn flush<K: Sink<S>>(&mut self, sink: &mut K) {
-        let middle = Sample1::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
-        let amount = Sample1::<S::Chan>::new(self.resampler().phase).convert();
-        let sample = self.resampler().part.lerp(middle, amount);
-        sink.sink_sample(sample);
-        *self.resampler() = Resampler::default();
     }
 
     /// Get the (source) sample rate of the stream.
