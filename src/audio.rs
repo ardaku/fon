@@ -7,13 +7,13 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::{fmt::Debug, slice::from_raw_parts_mut, ops::Range};
 use crate::{
-    chan::{Ch16, Ch8, Ch32, Ch64},
+    chan::{Ch16, Ch32, Ch64, Ch8},
     ops::Blend,
     sample::Sample,
-    Stream,
+    Resampler, Stream,
 };
+use core::{fmt::Debug, ops::Range, slice::from_raw_parts_mut};
 
 // Channel Identification
 // 0. Front Left (Mono)
@@ -40,20 +40,22 @@ impl<S: Sample> Audio<S> {
     pub fn sample(&self, index: usize) -> &S {
         self.samples().get(index).expect("Sample out of bounds")
     }
-    
+
     /// Get a mutable sample.
     ///
     /// # Panics
     /// If index is out of bounds
     pub fn sample_mut(&mut self, index: usize) -> &mut S {
-        self.samples_mut().get_mut(index).expect("Sample out of bounds")
+        self.samples_mut()
+            .get_mut(index)
+            .expect("Sample out of bounds")
     }
 
     /// Get a slice of all samples.
     pub fn samples(&self) -> &[S] {
         &self.samples
     }
-    
+
     /// Get a mutable slice of all samples.
     pub fn samples_mut(&mut self) -> &mut [S] {
         &mut self.samples
@@ -63,7 +65,7 @@ impl<S: Sample> Audio<S> {
     pub fn iter(&self) -> std::slice::Iter<'_, S> {
         self.samples().iter()
     }
-    
+
     /// Returns an iterator that allows modifying each sample.
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, S> {
         self.samples_mut().iter_mut()
@@ -159,7 +161,7 @@ impl<S: Sample> Audio<S> {
         };
         Audio { s_rate, samples }
     }
-    
+
     /// Construct an `Audio` buffer from an `f32` buffer.
     #[allow(unsafe_code)]
     pub fn with_f32_buffer<B>(s_rate: u32, buffer: B) -> Self
@@ -178,7 +180,7 @@ impl<S: Sample> Audio<S> {
         };
         Audio { s_rate, samples }
     }
-    
+
     /// Construct an `Audio` buffer from an `f64` buffer.
     #[allow(unsafe_code)]
     pub fn with_f64_buffer<B>(s_rate: u32, buffer: B) -> Self
@@ -230,7 +232,7 @@ impl<S: Sample> Audio<S> {
     pub fn copy_silence(&mut self, reg: Range<usize>) {
         self.copy_sample(reg, S::default())
     }
-    
+
     /// Copy sample into a region of the `Audio`.
     ///
     /// # Panics
@@ -240,7 +242,7 @@ impl<S: Sample> Audio<S> {
             *s = sample;
         }
     }
-    
+
     /// Create an audio stream over this `Audio` buffer.
     ///
     /// # Panics
@@ -248,6 +250,7 @@ impl<S: Sample> Audio<S> {
     pub fn stream(&self, reg: Range<usize>) -> impl Stream<S> + '_ {
         assert!(reg.end <= self.samples().len());
         AudioStream {
+            resampler: Resampler::new(),
             range: reg,
             audio: self,
         }
@@ -260,6 +263,7 @@ impl<S: Sample> Audio<S> {
     pub fn drain(&mut self, reg: Range<usize>) -> impl Stream<S> + '_ {
         assert!(reg.end <= self.samples().len());
         AudioDrain {
+            resampler: Resampler::new(),
             range: reg,
             audio: self,
         }
@@ -268,47 +272,57 @@ impl<S: Sample> Audio<S> {
 
 /// A `Stream` created with `Audio.stream()`
 struct AudioStream<'a, S: Sample> {
+    resampler: Resampler<S>,
     audio: &'a Audio<S>,
     range: Range<usize>,
 }
 
 impl<S: Sample> Stream<S> for AudioStream<'_, S> {
-    /// Get the (source) sample rate of the stream.
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    /// This function is called when a sink requests a sample from the stream.
     fn stream_sample(&mut self) -> Option<&S> {
-        if self.range.start >= self.range.end /* is empty */ {
+        if self.range.start >= self.range.end
+        /* is empty */
+        {
             return None;
         }
         let sample = self.audio.sample(self.range.start);
         self.range.start += 1;
         Some(sample)
+    }
+
+    fn resampler(&mut self) -> &mut Resampler<S> {
+        &mut self.resampler
     }
 }
 
 /// A `Stream` created with `Audio.drain()`
 struct AudioDrain<'a, S: Sample> {
+    resampler: Resampler<S>,
     audio: &'a mut Audio<S>,
     range: Range<usize>,
 }
 
 impl<S: Sample> Stream<S> for AudioDrain<'_, S> {
-    /// Get the (source) sample rate of the stream.
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    /// This function is called when a sink requests a sample from the stream.
     fn stream_sample(&mut self) -> Option<&S> {
-        if self.range.start >= self.range.end /* is empty */ {
+        if self.range.start >= self.range.end
+        /* is empty */
+        {
             return None;
         }
         let sample = self.audio.sample(self.range.start);
         self.range.start += 1;
         Some(sample)
+    }
+
+    fn resampler(&mut self) -> &mut Resampler<S> {
+        &mut self.resampler
     }
 }
 
@@ -379,7 +393,6 @@ where
         buffer
     }
 }
-
 
 impl<S> From<Audio<S>> for Box<[f64]>
 where

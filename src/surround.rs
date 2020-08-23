@@ -21,7 +21,7 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
-    sample::{Sample6, Sample4, Sample8},
+    sample::{Sample4, Sample6, Sample8},
 };
 
 /// 4.0 Surround [8-bit PCM](../chan/struct.Ch8.html) format.
@@ -37,7 +37,7 @@ pub type Surround4x64 = Sample4<Ch64>;
 pub type Surround5x8 = Sample6<Ch8>;
 /// 5.1 Surround [16-bit PCM](../chan/struct.Ch16.html) format.
 pub type Surround5x16 = Sample6<Ch16>;
-/// 5.1 Surround 32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// 5.1 Surround [32-bit Floating Point](../chan/struct.Ch32.html) format.
 pub type Surround5x32 = Sample6<Ch32>;
 /// 5.1 Surround [64-bit Floating Point](../chan/struct.Ch64.html) format.
 pub type Surround5x64 = Sample6<Ch64>;

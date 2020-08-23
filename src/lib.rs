@@ -30,18 +30,18 @@
 //! [5.1 Surround]: surround/struct.Surround5.html
 //! [7.1 Surround]: surround/struct.Surround7.html
 
-pub mod chan;
-mod private;
 mod audio;
+pub mod chan;
 pub mod mono;
 pub mod ops;
+mod private;
 pub mod sample;
 pub mod stereo;
-pub mod surround;
 mod streaming;
+pub mod surround;
 
 pub use audio::Audio;
-pub use streaming::{Stream, Sink, Resampler};
+pub use streaming::{Resampler, Sink, Stream};
 
 #[cfg(test)]
 mod tests {

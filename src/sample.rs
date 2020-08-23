@@ -137,7 +137,6 @@ impl<C: Channel> Sample for Sample4<C> {
     }
 }
 
-
 /// Sample with six [channel](chan/trait.Channel.html)s.
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
@@ -194,16 +193,7 @@ pub struct Sample8<C: Channel> {
 impl<C: Channel> Sample8<C> {
     /// Create an eight-channel Sample.
     #[allow(clippy::too_many_arguments)]
-    pub fn new<H>(
-        one: H,
-        two: H,
-        three: H,
-        four: H,
-        five: H,
-        six: H,
-        seven: H,
-        eight: H,
-    ) -> Self
+    pub fn new<H>(one: H, two: H, three: H, four: H, five: H, six: H, seven: H, eight: H) -> Self
     where
         C: From<H>,
     {
@@ -244,7 +234,7 @@ impl<C: Channel> Sample for Sample8<C> {
     }
 }
 
-/// Sample [channel].
+/// Sample - A number of [channel]s.
 ///
 /// [channel]: ../chan/trait.Channel.html
 pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
@@ -299,8 +289,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
     where
         O: Blend,
     {
-        for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter())
-        {
+        for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter()) {
             O::synthesize(d, s)
         }
     }
@@ -355,7 +344,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
             (6, 2) => {
                 let mut left = 0.0;
                 let mut right = 0.0;
-            
+
                 left += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 3.0);
                 right += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 3.0);
                 left += self.channels()[BACK_LEFT].to_f64() * (1.0 / 3.0);
@@ -370,7 +359,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
             (8, 2) => {
                 let mut left = 0.0;
                 let mut right = 0.0;
-            
+
                 left += self.channels()[FRONT_LEFT].to_f64() * (1.0 / 4.0);
                 right += self.channels()[FRONT_RIGHT].to_f64() * (1.0 / 4.0);
                 left += self.channels()[BACK_LEFT].to_f64() * (1.0 / 4.0);
@@ -381,7 +370,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Sealed {
                 right += self.channels()[SIDE_RIGHT].to_f64() * (1.0 / 4.0);
                 left += self.channels()[LFE].to_f64();
                 right += self.channels()[LFE].to_f64();
-                
+
                 D::from_channels(&[D::Chan::from(left), D::Chan::from(right)])
             }
             (8, 6) => {
