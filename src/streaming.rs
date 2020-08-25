@@ -69,7 +69,7 @@ pub trait Stream<S: Sample>: Sized {
                 let mut sample = zero;
                 // Read one or more samples to interpolate & write out
                 while self.resampler().phase >= 1.0 {
-                    sample = self.stream_sample().copied().unwrap_or(zero);
+                    sample = self.stream_sample().unwrap_or(zero);
                     self.resampler().phase = self.resampler().phase - 1.0;
                     self.resampler().part = sample;
                 }
@@ -87,7 +87,7 @@ pub trait Stream<S: Sample>: Sized {
     fn sample_rate(&self) -> u32;
 
     /// This function is called when a sink requests a sample from the stream.
-    fn stream_sample(&mut self) -> Option<&S>;
+    fn stream_sample(&mut self) -> Option<S>;
 
     /// Get this streams's resampler context.
     fn resampler(&mut self) -> &mut Resampler<S>;

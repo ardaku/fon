@@ -307,7 +307,7 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn sink<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + 'a>(
+    pub fn sink<'a, R: 'a + RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
         &'a mut self,
         reg: R,
     ) -> impl Sink<S> + 'a {
@@ -321,6 +321,21 @@ impl<S: Sample> Audio<S> {
             range: reg,
             audio: self,
         }
+    }
+    
+    /// Extend the audio buffer with all of the audio from a stream.
+    ///
+    /// *Don't call this with an infinite stream!*  This is the only way to
+    /// collect a stream without knowing the size ahead of time.
+    pub fn extend<M: Stream<S>>(&mut self, stream: &mut M) {
+        let mut audio: Box<[S]> = Vec::new().into();
+        std::mem::swap(&mut audio, &mut self.samples);
+        let mut audio: Vec<S> = audio.into();
+        while let Some(sample) = stream.stream_sample() {
+            audio.push(sample);
+        }
+        let mut audio: Box<[S]> = audio.into();
+        std::mem::swap(&mut audio, &mut self.samples);
     }
 }
 
@@ -368,7 +383,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Stream<S>
         self.audio.sample_rate()
     }
 
-    fn stream_sample(&mut self) -> Option<&S> {
+    fn stream_sample(&mut self) -> Option<S> {
         if
         /* is empty */
         !self.range.contains(&self.cursor) {
@@ -376,7 +391,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Stream<S>
         }
         let sample = self.audio.sample(self.cursor);
         self.cursor += 1;
-        Some(sample)
+        Some(*sample)
     }
 
     fn resampler(&mut self) -> &mut Resampler<S> {
@@ -399,7 +414,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> S
         self.audio.sample_rate()
     }
 
-    fn stream_sample(&mut self) -> Option<&S> {
+    fn stream_sample(&mut self) -> Option<S> {
         if
         /* is empty */
         !self.range.contains(&self.cursor) {
@@ -407,7 +422,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> S
         }
         let sample = self.audio.sample(self.cursor);
         self.cursor += 1;
-        Some(sample)
+        Some(*sample)
     }
 
     fn resampler(&mut self) -> &mut Resampler<S> {
