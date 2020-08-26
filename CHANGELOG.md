@@ -4,7 +4,7 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2020-08-26
 ### Added
  - `From<Audio> for Box<[f64]>` impl
  - `From<Audio> for Box<[f32]>` impl

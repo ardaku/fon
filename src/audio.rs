@@ -324,7 +324,7 @@ impl<S: Sample> Audio<S> {
             audio: self,
         }
     }
-    
+
     /// Extend the audio buffer with all of the audio from a stream.
     ///
     /// *Don't call this with an infinite stream!*  This is the only way to

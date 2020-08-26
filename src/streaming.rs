@@ -55,7 +55,7 @@ pub trait Stream<S: Sample>: Sized {
     fn stream<K: Sink<S>>(&mut self, sink: &mut K) {
         // Silence
         let zero = Sample1::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
-    
+
         // Faster algorithm if sample rates match.
         if self.sample_rate() == sink.sample_rate() {
             for _ in 0..sink.capacity() {
