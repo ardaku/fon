@@ -457,7 +457,6 @@ impl From<f64> for Ch8 {
 
 impl From<f64> for Ch16 {
     fn from(value: f64) -> Self {
-        println!("he");
         Ch64::new(value).into()
     }
 }

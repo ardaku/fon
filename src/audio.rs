@@ -291,13 +291,15 @@ impl<S: Sample> Audio<S> {
         reg: R,
     ) -> impl Stream<S> + 'a {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
+        let index = match reg.start_bound() {
+            Unbounded => 0,
+            Included(index) => *index,
+            Excluded(index) => *index + 1,
+        };
         AudioDrain {
             resampler: Resampler::new(),
-            cursor: match reg.start_bound() {
-                Unbounded => 0,
-                Included(index) => *index,
-                Excluded(index) => *index + 1,
-            },
+            cursor: index,
+            start: index,
             range: reg,
             audio: self,
         }
@@ -404,6 +406,7 @@ struct AudioDrain<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output 
     resampler: Resampler<S>,
     audio: &'a mut Audio<S>,
     cursor: usize,
+    start: usize, // Where the cursor starts
     range: R,
 }
 
@@ -417,7 +420,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> S
     fn stream_sample(&mut self) -> Option<S> {
         if
         /* is empty */
-        !self.range.contains(&self.cursor) {
+        !self.range.contains(&self.cursor) || self.cursor == self.audio.samples.len() {
             return None;
         }
         let sample = self.audio.sample(self.cursor);
@@ -437,7 +440,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> D
         let mut audio: Box<[S]> = Vec::new().into();
         std::mem::swap(&mut audio, &mut self.audio.samples);
         let mut audio: Vec<S> = audio.into();
-        audio.drain(self.range.clone());
+        audio.drain(self.start..self.cursor);
         let mut audio: Box<[S]> = audio.into();
         std::mem::swap(&mut audio, &mut self.audio.samples);
     }
