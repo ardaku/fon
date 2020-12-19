@@ -39,8 +39,8 @@ mod streaming;
 pub mod surround;
 
 pub use audio::Audio;
-pub use streaming::{Resampler, Sink, Stream};
 pub use sample::Sample;
+pub use streaming::{Resampler, Sink, Stream};
 
 #[cfg(test)]
 mod tests {

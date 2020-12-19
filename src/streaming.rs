@@ -29,7 +29,8 @@ impl<S: Sample> Resampler<S> {
 pub trait Sink<S: Sample>: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.
     fn sink<Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M)
-        where S: From<Z>
+    where
+        S: From<Z>,
     {
         stream.stream(self)
     }
@@ -38,7 +39,9 @@ pub trait Sink<S: Sample>: Sized {
     fn sample_rate(&self) -> u32;
 
     /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<Z: Sample>(&mut self, sample: Z) where S: From<Z>;
+    fn sink_sample<Z: Sample>(&mut self, sample: Z)
+    where
+        S: From<Z>;
 
     /// Get the (target) capacity of the sink.  Returns the number of times it's
     /// permitted to call `sink_sample()`.  Additional calls over capacity may

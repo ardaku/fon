@@ -355,7 +355,10 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink<S>
         self.audio.sample_rate()
     }
 
-    fn sink_sample<Z: Sample>(&mut self, sample: Z) where S: From<Z> {
+    fn sink_sample<Z: Sample>(&mut self, sample: Z)
+    where
+        S: From<Z>,
+    {
         if
         /* is empty */
         !self.range.contains(&self.cursor) {
