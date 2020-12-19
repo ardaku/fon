@@ -33,13 +33,14 @@ pub mod chan;
 pub mod mono;
 pub mod ops;
 mod private;
-pub mod sample;
+mod sample;
 pub mod stereo;
 mod streaming;
 pub mod surround;
 
 pub use audio::Audio;
 pub use streaming::{Resampler, Sink, Stream};
+pub use sample::Sample;
 
 #[cfg(test)]
 mod tests {

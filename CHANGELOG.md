@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - Renamed `sample::Sample1` to `mono::Mono`
  - Renamed `sample::Sample2` to `stereo::Stereo`
  - Renamed `sample::Sample6` to `surround::Surround`
+ - Moved `Sample` to the crate root (removing `sample` module)
 
 ### Removed
  - `sample::Sample4`
