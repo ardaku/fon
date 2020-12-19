@@ -220,48 +220,6 @@ impl<S: Sample> Audio<S> {
         self.s_rate
     }
 
-    /// Blend `Audio` buffer with a single sample.
-    pub fn blend_sample<O: Blend, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
-        &mut self,
-        reg: R,
-        sample: S,
-        op: O,
-    ) {
-        S::blend_sample(&mut self.samples[reg], &sample, op)
-    }
-
-    /// Blend `Audio` buffer with another `Audio` buffer.
-    pub fn blend_audio<O: Blend, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
-        &mut self,
-        reg: R,
-        other: &Self,
-        op: O,
-    ) {
-        S::blend_slice(&mut self.samples[reg], &other.samples, op)
-    }
-
-    /// Copy silence into a region of the `Audio`.
-    ///
-    /// # Panics
-    /// If range is out of bounds on the `Audio` buffer.
-    pub fn copy_silence<R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(&mut self, reg: R) {
-        self.copy_sample(reg, S::default())
-    }
-
-    /// Copy sample into a region of the `Audio`.
-    ///
-    /// # Panics
-    /// If range is out of bounds on the `Audio` buffer.
-    pub fn copy_sample<R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
-        &mut self,
-        reg: R,
-        sample: S,
-    ) {
-        for s in self.samples_mut().get_mut(reg).unwrap().iter_mut() {
-            *s = sample;
-        }
-    }
-
     /// Create an audio stream over this `Audio` buffer.
     ///
     /// # Panics

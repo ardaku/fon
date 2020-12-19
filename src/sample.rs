@@ -51,26 +51,6 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
         out
     }
 
-    /// Synthesis of a sample with a slice of samples.
-    fn blend_sample<O>(dst: &mut [Self], sample: &Self, op: O)
-    where
-        O: Blend,
-    {
-        for d in dst.iter_mut() {
-            d.blend(sample, op);
-        }
-    }
-
-    /// Synthesis of two slices of samples.
-    fn blend_slice<O>(dst: &mut [Self], src: &[Self], op: O)
-    where
-        O: Blend,
-    {
-        for (d, s) in dst.iter_mut().zip(src) {
-            d.blend(s, op);
-        }
-    }
-
     /// Synthesize two samples together.
     fn blend<O>(&mut self, src: &Self, _op: O)
     where
