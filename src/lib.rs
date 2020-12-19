@@ -16,7 +16,7 @@
 //! Many audio formats are supported:
 //! - Any sample rate
 //! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
-//! - [Mono], [Stereo], [4.0 Surround], [5.1 Surround] and [7.1 Surround]
+//! - [Mono], [Stereo], [5.1 Surround]
 //!
 //! Blending [operations](ops/index.html) are supported for all formats.
 //!
@@ -26,9 +26,7 @@
 //! [64]: chan/struct.Ch64.html
 //! [Mono]: mono/struct.Mono.html
 //! [Stereo]: stereo/struct.Stereo.html
-//! [4.0 Surround]: surround/struct.Surround4.html
-//! [5.1 Surround]: surround/struct.Surround5.html
-//! [7.1 Surround]: surround/struct.Surround7.html
+//! [5.1 Surround]: surround/struct.Surround.html
 
 mod audio;
 pub mod chan;

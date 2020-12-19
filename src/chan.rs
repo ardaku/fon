@@ -11,9 +11,8 @@
 
 use crate::private::Sealed;
 use core::{
-    cmp::Ordering,
     fmt::Debug,
-    ops::{Add, Div, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 /// Component of a speaker configuration, such as *front left*, *lfe*, *etc*.
@@ -22,11 +21,15 @@ pub trait Channel:
     + Debug
     + Default
     + From<f64>
-    + Ord
+    + PartialOrd
     + Add<Output = Self>
     + Div<Output = Self>
     + Mul<Output = Self>
     + Sub<Output = Self>
+    + AddAssign
+    + SubAssign
+    + DivAssign
+    + MulAssign
     + Sealed
 {
     /// Minimum value (*negative one*)
@@ -68,18 +71,6 @@ pub struct Ch64(f64);
 impl Eq for Ch32 {}
 
 impl Eq for Ch64 {}
-
-impl Ord for Ch32 {
-    fn cmp(&self, other: &Ch32) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl Ord for Ch64 {
-    fn cmp(&self, other: &Ch64) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
 
 impl Ch8 {
     /// Create a new 8-bit `Channel` value.
@@ -162,6 +153,16 @@ where
     }
 }
 
+impl<R> AddAssign<R> for Ch8
+where
+    Self: From<R>,
+{
+    fn add_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0.saturating_add(rhs.0);
+    }
+}
+
 impl<R> Sub<R> for Ch8
 where
     Self: From<R>,
@@ -170,6 +171,16 @@ where
     fn sub(self, rhs: R) -> Self {
         let rhs = Self::from(rhs);
         Ch8(self.0.saturating_sub(rhs.0))
+    }
+}
+
+impl<R> SubAssign<R> for Ch8
+where
+    Self: From<R>,
+{
+    fn sub_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0.saturating_sub(rhs.0);
     }
 }
 
@@ -186,6 +197,16 @@ where
         let r = (r * 16) + (r / 16);
         let value = ((l * r) / i16::MAX as i32) as i8;
         Ch8(value)
+    }
+}
+
+impl<R> MulAssign<R> for Ch8
+where
+    Self: From<R>,
+{
+    fn mul_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -208,6 +229,16 @@ where
     }
 }
 
+impl<R> DivAssign<R> for Ch8
+where
+    Self: From<R>,
+{
+    fn div_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 / rhs.0;
+    }
+}
+
 impl<R> Add<R> for Ch16
 where
     Self: From<R>,
@@ -219,6 +250,16 @@ where
     }
 }
 
+impl<R> AddAssign<R> for Ch16
+where
+    Self: From<R>,
+{
+    fn add_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 + rhs.0;
+    }
+}
+
 impl<R> Sub<R> for Ch16
 where
     Self: From<R>,
@@ -227,6 +268,16 @@ where
     fn sub(self, rhs: R) -> Self {
         let rhs = Self::from(rhs);
         Ch16(self.0.saturating_sub(rhs.0))
+    }
+}
+
+impl<R> SubAssign<R> for Ch16
+where
+    Self: From<R>,
+{
+    fn sub_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 - rhs.0;
     }
 }
 
@@ -243,6 +294,16 @@ where
         let r = (r * 256) + (r / 256);
         let value = ((l * r) / u32::MAX as i64) as i16;
         Ch16(value)
+    }
+}
+
+impl<R> MulAssign<R> for Ch16
+where
+    Self: From<R>,
+{
+    fn mul_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -265,6 +326,16 @@ where
     }
 }
 
+impl<R> DivAssign<R> for Ch16
+where
+    Self: From<R>,
+{
+    fn div_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 / rhs.0;
+    }
+}
+
 impl<R> Add<R> for Ch32
 where
     Self: From<R>,
@@ -273,6 +344,16 @@ where
     fn add(self, rhs: R) -> Self {
         let value = self.0 + Self::from(rhs).0;
         Ch32(value.min(1.0))
+    }
+}
+
+impl<R> AddAssign<R> for Ch32
+where
+    Self: From<R>,
+{
+    fn add_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 + rhs.0;
     }
 }
 
@@ -287,6 +368,16 @@ where
     }
 }
 
+impl<R> SubAssign<R> for Ch32
+where
+    Self: From<R>,
+{
+    fn sub_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 - rhs.0;
+    }
+}
+
 impl<R> Mul<R> for Ch32
 where
     Self: From<R>,
@@ -294,6 +385,16 @@ where
     type Output = Self;
     fn mul(self, rhs: R) -> Self {
         Ch32(self.0 * Self::from(rhs).0)
+    }
+}
+
+impl<R> MulAssign<R> for Ch32
+where
+    Self: From<R>,
+{
+    fn mul_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -312,6 +413,16 @@ where
     }
 }
 
+impl<R> DivAssign<R> for Ch32
+where
+    Self: From<R>,
+{
+    fn div_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 / rhs.0;
+    }
+}
+
 impl<R> Add<R> for Ch64
 where
     Self: From<R>,
@@ -320,6 +431,16 @@ where
     fn add(self, rhs: R) -> Self {
         let value = self.0 + Self::from(rhs).0;
         Ch64(value.min(1.0))
+    }
+}
+
+impl<R> AddAssign<R> for Ch64
+where
+    Self: From<R>,
+{
+    fn add_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 + rhs.0;
     }
 }
 
@@ -334,6 +455,16 @@ where
     }
 }
 
+impl<R> SubAssign<R> for Ch64
+where
+    Self: From<R>,
+{
+    fn sub_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 - rhs.0;
+    }
+}
+
 impl<R> Mul<R> for Ch64
 where
     Self: From<R>,
@@ -341,6 +472,16 @@ where
     type Output = Self;
     fn mul(self, rhs: R) -> Self {
         Ch64(self.0 * Self::from(rhs).0)
+    }
+}
+
+impl<R> MulAssign<R> for Ch64
+where
+    Self: From<R>,
+{
+    fn mul_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -356,6 +497,16 @@ where
         } else {
             Ch64(0.0)
         }
+    }
+}
+
+impl<R> DivAssign<R> for Ch64
+where
+    Self: From<R>,
+{
+    fn div_assign(&mut self, rhs: R) {
+        let rhs = Self::from(rhs);
+        self.0 = self.0 / rhs.0;
     }
 }
 

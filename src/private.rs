@@ -7,8 +7,7 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::chan::{Ch16, Ch32, Ch64, Ch8, Channel};
-use crate::sample::{Sample1, Sample2, Sample4, Sample6, Sample8};
+use crate::chan::{Ch16, Ch32, Ch64, Ch8};
 use core::any::Any;
 
 pub trait Sealed: Any {}
@@ -16,8 +15,3 @@ impl Sealed for Ch8 {}
 impl Sealed for Ch16 {}
 impl Sealed for Ch32 {}
 impl Sealed for Ch64 {}
-impl<C: Channel> Sealed for Sample1<C> {}
-impl<C: Channel> Sealed for Sample2<C> {}
-impl<C: Channel> Sealed for Sample4<C> {}
-impl<C: Channel> Sealed for Sample6<C> {}
-impl<C: Channel> Sealed for Sample8<C> {}

@@ -7,10 +7,7 @@
 // your option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::{
-    chan::Channel,
-    sample::{Sample, Sample1},
-};
+use crate::{chan::Channel, mono::Mono, sample::Sample};
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
@@ -54,7 +51,7 @@ pub trait Stream<S: Sample>: Sized {
     /// once on a `Sink`.  Additonal calls may panic.
     fn stream<K: Sink<S>>(&mut self, sink: &mut K) {
         // Silence
-        let zero = Sample1::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
+        let zero = Mono::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
 
         // Faster algorithm if sample rates match.
         if self.sample_rate() == sink.sample_rate() {
@@ -82,7 +79,7 @@ pub trait Stream<S: Sample>: Sized {
                     self.resampler().phase = self.resampler().phase - 1.0;
                     self.resampler().part = sample;
                 }
-                let amount = Sample1::<S::Chan>::new(old_phase).convert();
+                let amount = Mono::<S::Chan>::new(old_phase).convert();
                 let sample = self.resampler().part.lerp(sample, amount);
                 sink.sink_sample(sample);
             } else {

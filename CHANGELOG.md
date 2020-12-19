@@ -4,6 +4,36 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
+## [0.3.0] - Unreleased
+### Added
+ - `CONFIG` constant to `Sample` to define speaker configurations.
+
+### Changed
+ - No longer does `Sample` require `Sealed` meaning you can define custom
+   speaker configurations as needed.
+ - Renamed `surround::Surround5x8` to `Surround8`
+ - Renamed `surround::Surround5x16` to `Surround16`
+ - Renamed `surround::Surround5x32` to `Surround32`
+ - Renamed `surround::Surround5x64` to `Surround64`
+ - Renamed `sample::Sample1` to `mono::Mono`
+ - Renamed `sample::Sample2` to `stereo::Stereo`
+ - Renamed `sample::Sample6` to `surround::Surround`
+
+### Removed
+ - `sample::Sample4`
+ - `sample::Sample8`
+ - `surround::Surround4x8`
+ - `surround::Surround4x16`
+ - `surround::Surround4x32`
+ - `surround::Surround4x64`
+ - `surround::Surround7x8`
+ - `surround::Surround7x16`
+ - `surround::Surround7x32`
+ - `surround::Surround7x64`
+
+### Fixed
+ - Reimplemented `Sample::convert` to be more accurate.
+
 ## [0.2.0] - 2020-08-26
 ### Added
  - `From<Audio> for Box<[f64]>` impl
