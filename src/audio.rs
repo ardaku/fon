@@ -114,7 +114,7 @@ impl<S: Sample> Audio<S> {
                 let i = sr_rat * i as f64;
                 let j = i.trunc() as usize;
                 let k = (j + 1).max(src.len() - 1);
-                let f = SrcS::from_channels(&[SrcS::Chan::from(i.fract())]);
+                let f = SrcS::from_channels(&[SrcS::Chan::from(Ch64::new(i.fract()))]);
                 *dst = (src.samples[j].lerp(src.samples[k], f)).convert();
             }
 

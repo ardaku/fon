@@ -8,7 +8,11 @@
 // at your option. This file may not be copied, modified, or distributed except
 // according to those terms.
 
-use crate::{chan::Channel, mono::Mono, sample::Sample};
+use crate::{
+    chan::{Ch64, Channel},
+    mono::Mono,
+    sample::Sample,
+};
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
@@ -85,7 +89,7 @@ pub trait Stream<S: Sample>: Sized {
                     self.resampler().phase = self.resampler().phase - 1.0;
                     self.resampler().part = sample;
                 }
-                let amount = Mono::<S::Chan>::new(old_phase).convert();
+                let amount = Mono::<S::Chan>::new(Ch64::new(old_phase)).convert();
                 let sample = self.resampler().part.lerp(sample, amount);
                 sink.sink_sample(sample);
             } else {

@@ -10,13 +10,16 @@
 
 //! Sample types
 
-use crate::{chan::Channel, ops::Blend};
+use crate::{
+    chan::{Ch64, Channel},
+    ops::Blend,
+};
 use std::{fmt::Debug, mem::size_of};
 
 /// Sample - A number of [channel]s.
 ///
 /// [channel]: ../chan/trait.Channel.html
-pub trait Sample: Clone + Copy + Debug + Default + PartialEq {
+pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Channel type
     type Chan: Channel;
 
@@ -80,11 +83,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq {
 
     /// Convert a sample to another format.
     #[inline(always)]
-    fn convert<D>(self) -> D
-    where
-        D: Sample,
-        D::Chan: From<Self::Chan> + From<f64>,
-    {
+    fn convert<D: Sample>(self) -> D {
         // FIXME: Remove allocation from this function.
         let mut output = vec![0.0f64; D::CONFIG.len()];
         let mut config = Self::CONFIG.iter().enumerate().peekable();
@@ -114,7 +113,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq {
         let mut out = vec![];
 
         for i in output {
-            out.push(D::Chan::from(i));
+            out.push(D::Chan::from(Ch64::from(i)));
         }
 
         D::from_channels(&out[..])

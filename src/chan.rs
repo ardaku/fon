@@ -32,6 +32,15 @@ pub trait Channel:
     + DivAssign
     + MulAssign
     + Sealed
+    + Unpin
+    + From<Ch8>
+    + From<Ch16>
+    + From<Ch32>
+    + From<Ch64>
+    + Into<Ch8>
+    + Into<Ch16>
+    + Into<Ch32>
+    + Into<Ch64>
 {
     /// Minimum value (*negative one*)
     const MIN: Self;
