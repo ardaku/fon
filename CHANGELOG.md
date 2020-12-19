@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
 ## [0.3.0] - Unreleased
 ### Added
  - `CONFIG` constant to `Sample` to define speaker configurations.
+ - Extra generics on `Stream` and `Sink` allowing them to be used as conversion
+   functions (to convert between different sample formats and speaker
+   configurations).
 
 ### Changed
  - No longer does `Sample` require `Sealed` meaning you can define custom
