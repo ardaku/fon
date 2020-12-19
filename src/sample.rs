@@ -121,9 +121,9 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
 }
 
 impl<T: Sample> crate::Stream<T> for T {
-    fn stream<K: crate::Sink>(&mut self, sink: &mut K) {
+    fn stream<O: Blend, K: crate::Sink>(&mut self, sink: &mut K, op: O) {
         for _ in 0..sink.capacity() {
-            sink.sink_sample(*self)
+            sink.sink_sample(*self, op)
         }
     }
 

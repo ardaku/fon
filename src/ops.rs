@@ -41,36 +41,42 @@ pub struct Mix;
 pub struct Compress;
 
 impl Blend for Src {
+    #[inline(always)]
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src;
     }
 }
 
 impl Blend for Dest {
+    #[inline(always)]
     fn synthesize<C: Channel>(_dst: &mut C, _src: &C) {
         // leave _dst as is
     }
 }
 
 impl Blend for Clear {
+    #[inline(always)]
     fn synthesize<C: Channel>(dst: &mut C, _src: &C) {
         *dst = C::default();
     }
 }
 
 impl Blend for Amplify {
+    #[inline(always)]
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src * *dst;
     }
 }
 
 impl Blend for Mix {
+    #[inline(always)]
     fn synthesize<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src + *dst;
     }
 }
 
 impl Blend for Compress {
+    #[inline(always)]
     fn synthesize<C: Channel>(_dst: &mut C, _src: &C) {
         todo!()
     }

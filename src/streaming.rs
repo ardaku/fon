@@ -11,6 +11,7 @@
 use crate::{
     chan::{Ch64, Channel},
     mono::Mono,
+    ops::Blend,
     sample::Sample,
 };
 
@@ -33,35 +34,35 @@ impl<S: Sample> Resampler<S> {
 /// Audio sink - a type that consumes a *finite* number of audio samples.
 pub trait Sink: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.
-    fn sink<Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M) {
-        stream.stream(self)
+    fn sink<O: Blend, Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M, op: O) {
+        stream.stream(self, op)
     }
 
     /// Get the (target) sample rate of the sink.
     fn sample_rate(&self) -> u32;
 
     /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<Z: Sample>(&mut self, sample: Z);
+    fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O);
 
     /// Get the (target) capacity of the sink.  Returns the number of times it's
-    /// permitted to call `sink_sample()`.  Additional calls over capacity may
-    /// panic, but shouldn't cause undefined behavior.
+    /// permitted to call `sink_sample()`.  Additional calls over capacity
+    /// should wrap around to the beginning of the buffer.
     fn capacity(&self) -> usize;
 }
 
 /// Audio stream - a type that generates audio (may be *infinite*, but is not
 /// required).
 pub trait Stream<S: Sample>: Sized {
-    /// Transfer the audio from a `Stream` into a `Sink`.  Should only be called
-    /// once on a `Sink`.  Additonal calls may panic.
-    fn stream<K: Sink>(&mut self, sink: &mut K) {
+    /// Transfer the audio from a `Stream` into a `Sink`.  You may write to the
+    /// same sink multiple times, blending audio with `Blend` operations.
+    fn stream<O: Blend, K: Sink>(&mut self, sink: &mut K, op: O) {
         // Silence
         let zero = Mono::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
 
         // Faster algorithm if sample rates match.
         if self.sample_rate() == sink.sample_rate() {
             for _ in 0..sink.capacity() {
-                sink.sink_sample(self.stream_sample().unwrap_or(zero))
+                sink.sink_sample(self.stream_sample().unwrap_or(zero), op)
             }
             return;
         }
@@ -86,10 +87,10 @@ pub trait Stream<S: Sample>: Sized {
                 }
                 let amount = Mono::<S::Chan>::new(Ch64::new(old_phase)).convert();
                 let sample = self.resampler().part.lerp(sample, amount);
-                sink.sink_sample(sample);
+                sink.sink_sample(sample, op);
             } else {
                 // Don't read any samples - copy & write the last one
-                sink.sink_sample(self.resampler().part);
+                sink.sink_sample(self.resampler().part, op);
             }
         }
     }

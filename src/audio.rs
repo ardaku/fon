@@ -356,13 +356,18 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
         self.audio.sample_rate()
     }
 
-    fn sink_sample<Z: Sample>(&mut self, sample: Z) {
-        if
-        /* is empty */
-        !self.range.contains(&self.cursor) {
-            panic!("Error sinking audio: Out of bounds");
+    fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O) {
+        // If empty, start over
+        if !self.range.contains(&self.cursor) {
+            self.cursor = match self.range.start_bound() {
+                Unbounded => 0,
+                Included(index) => *index,
+                Excluded(index) => *index + 1,
+            };
         }
-        *self.audio.sample_mut(self.cursor) = sample.convert();
+        self.audio
+            .sample_mut(self.cursor)
+            .blend(&sample.convert(), op);
         self.cursor += 1;
     }
 
