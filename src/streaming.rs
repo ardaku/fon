@@ -31,12 +31,9 @@ impl<S: Sample> Resampler<S> {
 }
 
 /// Audio sink - a type that consumes a *finite* number of audio samples.
-pub trait Sink<S: Sample>: Sized {
+pub trait Sink: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.
-    fn sink<Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M)
-    where
-        S: From<Z>,
-    {
+    fn sink<Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M) {
         stream.stream(self)
     }
 
@@ -44,9 +41,7 @@ pub trait Sink<S: Sample>: Sized {
     fn sample_rate(&self) -> u32;
 
     /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<Z: Sample>(&mut self, sample: Z)
-    where
-        S: From<Z>;
+    fn sink_sample<Z: Sample>(&mut self, sample: Z);
 
     /// Get the (target) capacity of the sink.  Returns the number of times it's
     /// permitted to call `sink_sample()`.  Additional calls over capacity may
@@ -59,7 +54,7 @@ pub trait Sink<S: Sample>: Sized {
 pub trait Stream<S: Sample>: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.  Should only be called
     /// once on a `Sink`.  Additonal calls may panic.
-    fn stream<N: From<S> + Sample, K: Sink<N>>(&mut self, sink: &mut K) {
+    fn stream<K: Sink>(&mut self, sink: &mut K) {
         // Silence
         let zero = Mono::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
 

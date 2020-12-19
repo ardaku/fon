@@ -313,7 +313,7 @@ impl<S: Sample> Audio<S> {
     pub fn sink<'a, R: 'a + RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
         &'a mut self,
         reg: R,
-    ) -> impl Sink<S> + 'a {
+    ) -> impl Sink + 'a {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
         AudioSink {
             cursor: match reg.start_bound() {
@@ -349,23 +349,20 @@ struct AudioSink<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output =
     range: R,
 }
 
-impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink<S>
+impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
     for AudioSink<'_, S, R>
 {
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    fn sink_sample<Z: Sample>(&mut self, sample: Z)
-    where
-        S: From<Z>,
-    {
+    fn sink_sample<Z: Sample>(&mut self, sample: Z) {
         if
         /* is empty */
         !self.range.contains(&self.cursor) {
             panic!("Error sinking audio: Out of bounds");
         }
-        *self.audio.sample_mut(self.cursor) = S::from(sample);
+        *self.audio.sample_mut(self.cursor) = sample.convert();
         self.cursor += 1;
     }
 
