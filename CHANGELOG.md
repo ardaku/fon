@@ -4,7 +4,7 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
-## [0.3.0] - Unreleased
+## [0.3.0] - 2020-12-19
 ### Added
  - `CONFIG` constant to `Sample` to define speaker configurations.
  - Extra generics on `Stream` and `Sink` allowing them to be used as conversion
