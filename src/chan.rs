@@ -136,7 +136,7 @@ impl From<Ch16> for i16 {
 
 impl From<f32> for Ch32 {
     fn from(value: f32) -> Self {
-        Ch32(value)
+        Ch32(value.min(1.0).max(0.0))
     }
 }
 

@@ -13,8 +13,36 @@
 use crate::{
     chan::{Ch64, Channel},
     ops::Blend,
+    mono::Mono,
 };
 use std::{fmt::Debug, mem::size_of};
+
+/// Returns how much src covers dst.  Units are counterclockwise from 0 to 1+
+fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
+    // Check if a point lies within an arc.
+    fn point_in_arc(arc: [f64; 2], pt: f64) -> bool {
+        let dst = [arc[0] % 1.0, arc[1] % 1.0];
+        let pt = pt % 1.0;
+        if dst[0] > dst[1] { // Inverted range; pt must fall in dst[1] to dst[0]
+            pt > dst[1] && pt < dst[0]
+        } else { // Regular range; pt must fall in dst[0] to dst[1]
+            pt > dst[0] && pt < dst[1]
+        }
+    }
+    // Adjust area when src begins before dst (outside overlapping zone).
+    if !point_in_arc(dst, src[0]) {
+        src[0] = dst[0];
+    }
+    // Adjust area when src ends after dst (outside overlapping zone).
+    if !point_in_arc(dst, src[1]) {
+        src[1] = dst[1];
+    }
+    // Calculate areas
+    let src_area = src[1] - src[0];
+    let dst_area = dst[1] - dst[0];
+    // Amount of dst cover by src
+    src_area / dst_area
+}
 
 /// Sample - A number of [channel]s.
 ///
@@ -40,7 +68,30 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Make a pixel from a slice of channels.
     fn from_channels(ch: &[Self::Chan]) -> Self;
 
+    /// Pan a channel into this Sample type, units are in clockwise rotations.
+    fn from_channel_panned(ch: Self::Chan, cw_rot: f64) -> Self {
+        let mut out = [Self::Chan::default(); 8];
+
+        // Convert to widdershins rotations offset by a quarter clockwise (-ws).
+        let ws_rot = 1.0 - (cw_rot + 0.25) % 1.0;
+
+        // Cycle through configurations.
+        for (i, dst) in Self::CONFIG.iter().enumerate() {
+            out[i] = Self::Chan::from(ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]));
+        }
+
+        Self::from_channels(&out)
+    }
+
+    /// Pan a mono sample into this Sample type, units are in clockwise
+    /// rotations.
+    #[inline(always)]
+    fn from_mono_panned(ch: Mono<Self::Chan>, cw_rot: f64) -> Self {
+        Self::from_channel_panned(ch.channels()[0], cw_rot)
+    }
+
     /// Linear interpolation.
+    #[inline(always)]
     fn lerp(&self, rhs: Self, t: Self) -> Self {
         let mut out = Self::default();
         let main = out.channels_mut().iter_mut().zip(self.channels().iter());
@@ -52,6 +103,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     }
 
     /// Synthesize two samples together.
+    #[inline(always)]
     fn blend<O>(&mut self, src: &Self, _op: O)
     where
         O: Blend,
@@ -85,9 +137,6 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
                 // unwrap: never fails because of previous peek.
                 config.next().unwrap();
             }
-
-            // Clamp to preserve type invariant
-            *out = out.min(1.0).max(0.0);
         }
 
         let out = &mut [D::Chan::default(); 8][..];
