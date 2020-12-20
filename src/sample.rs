@@ -64,8 +64,8 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Convert a sample to another format.
     #[inline(always)]
     fn convert<D: Sample>(self) -> D {
-        // FIXME: Remove allocation from this function.
-        let mut output = vec![0.0f64; D::CONFIG.len()];
+        // Limit to 8 channels.
+        let output = &mut [0.0f64; 8][..D::CONFIG.len()];
         let mut config = Self::CONFIG.iter().enumerate().peekable();
 
         for (i, out) in output.iter_mut().enumerate() {
@@ -90,25 +90,25 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
             *out = out.min(1.0).max(0.0);
         }
 
-        let mut out = vec![];
+        let out = &mut [D::Chan::default(); 8][..];
 
-        for i in output {
-            out.push(D::Chan::from(Ch64::from(i)));
+        for (o, i) in out.iter_mut().zip(output.iter()) {
+            *o = D::Chan::from(Ch64::from(*i));
         }
 
-        D::from_channels(&out[..])
+        D::from_channels(out)
     }
 }
 
 impl<T: Sample> crate::Stream<T> for T {
     fn stream<O: Blend, K: crate::Sink>(&mut self, sink: &mut K, op: O) {
         for _ in 0..sink.capacity() {
-            sink.sink_sample(*self, op)
+            sink.sink_sample(*self, op);
         }
     }
 
     fn sample_rate(&self) -> u32 {
-        panic!("No sample rate for constant stream.");
+        panic!("No sample rate for constant stream.")
     }
 
     fn stream_sample(&mut self) -> Option<T> {
@@ -116,6 +116,6 @@ impl<T: Sample> crate::Stream<T> for T {
     }
 
     fn resampler(&mut self) -> &mut crate::Resampler<T> {
-        panic!("No resampler for constant stream.");
+        panic!("No resampler for constant stream.")
     }
 }
