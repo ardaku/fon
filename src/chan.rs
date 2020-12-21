@@ -55,7 +55,10 @@ pub trait Channel:
     fn to_f64(self) -> f64;
 
     /// Linear interpolation
-    fn lerp(self, rhs: Self, t: Self) -> Self;
+    #[inline(always)]
+    fn lerp(self, rhs: Self, t: Self) -> Self {
+        self + t * (rhs - self)
+    }
 }
 
 /// 8-bit sample [Channel](trait.Channel.html).
@@ -163,16 +166,6 @@ where
     }
 }
 
-impl<R> AddAssign<R> for Ch8
-where
-    Self: From<R>,
-{
-    fn add_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0.saturating_add(rhs.0);
-    }
-}
-
 impl<R> Sub<R> for Ch8
 where
     Self: From<R>,
@@ -181,16 +174,6 @@ where
     fn sub(self, rhs: R) -> Self {
         let rhs = Self::from(rhs);
         Ch8(self.0.saturating_sub(rhs.0))
-    }
-}
-
-impl<R> SubAssign<R> for Ch8
-where
-    Self: From<R>,
-{
-    fn sub_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0.saturating_sub(rhs.0);
     }
 }
 
@@ -207,16 +190,6 @@ where
         let r = (r * 16) + (r / 16);
         let value = ((l * r) / i16::MAX as i32) as i8;
         Ch8(value)
-    }
-}
-
-impl<R> MulAssign<R> for Ch8
-where
-    Self: From<R>,
-{
-    fn mul_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -239,16 +212,6 @@ where
     }
 }
 
-impl<R> DivAssign<R> for Ch8
-where
-    Self: From<R>,
-{
-    fn div_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 / rhs.0;
-    }
-}
-
 impl<R> Add<R> for Ch16
 where
     Self: From<R>,
@@ -260,16 +223,6 @@ where
     }
 }
 
-impl<R> AddAssign<R> for Ch16
-where
-    Self: From<R>,
-{
-    fn add_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 + rhs.0;
-    }
-}
-
 impl<R> Sub<R> for Ch16
 where
     Self: From<R>,
@@ -278,16 +231,6 @@ where
     fn sub(self, rhs: R) -> Self {
         let rhs = Self::from(rhs);
         Ch16(self.0.saturating_sub(rhs.0))
-    }
-}
-
-impl<R> SubAssign<R> for Ch16
-where
-    Self: From<R>,
-{
-    fn sub_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 - rhs.0;
     }
 }
 
@@ -304,16 +247,6 @@ where
         let r = (r * 256) + (r / 256);
         let value = ((l * r) / u32::MAX as i64) as i16;
         Ch16(value)
-    }
-}
-
-impl<R> MulAssign<R> for Ch16
-where
-    Self: From<R>,
-{
-    fn mul_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -336,16 +269,6 @@ where
     }
 }
 
-impl<R> DivAssign<R> for Ch16
-where
-    Self: From<R>,
-{
-    fn div_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 / rhs.0;
-    }
-}
-
 impl<R> Add<R> for Ch32
 where
     Self: From<R>,
@@ -354,16 +277,6 @@ where
     fn add(self, rhs: R) -> Self {
         let value = self.0 + Self::from(rhs).0;
         Ch32(value.min(1.0))
-    }
-}
-
-impl<R> AddAssign<R> for Ch32
-where
-    Self: From<R>,
-{
-    fn add_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 + rhs.0;
     }
 }
 
@@ -378,16 +291,6 @@ where
     }
 }
 
-impl<R> SubAssign<R> for Ch32
-where
-    Self: From<R>,
-{
-    fn sub_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 - rhs.0;
-    }
-}
-
 impl<R> Mul<R> for Ch32
 where
     Self: From<R>,
@@ -395,16 +298,6 @@ where
     type Output = Self;
     fn mul(self, rhs: R) -> Self {
         Ch32(self.0 * Self::from(rhs).0)
-    }
-}
-
-impl<R> MulAssign<R> for Ch32
-where
-    Self: From<R>,
-{
-    fn mul_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -423,16 +316,6 @@ where
     }
 }
 
-impl<R> DivAssign<R> for Ch32
-where
-    Self: From<R>,
-{
-    fn div_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 / rhs.0;
-    }
-}
-
 impl<R> Add<R> for Ch64
 where
     Self: From<R>,
@@ -441,16 +324,6 @@ where
     fn add(self, rhs: R) -> Self {
         let value = self.0 + Self::from(rhs).0;
         Ch64(value.min(1.0))
-    }
-}
-
-impl<R> AddAssign<R> for Ch64
-where
-    Self: From<R>,
-{
-    fn add_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 + rhs.0;
     }
 }
 
@@ -465,16 +338,6 @@ where
     }
 }
 
-impl<R> SubAssign<R> for Ch64
-where
-    Self: From<R>,
-{
-    fn sub_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 - rhs.0;
-    }
-}
-
 impl<R> Mul<R> for Ch64
 where
     Self: From<R>,
@@ -482,16 +345,6 @@ where
     type Output = Self;
     fn mul(self, rhs: R) -> Self {
         Ch64(self.0 * Self::from(rhs).0)
-    }
-}
-
-impl<R> MulAssign<R> for Ch64
-where
-    Self: From<R>,
-{
-    fn mul_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 * rhs.0;
     }
 }
 
@@ -510,73 +363,171 @@ where
     }
 }
 
-impl<R> DivAssign<R> for Ch64
-where
-    Self: From<R>,
-{
-    fn div_assign(&mut self, rhs: R) {
-        let rhs = Self::from(rhs);
-        self.0 = self.0 / rhs.0;
+// test: See Add
+impl<R: Into<Self>> AddAssign<R> for Ch8 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: R) {
+        *self = *self + rhs.into();
     }
 }
 
+// test: See Add
+impl<R: Into<Self>> AddAssign<R> for Ch16 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: R) {
+        *self = *self + rhs.into();
+    }
+}
+
+// test: See Add
+impl<R: Into<Self>> AddAssign<R> for Ch32 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: R) {
+        *self = *self + rhs.into();
+    }
+}
+
+// test: See Add
+impl<R: Into<Self>> AddAssign<R> for Ch64 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: R) {
+        *self = *self + rhs.into();
+    }
+}
+
+// test: See Sub
+impl<R: Into<Self>> SubAssign<R> for Ch8 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: R) {
+        *self = *self - rhs.into();
+    }
+}
+
+// test: See Sub
+impl<R: Into<Self>> SubAssign<R> for Ch16 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: R) {
+        *self = *self - rhs.into();
+    }
+}
+
+// test: See Sub
+impl<R: Into<Self>> SubAssign<R> for Ch32 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: R) {
+        *self = *self - rhs.into();
+    }
+}
+
+// test: See Sub
+impl<R: Into<Self>> SubAssign<R> for Ch64 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: R) {
+        *self = *self - rhs.into();
+    }
+}
+
+// test: See Mul
+impl<R: Into<Self>> MulAssign<R> for Ch8 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: R) {
+        *self = *self * rhs.into();
+    }
+}
+
+// test: See Mul
+impl<R: Into<Self>> MulAssign<R> for Ch16 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: R) {
+        *self = *self * rhs.into();
+    }
+}
+
+// test: See Mul
+impl<R: Into<Self>> MulAssign<R> for Ch32 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: R) {
+        *self = *self * rhs.into();
+    }
+}
+
+// test: See Mul
+impl<R: Into<Self>> MulAssign<R> for Ch64 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: R) {
+        *self = *self * rhs.into();
+    }
+}
+
+// test: See Div
+impl<R: Into<Self>> DivAssign<R> for Ch8 {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: R) {
+        *self = *self / rhs.into();
+    }
+}
+
+// test: See Div
+impl<R: Into<Self>> DivAssign<R> for Ch16 {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: R) {
+        *self = *self / rhs.into();
+    }
+}
+
+// test: See Div
+impl<R: Into<Self>> DivAssign<R> for Ch32 {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: R) {
+        *self = *self / rhs.into();
+    }
+}
+
+// test: See Div
+impl<R: Into<Self>> DivAssign<R> for Ch64 {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: R) {
+        *self = *self / rhs.into();
+    }
+}
+
+// test: all
 impl Channel for Ch8 {
     const MIN: Ch8 = Ch8(i8::MIN);
     const MID: Ch8 = Ch8(0);
     const MAX: Ch8 = Ch8(i8::MAX);
 
+    #[inline(always)]
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
     }
-
-    /// Linear interpolation
-    #[inline(always)]
-    fn lerp(self, rhs: Self, t: Self) -> Self {
-        let v0: i32 = i8::from(self).into();
-        let v1: i32 = i8::from(rhs).into();
-        let r = v0 + scale_i32(i8::from(t), v1 - v0);
-        Self::new(r as i8)
-    }
 }
 
+// test: all
 impl Channel for Ch16 {
     const MIN: Ch16 = Ch16(i16::MIN);
     const MID: Ch16 = Ch16(0);
     const MAX: Ch16 = Ch16(i16::MAX);
 
+    #[inline(always)]
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
     }
-
-    /// Linear interpolation
-    #[inline(always)]
-    fn lerp(self, rhs: Self, t: Self) -> Self {
-        let v0: i64 = i16::from(self).into();
-        let v1: i64 = i16::from(rhs).into();
-        let r = v0 + scale_i64(i16::from(t), v1 - v0);
-        Self::new(r as i16)
-    }
 }
 
+// test: all
 impl Channel for Ch32 {
     const MIN: Ch32 = Ch32(-1.0);
     const MID: Ch32 = Ch32(0.0);
     const MAX: Ch32 = Ch32(1.0);
 
-    fn to_f64(self) -> f64 {
-        Ch64::from(self).0
-    }
-
-    /// Linear interpolation
     #[inline(always)]
-    fn lerp(self, rhs: Self, t: Self) -> Self {
-        let v0 = f32::from(self);
-        let v1 = f32::from(rhs);
-        let r = v0 + f32::from(t) * (v1 - v0);
-        Self::new(r)
+    fn to_f64(self) -> f64 {
+        self.0 as f64
     }
 }
 
+// test: all
 impl Channel for Ch64 {
     const MIN: Ch64 = Ch64(-1.0);
     const MID: Ch64 = Ch64(0.0);
@@ -586,29 +537,6 @@ impl Channel for Ch64 {
     fn to_f64(self) -> f64 {
         self.0
     }
-
-    /// Linear interpolation
-    #[inline(always)]
-    fn lerp(self, rhs: Self, t: Self) -> Self {
-        let v0 = f64::from(self);
-        let v1 = f64::from(rhs);
-        let r = v0 + f64::from(t) * (v1 - v0);
-        Self::new(r)
-    }
-}
-
-/// Scale an i32 value by a i8 (for lerp)
-#[inline(always)]
-fn scale_i32(t: i8, v: i32) -> i32 {
-    let c = v * i32::from(t);
-    ((c + 1) + (c / 255)) / 255
-}
-
-/// Scale an i64 value by a i16 (for lerp)
-#[inline(always)]
-fn scale_i64(t: i16, v: i64) -> i64 {
-    let c = v * i64::from(t);
-    ((c + 1) + (c / 65535)) / 65535
 }
 
 // test:
@@ -793,12 +721,12 @@ mod tests {
         assert_eq!(Ch16::new(-32768), -Ch16::new(32767));
         assert_eq!(Ch32::new(-1.0), -Ch32::new(1.0));
         assert_eq!(Ch64::new(-1.0), -Ch64::new(1.0));
-        
+
         assert_eq!(Ch8::new(127), -Ch8::new(-128));
         assert_eq!(Ch16::new(32767), -Ch16::new(-32768));
         assert_eq!(Ch32::new(1.0), -Ch32::new(-1.0));
         assert_eq!(Ch64::new(1.0), -Ch64::new(-1.0));
-        
+
         assert_eq!(Ch8::new(-1), -Ch8::new(0));
         assert_eq!(Ch8::new(0), -Ch8::new(-1));
         assert_eq!(Ch16::new(-1), -Ch16::new(0));
@@ -839,18 +767,30 @@ mod tests {
         assert_eq!(Ch32::new(0.0), Ch32::from(Ch32::new(0.0).to_f64()));
         assert_eq!(Ch32::new(1.0), Ch32::from(Ch32::new(1.0).to_f64()));
     }
-    
+
     #[test]
     fn ch8_to_ch16() {
         assert_eq!(Ch16::new(-32768), Ch16::from(Ch8::new(-128)));
         assert_eq!(Ch16::new(0), Ch16::from(Ch8::new(0)));
         assert_eq!(Ch16::new(32767), Ch16::from(Ch8::new(127)));
     }
-    
+
     #[test]
     fn ch16_to_ch8() {
         assert_eq!(Ch8::new(-128), Ch8::from(Ch16::new(-32768)));
         assert_eq!(Ch8::new(0), Ch8::from(Ch16::new(0)));
         assert_eq!(Ch8::new(127), Ch8::from(Ch16::new(32767)));
     }
+
+    #[test]
+    fn ch8_lerp() {}
+
+    #[test]
+    fn ch16_lerp() {}
+
+    #[test]
+    fn ch32_lerp() {}
+
+    #[test]
+    fn ch64_lerp() {}
 }

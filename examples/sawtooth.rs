@@ -1,5 +1,5 @@
 use fon::chan::Ch8;
-use fon::mono::{Mono8, Mono16};
+use fon::mono::{Mono16, Mono8};
 use fon::stereo::Stereo16;
 use fon::{Audio, Sample};
 
