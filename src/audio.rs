@@ -9,7 +9,8 @@
 // according to those terms.
 
 use crate::{
-    chan::{Ch16, Ch32, Ch64, Ch8},
+    chan::{Ch16, Ch32, Ch64, Ch8, Channel},
+    mono::Mono,
     ops::Blend,
     sample::Sample,
     Resampler, Sink, Stream,
@@ -326,6 +327,21 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
         self.audio
             .sample_mut(self.cursor)
             .blend(&sample.convert(), op);
+        self.cursor += 1;
+    }
+
+    fn sink_sample_panned<O: Blend, C: Channel>(&mut self, sample: Mono<C>, op: O, pan: f64) {
+        // If empty, start over
+        if !self.range.contains(&self.cursor) {
+            self.cursor = match self.range.start_bound() {
+                Unbounded => 0,
+                Included(index) => *index,
+                Excluded(index) => *index + 1,
+            };
+        }
+        self.audio
+            .sample_mut(self.cursor)
+            .blend(&S::from_mono_panned(sample.convert(), pan), op);
         self.cursor += 1;
     }
 

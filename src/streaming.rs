@@ -49,7 +49,7 @@ pub trait Sink: Sized {
         pan: f64,
     ) {
         // Silence
-        let zero = Mono::<C>::from_channel_panned(C::MID, 0.0);
+        let zero = Mono::new(C::MID);
 
         // Faster algorithm if sample rates match.
         if stream.sample_rate() == self.sample_rate() {
@@ -77,12 +77,12 @@ pub trait Sink: Sized {
                     stream.resampler().phase = stream.resampler().phase - 1.0;
                     stream.resampler().part = sample;
                 }
-                let amount = Mono::<C>::from_channel_panned(Ch64::new(old_phase).into(), pan);
+                let amount = Mono::new::<C>(Ch64::new(old_phase).into());
                 let sample = stream.resampler().part.lerp(sample, amount);
-                self.sink_sample(sample, op);
+                self.sink_sample_panned(sample, op, pan);
             } else {
                 // Don't read any samples - copy & write the last one
-                self.sink_sample(stream.resampler().part, op);
+                self.sink_sample_panned(stream.resampler().part, op, pan);
             }
         }
     }
@@ -92,6 +92,9 @@ pub trait Sink: Sized {
 
     /// This function is called when the sink receives a sample from a stream.
     fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O);
+    
+    /// This function is called when the sink receives a sample from a stream.
+    fn sink_sample_panned<O: Blend, C: Channel>(&mut self, sample: Mono<C>, op: O, pan: f64);
 
     /// Get the (target) capacity of the sink.  Returns the number of times it's
     /// permitted to call `sink_sample()`.  Additional calls over capacity
