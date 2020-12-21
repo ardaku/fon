@@ -530,7 +530,7 @@ impl Channel for Ch8 {
     }
 
     /// Linear interpolation
-    #[inline]
+    #[inline(always)]
     fn lerp(self, rhs: Self, t: Self) -> Self {
         let v0: i32 = i8::from(self).into();
         let v1: i32 = i8::from(rhs).into();
@@ -549,7 +549,7 @@ impl Channel for Ch16 {
     }
 
     /// Linear interpolation
-    #[inline]
+    #[inline(always)]
     fn lerp(self, rhs: Self, t: Self) -> Self {
         let v0: i64 = i16::from(self).into();
         let v1: i64 = i16::from(rhs).into();
@@ -568,7 +568,7 @@ impl Channel for Ch32 {
     }
 
     /// Linear interpolation
-    #[inline]
+    #[inline(always)]
     fn lerp(self, rhs: Self, t: Self) -> Self {
         let v0 = f32::from(self);
         let v1 = f32::from(rhs);
@@ -582,12 +582,13 @@ impl Channel for Ch64 {
     const MID: Ch64 = Ch64(0.0);
     const MAX: Ch64 = Ch64(1.0);
 
+    #[inline(always)]
     fn to_f64(self) -> f64 {
         self.0
     }
 
     /// Linear interpolation
-    #[inline]
+    #[inline(always)]
     fn lerp(self, rhs: Self, t: Self) -> Self {
         let v0 = f64::from(self);
         let v1 = f64::from(rhs);
@@ -597,84 +598,94 @@ impl Channel for Ch64 {
 }
 
 /// Scale an i32 value by a i8 (for lerp)
-#[inline]
+#[inline(always)]
 fn scale_i32(t: i8, v: i32) -> i32 {
     let c = v * i32::from(t);
     ((c + 1) + (c / 255)) / 255
 }
 
 /// Scale an i64 value by a i16 (for lerp)
-#[inline]
+#[inline(always)]
 fn scale_i64(t: i16, v: i64) -> i64 {
     let c = v * i64::from(t);
     ((c + 1) + (c / 65535)) / 65535
 }
 
+// test:
 impl From<f64> for Ch8 {
+    #[inline(always)]
     fn from(value: f64) -> Self {
         Ch64::new(value).into()
     }
 }
 
+// test:
 impl From<f64> for Ch16 {
+    #[inline(always)]
     fn from(value: f64) -> Self {
         Ch64::new(value).into()
     }
 }
 
+// test:
 impl From<f64> for Ch32 {
+    #[inline(always)]
     fn from(value: f64) -> Self {
         Ch64::new(value).into()
     }
 }
 
+// test:
 impl From<f64> for Ch64 {
+    #[inline(always)]
     fn from(value: f64) -> Self {
         Ch64::new(value)
     }
 }
 
+// test: ch8_roundtrip()
 impl From<Ch64> for Ch8 {
+    #[inline(always)]
     fn from(value: Ch64) -> Self {
         Ch8::new((value.0 * 127.5 as f64).floor() as i8)
     }
 }
 
+// test: ch16_roundtrip()
 impl From<Ch64> for Ch16 {
+    #[inline(always)]
     fn from(value: Ch64) -> Self {
         Ch16::new((value.0 * 32767.5 as f64).floor() as i16)
     }
 }
 
+// test:
 impl From<Ch64> for Ch32 {
+    #[inline(always)]
     fn from(value: Ch64) -> Self {
-        let v: f64 = value.into();
-        Ch32::new(v as f32)
+        Ch32::new(value.0 as f32)
     }
 }
 
+// test: ch8_roundtrip()
 impl From<Ch32> for Ch8 {
+    #[inline(always)]
     fn from(value: Ch32) -> Self {
-        let value = value.0;
-        debug_assert!(value >= -1.0 && value <= 1.0);
-        // this cast is not UB since the value is guaranteed
-        // to be between -1.0 and 1.0 (see bug #10184)
-        Ch8::new((value * i8::MAX as f32).round() as i8)
+        Ch8::new((value.0 * 127.5 as f32).floor() as i8)
     }
 }
 
+// test: ch16_roundtrip()
 impl From<Ch32> for Ch16 {
+    #[inline(always)]
     fn from(value: Ch32) -> Self {
-        let value = value.0;
-        debug_assert!(value >= -1.0 && value <= 1.0);
-        // this cast is not UB since the value is guaranteed
-        // to be between -1.0 and 1.0 (see bug #10184)
-        Ch16::new((value * i16::MAX as f32).round() as i16)
+        Ch16::new((value.0 * 32767.5 as f32).floor() as i16)
     }
 }
 
 // test: ch32_roundtrip()
 impl From<Ch32> for Ch64 {
+    #[inline(always)]
     fn from(value: Ch32) -> Self {
         Ch64::new(value.0.into())
     }
