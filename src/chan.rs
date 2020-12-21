@@ -177,22 +177,6 @@ where
     }
 }
 
-impl<R> Mul<R> for Ch8
-where
-    Self: From<R>,
-{
-    type Output = Self;
-    fn mul(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        let l = i32::from(self.0);
-        let l = (l * 16) + (l / 16);
-        let r = i32::from(rhs.0);
-        let r = (r * 16) + (r / 16);
-        let value = ((l * r) / i16::MAX as i32) as i8;
-        Ch8(value)
-    }
-}
-
 impl<R> Div<R> for Ch8
 where
     Self: From<R>,
@@ -231,22 +215,6 @@ where
     fn sub(self, rhs: R) -> Self {
         let rhs = Self::from(rhs);
         Ch16(self.0.saturating_sub(rhs.0))
-    }
-}
-
-impl<R> Mul<R> for Ch16
-where
-    Self: From<R>,
-{
-    type Output = Self;
-    fn mul(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        let l = i64::from(self.0);
-        let l = (l * 256) + (l / 256);
-        let r = i64::from(rhs.0);
-        let r = (r * 256) + (r / 256);
-        let value = ((l * r) / u32::MAX as i64) as i16;
-        Ch16(value)
     }
 }
 
@@ -291,16 +259,6 @@ where
     }
 }
 
-impl<R> Mul<R> for Ch32
-where
-    Self: From<R>,
-{
-    type Output = Self;
-    fn mul(self, rhs: R) -> Self {
-        Ch32(self.0 * Self::from(rhs).0)
-    }
-}
-
 impl<R> Div<R> for Ch32
 where
     Self: From<R>,
@@ -338,16 +296,7 @@ where
     }
 }
 
-impl<R> Mul<R> for Ch64
-where
-    Self: From<R>,
-{
-    type Output = Self;
-    fn mul(self, rhs: R) -> Self {
-        Ch64(self.0 * Self::from(rhs).0)
-    }
-}
-
+// test:
 impl<R> Div<R> for Ch64
 where
     Self: From<R>,
@@ -360,6 +309,52 @@ where
         } else {
             Ch64(0.0)
         }
+    }
+}
+
+// test: ch8_arith()
+impl<R: Into<Self>> Mul<R> for Ch8 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        let l = i16::from(self.0) + 1;
+        let r = i16::from(rhs.into().0);
+        let v = (l * r) >> 7;
+        Self(v as i8)
+    }
+}
+
+// test: ch16_arith()
+impl<R: Into<Self>> Mul<R> for Ch16 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        let l = i32::from(self.0) + 1;
+        let r = i32::from(rhs.into().0);
+        let v = (l * r) >> 15;
+        Self(v as i16)
+    }
+}
+
+// test: ch32_arith()
+impl<R: Into<Self>> Mul<R> for Ch32 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        Self(self.0 * rhs.into().0)
+    }
+}
+
+// test: ch64_arith()
+impl<R: Into<Self>> Mul<R> for Ch64 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        Self(self.0 * rhs.into().0)
     }
 }
 
@@ -783,14 +778,42 @@ mod tests {
     }
 
     #[test]
-    fn ch8_lerp() {}
+    fn ch8_arith() {
+        // Test multiplication
+        assert_eq!(Ch8::new(0), Ch8::new(0) * Ch8::new(127));
+        assert_eq!(Ch8::new(127), Ch8::new(127) * Ch8::new(127));
+        assert_eq!(Ch8::new(-128), Ch8::new(127) * Ch8::new(-128));
+        assert_eq!(Ch8::new(127), Ch8::new(-128) * Ch8::new(-128));
+        assert_eq!(Ch8::new(-64), Ch8::new(127) * Ch8::new(-64));
+    }
 
     #[test]
-    fn ch16_lerp() {}
+    fn ch16_arith() {
+        // Test multiplication
+        assert_eq!(Ch16::new(0), Ch16::new(0) * Ch16::new(32767));
+        assert_eq!(Ch16::new(32767), Ch16::new(32767) * Ch16::new(32767));
+        assert_eq!(Ch16::new(-32768), Ch16::new(32767) * Ch16::new(-32768));
+        assert_eq!(Ch16::new(32767), Ch16::new(-32768) * Ch16::new(-32768));
+        assert_eq!(Ch16::new(-16384), Ch16::new(32767) * Ch16::new(-16384));
+    }
 
     #[test]
-    fn ch32_lerp() {}
+    fn ch32_arith() {
+        // Test multiplication
+        assert_eq!(Ch32::new(0.0), Ch32::new(0.0) * Ch32::new(1.0));
+        assert_eq!(Ch32::new(1.0), Ch32::new(1.0) * Ch32::new(1.0));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(1.0) * Ch32::new(-1.0));
+        assert_eq!(Ch32::new(1.0), Ch32::new(-1.0) * Ch32::new(-1.0));
+        assert_eq!(Ch32::new(-0.5), Ch32::new(1.0) * Ch32::new(-0.5));
+    }
 
     #[test]
-    fn ch64_lerp() {}
+    fn ch64_arith() {
+        // Test multiplication
+        assert_eq!(Ch64::new(0.0), Ch64::new(0.0) * Ch64::new(1.0));
+        assert_eq!(Ch64::new(1.0), Ch64::new(1.0) * Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(1.0) * Ch64::new(-1.0));
+        assert_eq!(Ch64::new(1.0), Ch64::new(-1.0) * Ch64::new(-1.0));
+        assert_eq!(Ch64::new(-0.5), Ch64::new(1.0) * Ch64::new(-0.5));
+    }
 }
