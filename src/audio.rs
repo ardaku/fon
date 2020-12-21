@@ -98,14 +98,17 @@ impl<S: Sample> Audio<S> {
     {
         let src_sr = src.sample_rate();
         if src_sr == s_rate {
+            println!("NR");
             let mut dst = Audio::with_silence(src_sr, src.len());
             // No Resampling Necessary
             for (dst, src) in dst.samples.iter_mut().zip(src.samples.iter()) {
                 *dst = src.convert();
+                dbg!((dst, src));
             }
 
             dst
         } else {
+            println!("RN");
             // Resampling Necessary
             let sr_rat = s_rate as f64 / src_sr as f64; // Length ratio
             let dstlen = (sr_rat * src.len() as f64) as usize;
