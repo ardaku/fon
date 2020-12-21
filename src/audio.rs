@@ -299,6 +299,86 @@ impl<S: Sample> Audio<S> {
         let mut audio: Box<[S]> = audio.into();
         std::mem::swap(&mut audio, &mut self.samples);
     }
+
+    /// Get view of samples as an `i8` slice.
+    pub fn as_i8_slice(&self) -> &[i8] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to::<i8>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as a mutable `i8` slice.
+    pub fn as_i8_slice_mut(&mut self) -> &mut [i8] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to_mut::<i8>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as an `i16` slice.
+    pub fn as_i16_slice(&self) -> &[i16] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to::<i16>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as a mutable `i16` slice.
+    pub fn as_i16_slice_mut(&mut self) -> &mut [i16] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to_mut::<i16>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as an `f32` slice.
+    pub fn as_f32_slice(&self) -> &[f32] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to::<f32>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as a mutable `f32` slice.
+    pub fn as_f32_slice_mut(&mut self) -> &mut [f32] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to_mut::<f32>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as an `f64` slice.
+    pub fn as_f64_slice(&self) -> &[f64] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to::<f64>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
+
+    /// Get view of samples as a mutable `f64` slice.
+    pub fn as_f64_slice_mut(&mut self) -> &mut [f64] {
+        unsafe {
+            let (prefix, v, suffix) = self.samples.align_to_mut::<f64>();
+            debug_assert!(prefix.is_empty());
+            debug_assert!(suffix.is_empty());
+            v
+        }
+    }
 }
 
 /// A `Sink` created with `Audio.sink()`

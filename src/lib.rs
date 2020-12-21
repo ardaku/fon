@@ -28,6 +28,9 @@
 //! [Mono]: mono/struct.Mono.html
 //! [Stereo]: stereo/struct.Stereo.html
 //! [5.1 Surround]: surround/struct.Surround.html
+//!
+//! #
+//!
 
 mod audio;
 pub mod chan;

@@ -92,7 +92,7 @@ pub trait Sink: Sized {
 
     /// This function is called when the sink receives a sample from a stream.
     fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O);
-    
+
     /// This function is called when the sink receives a sample from a stream.
     fn sink_sample_panned<O: Blend, C: Channel>(&mut self, sample: Mono<C>, op: O, pan: f64);
 
