@@ -12,8 +12,8 @@
 
 use crate::{
     chan::{Ch64, Channel},
-    ops::Blend,
     mono::Mono,
+    ops::Blend,
 };
 use std::{fmt::Debug, mem::size_of};
 
@@ -23,9 +23,11 @@ fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
     fn point_in_arc(arc: [f64; 2], pt: f64) -> bool {
         let dst = [arc[0] % 1.0, arc[1] % 1.0];
         let pt = pt % 1.0;
-        if dst[0] > dst[1] { // Inverted range; pt must fall in dst[1] to dst[0]
+        if dst[0] > dst[1] {
+            // Inverted range; pt must fall in dst[1] to dst[0]
             pt > dst[1] && pt < dst[0]
-        } else { // Regular range; pt must fall in dst[0] to dst[1]
+        } else {
+            // Regular range; pt must fall in dst[0] to dst[1]
             pt > dst[0] && pt < dst[1]
         }
     }

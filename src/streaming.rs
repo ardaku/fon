@@ -38,6 +38,55 @@ pub trait Sink: Sized {
         stream.stream(self, op)
     }
 
+    /// Transfer the audio from a `Stream` panned left or right into a `Sink`.
+    ///
+    /// Pan of 0 is front, negative pan for left (-0.5 is back), and positive
+    /// pan for right (0.5 is also back).  Values outside the range will wrap.
+    fn sink_panned<O: Blend, C: Channel, M: Stream<Mono<C>>>(
+        &mut self,
+        stream: &mut M,
+        op: O,
+        pan: f64,
+    ) {
+        // Silence
+        let zero = Mono::<C>::from_channel_panned(C::MID, 0.0);
+
+        // Faster algorithm if sample rates match.
+        if stream.sample_rate() == self.sample_rate() {
+            for _ in 0..self.capacity() {
+                self.sink_sample(stream.stream_sample().unwrap_or(zero), op)
+            }
+            return;
+        }
+
+        // How many samples to read for each sample written.
+        let sr_ratio = stream.sample_rate() as f64 / self.sample_rate() as f64;
+
+        // Write into the entire capacity of the `Sink`.
+        for _ in 0..self.capacity() {
+            let old_phase = stream.resampler().phase;
+            // Increment phase
+            stream.resampler().phase += sr_ratio;
+
+            if stream.resampler().phase >= 1.0 {
+                // Value is always overwritten, but Rust compiler can't prove it
+                let mut sample = zero;
+                // Read one or more samples to interpolate & write out
+                while stream.resampler().phase >= 1.0 {
+                    sample = stream.stream_sample().unwrap_or(zero);
+                    stream.resampler().phase = stream.resampler().phase - 1.0;
+                    stream.resampler().part = sample;
+                }
+                let amount = Mono::<C>::from_channel_panned(Ch64::new(old_phase).into(), pan);
+                let sample = stream.resampler().part.lerp(sample, amount);
+                self.sink_sample(sample, op);
+            } else {
+                // Don't read any samples - copy & write the last one
+                self.sink_sample(stream.resampler().part, op);
+            }
+        }
+    }
+
     /// Get the (target) sample rate of the sink.
     fn sample_rate(&self) -> u32;
 
