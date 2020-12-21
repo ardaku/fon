@@ -673,45 +673,56 @@ impl From<Ch32> for Ch16 {
     }
 }
 
+// test: ch32_roundtrip()
 impl From<Ch32> for Ch64 {
     fn from(value: Ch32) -> Self {
-        let v: f32 = value.into();
-        Ch64::new(v.into())
+        Ch64::new(value.0.into())
     }
 }
 
+// test: ch16_to_ch8()
 impl From<Ch16> for Ch8 {
+    #[inline(always)]
     fn from(c: Ch16) -> Self {
-        Ch8::new((c.0 / 256) as i8)
+        Ch8::new((c.0 >> 8) as i8)
     }
 }
 
+// test: ch16_roundtrip()
 impl From<Ch16> for Ch32 {
+    #[inline(always)]
     fn from(c: Ch16) -> Self {
         Ch32((f32::from(c.0) / 32767.5).ceil())
     }
 }
 
+// test: ch16_roundtrip()
 impl From<Ch16> for Ch64 {
+    #[inline(always)]
     fn from(c: Ch16) -> Self {
         Ch64((f64::from(c.0) / 32767.5).ceil())
     }
 }
 
+// test: ch8_to_ch16()
 impl From<Ch8> for Ch16 {
+    #[inline(always)]
     fn from(c: Ch8) -> Self {
-        let value = i16::from(c.0);
-        Ch16::new(value * 256 + value)
+        Ch16::from(c.to_f64())
     }
 }
 
+// test: ch8_roundtrip()
 impl From<Ch8> for Ch32 {
+    #[inline(always)]
     fn from(c: Ch8) -> Self {
         Ch32((f32::from(c.0) / 127.5).ceil())
     }
 }
 
+// test: ch8_roundtrip()
 impl From<Ch8> for Ch64 {
+    #[inline(always)]
     fn from(c: Ch8) -> Self {
         Ch64((f64::from(c.0) / 127.5).ceil())
     }
@@ -722,6 +733,7 @@ impl Neg for Ch8 {
     type Output = Ch8;
 
     /// Invert sound wave (-x).
+    #[inline(always)]
     fn neg(self) -> Self {
         Ch8((u8::MAX - self.0 as u8) as i8)
     }
@@ -732,6 +744,7 @@ impl Neg for Ch16 {
     type Output = Ch16;
 
     /// Invert sound wave (-x).
+    #[inline(always)]
     fn neg(self) -> Self {
         Ch16((u16::MAX - self.0 as u16) as i16)
     }
@@ -742,6 +755,7 @@ impl Neg for Ch32 {
     type Output = Ch32;
 
     /// Invert sound wave (-x).
+    #[inline(always)]
     fn neg(self) -> Self {
         Ch32(-self.0)
     }
@@ -752,6 +766,7 @@ impl Neg for Ch64 {
     type Output = Ch64;
 
     /// Invert sound wave (-x).
+    #[inline(always)]
     fn neg(self) -> Self {
         Ch64(-self.0)
     }
@@ -812,5 +827,19 @@ mod tests {
         assert_eq!(Ch32::new(-1.0), Ch32::from(Ch32::new(-1.0).to_f64()));
         assert_eq!(Ch32::new(0.0), Ch32::from(Ch32::new(0.0).to_f64()));
         assert_eq!(Ch32::new(1.0), Ch32::from(Ch32::new(1.0).to_f64()));
+    }
+    
+    #[test]
+    fn ch8_to_ch16() {
+        assert_eq!(Ch16::new(-32768), Ch16::from(Ch8::new(-128)));
+        assert_eq!(Ch16::new(0), Ch16::from(Ch8::new(0)));
+        assert_eq!(Ch16::new(32767), Ch16::from(Ch8::new(127)));
+    }
+    
+    #[test]
+    fn ch16_to_ch8() {
+        assert_eq!(Ch8::new(-128), Ch8::from(Ch16::new(-32768)));
+        assert_eq!(Ch8::new(0), Ch8::from(Ch16::new(0)));
+        assert_eq!(Ch8::new(127), Ch8::from(Ch16::new(32767)));
     }
 }
