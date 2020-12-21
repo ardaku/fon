@@ -113,10 +113,12 @@ impl<S: Sample> Audio<S> {
 
             for (i, dst) in dst.samples.iter_mut().enumerate() {
                 let i = sr_rat * i as f64;
-                let j = i.trunc() as usize;
-                let k = (j + 1).max(src.len() - 1);
+                let j = (i.trunc() as usize).min(src.len() - 1);
+                let k = (j + 1).min(src.len() - 1);
                 let f = SrcS::from_channels(&[SrcS::Chan::from(Ch64::new(i.fract()))]);
-                *dst = (src.samples[j].lerp(src.samples[k], f)).convert();
+                let first = src.samples[j];
+                let second = src.samples[k];
+                *dst = (first.lerp(second, f)).convert();
             }
 
             dst
@@ -299,7 +301,9 @@ impl<S: Sample> Audio<S> {
         let mut audio: Box<[S]> = audio.into();
         std::mem::swap(&mut audio, &mut self.samples);
     }
+}
 
+impl<S: Sample<Chan = Ch8>> Audio<S> {
     /// Get view of samples as an `i8` slice.
     pub fn as_i8_slice(&self) -> &[i8] {
         unsafe {
@@ -319,7 +323,9 @@ impl<S: Sample> Audio<S> {
             v
         }
     }
+}
 
+impl<S: Sample<Chan = Ch16>> Audio<S> {
     /// Get view of samples as an `i16` slice.
     pub fn as_i16_slice(&self) -> &[i16] {
         unsafe {
@@ -339,7 +345,9 @@ impl<S: Sample> Audio<S> {
             v
         }
     }
+}
 
+impl<S: Sample<Chan = Ch32>> Audio<S> {
     /// Get view of samples as an `f32` slice.
     pub fn as_f32_slice(&self) -> &[f32] {
         unsafe {
@@ -359,7 +367,9 @@ impl<S: Sample> Audio<S> {
             v
         }
     }
+}
 
+impl<S: Sample<Chan = Ch64>> Audio<S> {
     /// Get view of samples as an `f64` slice.
     pub fn as_f64_slice(&self) -> &[f64] {
         unsafe {
