@@ -717,24 +717,27 @@ impl From<Ch8> for Ch64 {
     }
 }
 
+// test: channel_neg()
 impl Neg for Ch8 {
     type Output = Ch8;
 
     /// Invert sound wave (-x).
     fn neg(self) -> Self {
-        Ch8(-self.0)
+        Ch8((u8::MAX - self.0 as u8) as i8)
     }
 }
 
+// test: channel_neg()
 impl Neg for Ch16 {
     type Output = Ch16;
 
     /// Invert sound wave (-x).
     fn neg(self) -> Self {
-        Ch16(-self.0)
+        Ch16((u16::MAX - self.0 as u16) as i16)
     }
 }
 
+// test: channel_neg()
 impl Neg for Ch32 {
     type Output = Ch32;
 
@@ -744,6 +747,7 @@ impl Neg for Ch32 {
     }
 }
 
+// test: channel_neg()
 impl Neg for Ch64 {
     type Output = Ch64;
 
@@ -756,6 +760,26 @@ impl Neg for Ch64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn channel_neg() {
+        assert_eq!(Ch8::new(-128), -Ch8::new(127));
+        assert_eq!(Ch16::new(-32768), -Ch16::new(32767));
+        assert_eq!(Ch32::new(-1.0), -Ch32::new(1.0));
+        assert_eq!(Ch64::new(-1.0), -Ch64::new(1.0));
+        
+        assert_eq!(Ch8::new(127), -Ch8::new(-128));
+        assert_eq!(Ch16::new(32767), -Ch16::new(-32768));
+        assert_eq!(Ch32::new(1.0), -Ch32::new(-1.0));
+        assert_eq!(Ch64::new(1.0), -Ch64::new(-1.0));
+        
+        assert_eq!(Ch8::new(-1), -Ch8::new(0));
+        assert_eq!(Ch8::new(0), -Ch8::new(-1));
+        assert_eq!(Ch16::new(-1), -Ch16::new(0));
+        assert_eq!(Ch16::new(0), -Ch16::new(-1));
+        assert_eq!(Ch32::new(0.0), -Ch32::new(0.0));
+        assert_eq!(Ch64::new(0.0), -Ch64::new(0.0));
+    }
 
     #[test]
     fn ch8_roundtrip() {
