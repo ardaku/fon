@@ -46,10 +46,10 @@ fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
     src_area / dst_area
 }
 
-/// Sample - A number of [channel]s.
+/// Frame - A number of interleaved sample [channel]s.
 ///
-/// [channel]: ../chan/trait.Channel.html
-pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
+/// [channel]: crate::chan::Channel
+pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Channel type
     type Chan: Channel;
 
@@ -67,7 +67,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Get the channels mutably.
     fn channels_mut(&mut self) -> &mut [Self::Chan];
 
-    /// Make a pixel from a slice of channels.
+    /// Make an audio frame from a slice of channels.
     fn from_channels(ch: &[Self::Chan]) -> Self;
 
     /// Pan a channel into this Sample type, units are in clockwise rotations.
@@ -117,7 +117,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
 
     /// Convert a sample to another format.
     #[inline(always)]
-    fn convert<D: Sample>(self) -> D {
+    fn convert<D: Frame>(self) -> D {
         let mut out = [D::Chan::MID; 8];
 
         // Cycle through configurations.
@@ -132,7 +132,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     }
 }
 
-impl<T: Sample> crate::Stream<T> for T {
+impl<T: Frame> crate::Stream<T> for T {
     fn stream<O: Blend, K: crate::Sink>(&mut self, sink: &mut K, op: O) {
         for _ in 0..sink.capacity() {
             sink.sink_sample(*self, op);

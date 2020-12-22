@@ -12,10 +12,11 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    sample::Sample,
+    Frame,
 };
 
-/// Stereo sample format (left channel, right channel).
+/// Stereo audio format (Audio [`Frame`](crate::frame::Frame) containing a left
+/// and right [`Channel`](crate::chan::Channel)).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Stereo<C: Channel> {
@@ -33,7 +34,7 @@ impl<C: Channel> Stereo<C> {
     }
 }
 
-impl<C: Channel> Sample for Stereo<C> {
+impl<C: Channel> Frame for Stereo<C> {
     const CONFIG: &'static [[f64; 2]] = &[[0.0, 0.5], [0.5, 1.0]];
 
     type Chan = C;
@@ -51,11 +52,11 @@ impl<C: Channel> Sample for Stereo<C> {
     }
 }
 
-/// Stereo [8-bit PCM](../chan/struct.Ch8.html) format.
+/// Stereo [8-bit PCM](crate::chan::Ch8) format.
 pub type Stereo8 = Stereo<Ch8>;
-/// Stereo [16-bit PCM](../chan/struct.Ch16.html) format.
+/// Stereo [16-bit PCM](crate::chan::Ch16) format.
 pub type Stereo16 = Stereo<Ch16>;
-/// Stereo [32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// Stereo [32-bit Floating Point](crate::chan::Ch32) format.
 pub type Stereo32 = Stereo<Ch32>;
-/// Stereo [64-bit Floating Point](../chan/struct.Ch64.html) format.
+/// Stereo [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Stereo64 = Stereo<Ch64>;

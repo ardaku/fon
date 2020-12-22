@@ -61,22 +61,22 @@ pub trait Channel:
     }
 }
 
-/// 8-bit sample [Channel](trait.Channel.html).
+/// 8-bit sample [Channel](Channel).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 #[repr(transparent)]
 pub struct Ch8(i8);
 
-/// 16-bit sample [Channel](trait.Channel.html).
+/// 16-bit sample [Channel](Channel).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
 #[repr(transparent)]
 pub struct Ch16(i16);
 
-/// 32-bit sample [Channel](trait.Channel.html).
+/// 32-bit sample [Channel](Channel).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Ch32(f32);
 
-/// 64-bit sample [Channel](trait.Channel.html).
+/// 64-bit sample [Channel](Channel).
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Ch64(f64);
@@ -86,7 +86,7 @@ impl Eq for Ch32 {}
 impl Eq for Ch64 {}
 
 impl Ch8 {
-    /// Create a new 8-bit `Channel` value.
+    /// Create a new 8-bit [`Channel`](Channel) value.
     #[inline(always)]
     pub fn new(value: i8) -> Self {
         Ch8(value)
@@ -94,7 +94,7 @@ impl Ch8 {
 }
 
 impl Ch16 {
-    /// Create a new 16-bit `Channel` value.
+    /// Create a new 16-bit [`Channel`](Channel) value.
     #[inline(always)]
     pub fn new(value: i16) -> Self {
         Ch16(value)
@@ -102,7 +102,7 @@ impl Ch16 {
 }
 
 impl Ch32 {
-    /// Create a new 32-bit `Channel` value.
+    /// Create a new 32-bit [`Channel`](Channel) value.
     #[inline(always)]
     pub fn new(value: f32) -> Self {
         Ch32(value.min(1.0).max(-1.0))
@@ -110,7 +110,7 @@ impl Ch32 {
 }
 
 impl Ch64 {
-    /// Create a new 64-bit `Channel` value.
+    /// Create a new 64-bit [`Channel`](Channel) value.
     #[inline(always)]
     pub fn new(value: f64) -> Self {
         Ch64(value.min(1.0).max(-1.0))

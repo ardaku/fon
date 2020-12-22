@@ -12,10 +12,11 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    sample::Sample,
+    Frame,
 };
 
-/// Mono sample format (one channel).
+/// Mono audio format (Audio [`Frame`](crate::frame::Frame) containing one
+/// [`Channel`](crate::chan::Channel)).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Mono<C: Channel> {
@@ -23,7 +24,7 @@ pub struct Mono<C: Channel> {
 }
 
 impl<C: Channel> Mono<C> {
-    /// Create a one-channel Sample.
+    /// Create a one-channel audio [`Frame`](crate::frame::Frame).
     pub fn new<H>(one: H) -> Self
     where
         C: From<H>,
@@ -33,7 +34,7 @@ impl<C: Channel> Mono<C> {
     }
 }
 
-impl<C: Channel> Sample for Mono<C> {
+impl<C: Channel> Frame for Mono<C> {
     const CONFIG: &'static [[f64; 2]] = &[[0.0, 1.0]];
 
     type Chan = C;
@@ -51,11 +52,11 @@ impl<C: Channel> Sample for Mono<C> {
     }
 }
 
-/// Mono [8-bit PCM](../chan/struct.Ch8.html) format.
+/// Mono [8-bit PCM](crate::chan::Ch8) format.
 pub type Mono8 = Mono<Ch8>;
-/// Mono [16-bit PCM](../chan/struct.Ch16.html) format.
+/// Mono [16-bit PCM](crate::chan::Ch16) format.
 pub type Mono16 = Mono<Ch16>;
-/// Mono [32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// Mono [32-bit Floating Point](crate::chan::Ch32) format.
 pub type Mono32 = Mono<Ch32>;
-/// Mono [64-bit Floating Point](../chan/struct.Ch64.html) format.
+/// Mono [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Mono64 = Mono<Ch64>;

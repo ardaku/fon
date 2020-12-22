@@ -12,8 +12,7 @@ use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
     mono::{Mono, Mono64},
     ops::Blend,
-    sample::Sample,
-    Resampler, Sink, Stream,
+    Frame, Resampler, Sink, Stream,
 };
 use core::{
     fmt::Debug,
@@ -33,76 +32,75 @@ use core::{
 
 /// Audio buffer (array of audio `Sample`s at sample rate specified in hertz).
 #[derive(Debug)]
-pub struct Audio<S: Sample> {
+pub struct Audio<F: Frame> {
     s_rate: u32,
-    samples: Box<[S]>,
+    frames: Box<[F]>,
 }
 
-impl<S: Sample> Audio<S> {
-    /// Get a sample.
+impl<F: Frame> Audio<F> {
+    /// Get an audio frame.
     ///
     /// # Panics
     /// If index is out of bounds
-    pub fn sample(&self, index: usize) -> &S {
-        self.samples().get(index).expect("Sample out of bounds")
+    pub fn get(&self, index: usize) -> &F {
+        self.frames.get(index).expect("Sample out of bounds")
     }
 
-    /// Get a mutable sample.
+    /// Get a mutable reference to an audio frame.
     ///
     /// # Panics
     /// If index is out of bounds
-    pub fn sample_mut(&mut self, index: usize) -> &mut S {
-        self.samples_mut()
-            .get_mut(index)
-            .expect("Sample out of bounds")
+    pub fn get_mut(&mut self, index: usize) -> &mut F {
+        self.frames.get_mut(index).expect("Sample out of bounds")
     }
 
-    /// Get a slice of all samples.
-    pub fn samples(&self) -> &[S] {
-        &self.samples
+    /// Get a slice of all audio frames.
+    pub fn as_slice(&self) -> &[F] {
+        &self.frames
     }
 
-    /// Get a mutable slice of all samples.
-    pub fn samples_mut(&mut self) -> &mut [S] {
-        &mut self.samples
+    /// Get a mutable slice of all audio frames.
+    pub fn as_mut_slice(&mut self) -> &mut [F] {
+        &mut self.frames
     }
 
-    /// Returns an iterator over the samples.
-    pub fn iter(&self) -> std::slice::Iter<'_, S> {
-        self.samples.iter()
+    /// Returns an iterator over the audio frames.
+    pub fn iter(&self) -> std::slice::Iter<'_, F> {
+        self.frames.iter()
     }
 
-    /// Returns an iterator that allows modifying each sample.
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, S> {
-        self.samples.iter_mut()
+    /// Returns an iterator that allows modifying each audio frame.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, F> {
+        self.frames.iter_mut()
     }
 
-    /// Construct an `Audio` buffer with all samples set to one value.
-    pub fn with_sample(s_rate: u32, len: usize, sample: S) -> Self {
-        let samples = vec![sample; len].into_boxed_slice();
-        Audio { s_rate, samples }
+    /// Construct an `Audio` buffer with all audio frames set to one value.
+    pub fn with_frame(s_rate: u32, len: usize, frame: F) -> Self {
+        let frames = vec![frame; len].into_boxed_slice();
+        Audio { s_rate, frames }
     }
 
-    /// Construct an `Audio` buffer with all all samples set to the default
-    /// value.
+    /// Construct an `Audio` buffer with all all samples set to zero.
     pub fn with_silence(s_rate: u32, len: usize) -> Self {
-        Self::with_sample(s_rate, len, S::default())
+        Self::with_frame(s_rate, len, F::default())
     }
 
     /// Construct an `Audio` buffer with another `Audio` buffer.
     ///
     /// The audio format can be converted with this function.
-    pub fn with_audio<SrcS: Sample>(s_rate: u32, src: &Audio<SrcS>) -> Self
+    pub fn with_audio<S: Frame>(s_rate: u32, src: &Audio<S>) -> Self
     where
-        S::Chan: From<SrcS::Chan>,
+        F::Chan: From<S::Chan>,
     {
+        // FIXME: Use Stream and Sink traits.
+
         let src_sr = src.sample_rate();
 
         // Check if resampling can be skipped.
         if src_sr == s_rate {
             let mut dst = Audio::with_silence(src_sr, src.len());
 
-            for (dst, src) in dst.samples.iter_mut().zip(src.samples.iter()) {
+            for (dst, src) in dst.iter_mut().zip(src.iter()) {
                 *dst = src.convert();
             }
 
@@ -120,13 +118,13 @@ impl<S: Sample> Audio<S> {
 
         // Go through each destination sample and interpolate from source.
         // FIXME: Optimize?
-        for (i, dst) in dst.samples.iter_mut().enumerate() {
+        for (i, dst) in dst.iter_mut().enumerate() {
             // Get index in source.
             let j = i as f64 * src_per_dst;
             // Get floor at source index.
-            let floor: S = src.samples[j.floor() as usize].convert();
+            let floor: F = src.get(j.floor() as usize).convert();
             // Get ceiling at source index.
-            let ceil: S = src.samples[j.ceil() as usize].convert();
+            let ceil: F = src.get(j.ceil() as usize).convert();
             // Get interpolation amount.
             let amt = j % 1.0;
 
@@ -134,15 +132,17 @@ impl<S: Sample> Audio<S> {
             *dst = floor.lerp(ceil, Mono64::new(Ch64::from(amt)).convert());
         }
 
+        //
+
         dst
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get
-    /// ownership of the pixel data back from the `Audio` buffer as either a
+    /// ownership of the sample data back from the `Audio` buffer as either a
     /// `Vec<S>` or a `Box<[S]>` by calling into().
-    pub fn with_samples<B: Into<Box<[S]>>>(s_rate: u32, samples: B) -> Self {
-        let samples = samples.into();
-        Audio { s_rate, samples }
+    pub fn with_frames<B: Into<Box<[F]>>>(s_rate: u32, frames: B) -> Self {
+        let frames = frames.into();
+        Audio { s_rate, frames }
     }
 
     /// Construct an `Audio` buffer from an `i8` buffer.
@@ -150,17 +150,17 @@ impl<S: Sample> Audio<S> {
     pub fn with_i8_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[i8]>>,
-        S: Sample<Chan = Ch8>,
+        F: Frame<Chan = Ch8>,
     {
         let buffer: Box<[i8]> = buffer.into();
-        let len = buffer.len() / std::mem::size_of::<S>();
-        assert_eq!(0, buffer.len() % std::mem::size_of::<S>());
+        let len = buffer.len() / std::mem::size_of::<F>();
+        assert_eq!(0, buffer.len() % std::mem::size_of::<F>());
         let slice = Box::<[i8]>::into_raw(buffer);
-        let samples: Box<[S]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut S;
+        let frames: Box<[F]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut F;
             Box::from_raw(from_raw_parts_mut(ptr, len))
         };
-        Audio { s_rate, samples }
+        Audio { s_rate, frames }
     }
 
     /// Construct an `Audio` buffer from an `i16` buffer.
@@ -168,18 +168,18 @@ impl<S: Sample> Audio<S> {
     pub fn with_i16_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[i16]>>,
-        S: Sample<Chan = Ch16>,
+        F: Frame<Chan = Ch16>,
     {
         let buffer: Box<[i16]> = buffer.into();
         let bytes = buffer.len() * std::mem::size_of::<i16>();
-        let len = bytes / std::mem::size_of::<S>();
-        assert_eq!(0, bytes % std::mem::size_of::<S>());
+        let len = bytes / std::mem::size_of::<F>();
+        assert_eq!(0, bytes % std::mem::size_of::<F>());
         let slice = Box::<[i16]>::into_raw(buffer);
-        let samples: Box<[S]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut S;
+        let frames: Box<[F]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut F;
             Box::from_raw(from_raw_parts_mut(ptr, len))
         };
-        Audio { s_rate, samples }
+        Audio { s_rate, frames }
     }
 
     /// Construct an `Audio` buffer from an `f32` buffer.
@@ -187,18 +187,18 @@ impl<S: Sample> Audio<S> {
     pub fn with_f32_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[f32]>>,
-        S: Sample<Chan = Ch32>,
+        F: Frame<Chan = Ch32>,
     {
         let buffer: Box<[f32]> = buffer.into();
         let bytes = buffer.len() * std::mem::size_of::<f32>();
-        let len = bytes / std::mem::size_of::<S>();
-        assert_eq!(0, bytes % std::mem::size_of::<S>());
+        let len = bytes / std::mem::size_of::<F>();
+        assert_eq!(0, bytes % std::mem::size_of::<F>());
         let slice = Box::<[f32]>::into_raw(buffer);
-        let samples: Box<[S]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut S;
+        let frames: Box<[F]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut F;
             Box::from_raw(from_raw_parts_mut(ptr, len))
         };
-        Audio { s_rate, samples }
+        Audio { s_rate, frames }
     }
 
     /// Construct an `Audio` buffer from an `f64` buffer.
@@ -206,23 +206,23 @@ impl<S: Sample> Audio<S> {
     pub fn with_f64_buffer<B>(s_rate: u32, buffer: B) -> Self
     where
         B: Into<Box<[f64]>>,
-        S: Sample<Chan = Ch64>,
+        F: Frame<Chan = Ch64>,
     {
         let buffer: Box<[f64]> = buffer.into();
         let bytes = buffer.len() * std::mem::size_of::<f64>();
-        let len = bytes / std::mem::size_of::<S>();
-        assert_eq!(0, bytes % std::mem::size_of::<S>());
+        let len = bytes / std::mem::size_of::<F>();
+        assert_eq!(0, bytes % std::mem::size_of::<F>());
         let slice = Box::<[f64]>::into_raw(buffer);
-        let samples: Box<[S]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut S;
+        let frames: Box<[F]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut F;
             Box::from_raw(from_raw_parts_mut(ptr, len))
         };
-        Audio { s_rate, samples }
+        Audio { s_rate, frames }
     }
 
     /// Get the length of the `Audio` buffer.
     pub fn len(&self) -> usize {
-        self.samples.len()
+        self.frames.len()
     }
 
     /// Check if `Audio` buffer is empty.
@@ -239,11 +239,11 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn stream<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + 'a>(
+    pub fn stream<'a, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + 'a>(
         &'a self,
         reg: R,
-    ) -> impl Stream<S> + 'a {
-        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
+    ) -> impl Stream<F> + 'a {
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         AudioStream {
             resampler: Resampler::new(),
             cursor: match reg.start_bound() {
@@ -260,11 +260,11 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn drain<'a, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone + 'a>(
+    pub fn drain<'a, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone + 'a>(
         &'a mut self,
         reg: R,
-    ) -> impl Stream<S> + 'a {
-        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
+    ) -> impl Stream<F> + 'a {
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         let index = match reg.start_bound() {
             Unbounded => 0,
             Included(index) => *index,
@@ -283,11 +283,11 @@ impl<S: Sample> Audio<S> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn sink<'a, R: 'a + RangeBounds<usize> + SliceIndex<[S], Output = [S]>>(
+    pub fn sink<'a, R: 'a + RangeBounds<usize> + SliceIndex<[F], Output = [F]>>(
         &'a mut self,
         reg: R,
     ) -> impl Sink + 'a {
-        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.samples().len()));
+        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         AudioSink {
             cursor: match reg.start_bound() {
                 Unbounded => 0,
@@ -303,33 +303,33 @@ impl<S: Sample> Audio<S> {
     ///
     /// *Don't call this with an infinite stream!*  This is the only way to
     /// collect a stream without knowing the size ahead of time.
-    pub fn extend<M: Stream<S>>(&mut self, stream: &mut M) {
-        let mut audio: Box<[S]> = Vec::new().into();
-        std::mem::swap(&mut audio, &mut self.samples);
-        let mut audio: Vec<S> = audio.into();
+    pub fn extend<M: Stream<F>>(&mut self, stream: &mut M) {
+        let mut audio: Box<[F]> = Vec::new().into();
+        std::mem::swap(&mut audio, &mut self.frames);
+        let mut audio: Vec<F> = audio.into();
         while let Some(sample) = stream.stream_sample() {
             audio.push(sample);
         }
-        let mut audio: Box<[S]> = audio.into();
-        std::mem::swap(&mut audio, &mut self.samples);
+        let mut audio: Box<[F]> = audio.into();
+        std::mem::swap(&mut audio, &mut self.frames);
     }
 }
 
-impl<S: Sample<Chan = Ch8>> Audio<S> {
+impl<F: Frame<Chan = Ch8>> Audio<F> {
     /// Get view of samples as an `i8` slice.
     pub fn as_i8_slice(&self) -> &[i8] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to::<i8>();
+            let (prefix, v, suffix) = self.frames.align_to::<i8>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
         }
     }
 
-    /// Get view of samples as a mutable `i8` slice.
+    /// Get mutable view of samples as a mutable `i8` slice.
     pub fn as_i8_slice_mut(&mut self) -> &mut [i8] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to_mut::<i8>();
+            let (prefix, v, suffix) = self.frames.align_to_mut::<i8>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
@@ -337,21 +337,21 @@ impl<S: Sample<Chan = Ch8>> Audio<S> {
     }
 }
 
-impl<S: Sample<Chan = Ch16>> Audio<S> {
+impl<F: Frame<Chan = Ch16>> Audio<F> {
     /// Get view of samples as an `i16` slice.
     pub fn as_i16_slice(&self) -> &[i16] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to::<i16>();
+            let (prefix, v, suffix) = self.frames.align_to::<i16>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
         }
     }
 
-    /// Get view of samples as a mutable `i16` slice.
+    /// Get mutable view of samples as a mutable `i16` slice.
     pub fn as_i16_slice_mut(&mut self) -> &mut [i16] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to_mut::<i16>();
+            let (prefix, v, suffix) = self.frames.align_to_mut::<i16>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
@@ -359,21 +359,21 @@ impl<S: Sample<Chan = Ch16>> Audio<S> {
     }
 }
 
-impl<S: Sample<Chan = Ch32>> Audio<S> {
+impl<S: Frame<Chan = Ch32>> Audio<S> {
     /// Get view of samples as an `f32` slice.
     pub fn as_f32_slice(&self) -> &[f32] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to::<f32>();
+            let (prefix, v, suffix) = self.frames.align_to::<f32>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
         }
     }
 
-    /// Get view of samples as a mutable `f32` slice.
+    /// Get mutable view of samples as a mutable `f32` slice.
     pub fn as_f32_slice_mut(&mut self) -> &mut [f32] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to_mut::<f32>();
+            let (prefix, v, suffix) = self.frames.align_to_mut::<f32>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
@@ -381,21 +381,21 @@ impl<S: Sample<Chan = Ch32>> Audio<S> {
     }
 }
 
-impl<S: Sample<Chan = Ch64>> Audio<S> {
+impl<F: Frame<Chan = Ch64>> Audio<F> {
     /// Get view of samples as an `f64` slice.
     pub fn as_f64_slice(&self) -> &[f64] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to::<f64>();
+            let (prefix, v, suffix) = self.frames.align_to::<f64>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
         }
     }
 
-    /// Get view of samples as a mutable `f64` slice.
+    /// Get mutable view of samples as a mutable `f64` slice.
     pub fn as_f64_slice_mut(&mut self) -> &mut [f64] {
         unsafe {
-            let (prefix, v, suffix) = self.samples.align_to_mut::<f64>();
+            let (prefix, v, suffix) = self.frames.align_to_mut::<f64>();
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
@@ -404,20 +404,18 @@ impl<S: Sample<Chan = Ch64>> Audio<S> {
 }
 
 /// A `Sink` created with `Audio.sink()`
-struct AudioSink<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> {
-    audio: &'a mut Audio<S>,
+struct AudioSink<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> {
+    audio: &'a mut Audio<F>,
     cursor: usize,
     range: R,
 }
 
-impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
-    for AudioSink<'_, S, R>
-{
+impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink for AudioSink<'_, F, R> {
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O) {
+    fn sink_sample<O: Blend, Z: Frame>(&mut self, sample: Z, op: O) {
         // If empty, start over
         if !self.range.contains(&self.cursor) {
             self.cursor = match self.range.start_bound() {
@@ -426,9 +424,7 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
                 Excluded(index) => *index + 1,
             };
         }
-        self.audio
-            .sample_mut(self.cursor)
-            .blend(&sample.convert(), op);
+        self.audio.get_mut(self.cursor).blend(&sample.convert(), op);
         self.cursor += 1;
     }
 
@@ -442,8 +438,8 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
             };
         }
         self.audio
-            .sample_mut(self.cursor)
-            .blend(&S::from_mono_panned(sample.convert(), pan), op);
+            .get_mut(self.cursor)
+            .blend(&F::from_mono_panned(sample.convert(), pan), op);
         self.cursor += 1;
     }
 
@@ -453,105 +449,102 @@ impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Sink
 }
 
 /// A `Stream` created with `Audio.stream()`
-struct AudioStream<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> {
-    resampler: Resampler<S>,
-    audio: &'a Audio<S>,
+struct AudioStream<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> {
+    resampler: Resampler<F>,
+    audio: &'a Audio<F>,
     cursor: usize,
     range: R,
 }
 
-impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]>> Stream<S>
-    for AudioStream<'_, S, R>
+impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
+    for AudioStream<'_, F, R>
 {
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    fn stream_sample(&mut self) -> Option<S> {
+    fn stream_sample(&mut self) -> Option<F> {
         if
         /* is empty */
         !self.range.contains(&self.cursor) {
             return None;
         }
-        let sample = self.audio.sample(self.cursor);
+        let sample = self.audio.get(self.cursor);
         self.cursor += 1;
         Some(*sample)
     }
 
-    fn resampler(&mut self) -> &mut Resampler<S> {
+    fn resampler(&mut self) -> &mut Resampler<F> {
         &mut self.resampler
     }
 }
 
 /// A `Stream` created with `Audio.drain()`
-struct AudioDrain<'a, S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> {
-    resampler: Resampler<S>,
-    audio: &'a mut Audio<S>,
+struct AudioDrain<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> {
+    resampler: Resampler<F>,
+    audio: &'a mut Audio<F>,
     cursor: usize,
     start: usize, // Where the cursor starts
     range: R,
 }
 
-impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> Stream<S>
-    for AudioDrain<'_, S, R>
+impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> Stream<F>
+    for AudioDrain<'_, F, R>
 {
     fn sample_rate(&self) -> u32 {
         self.audio.sample_rate()
     }
 
-    fn stream_sample(&mut self) -> Option<S> {
+    fn stream_sample(&mut self) -> Option<F> {
         if
         /* is empty */
-        !self.range.contains(&self.cursor) || self.cursor == self.audio.samples.len() {
+        !self.range.contains(&self.cursor) || self.cursor == self.audio.len() {
             return None;
         }
-        let sample = self.audio.sample(self.cursor);
+        let frame = self.audio.get(self.cursor);
         self.cursor += 1;
-        Some(*sample)
+        Some(*frame)
     }
 
-    fn resampler(&mut self) -> &mut Resampler<S> {
+    fn resampler(&mut self) -> &mut Resampler<F> {
         &mut self.resampler
     }
 }
 
-impl<S: Sample, R: RangeBounds<usize> + SliceIndex<[S], Output = [S]> + Clone> Drop
-    for AudioDrain<'_, S, R>
+impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> Drop
+    for AudioDrain<'_, F, R>
 {
     fn drop(&mut self) {
-        let mut audio: Box<[S]> = Vec::new().into();
-        std::mem::swap(&mut audio, &mut self.audio.samples);
-        let mut audio: Vec<S> = audio.into();
+        let mut audio: Box<[F]> = Vec::new().into();
+        std::mem::swap(&mut audio, &mut self.audio.frames);
+        let mut audio: Vec<F> = audio.into();
         audio.drain(self.start..self.cursor);
-        let mut audio: Box<[S]> = audio.into();
-        std::mem::swap(&mut audio, &mut self.audio.samples);
+        let mut audio: Box<[F]> = audio.into();
+        std::mem::swap(&mut audio, &mut self.audio.frames);
     }
 }
 
-impl<S: Sample> From<Audio<S>> for Box<[S]> {
-    /// Get internal pixel data as boxed slice.
-    fn from(audio: Audio<S>) -> Self {
-        audio.samples
+impl<F: Frame> From<Audio<F>> for Box<[F]> {
+    /// Get internal sample data as a boxed slice of audio frames.
+    fn from(audio: Audio<F>) -> Self {
+        audio.frames
     }
 }
 
-impl<S: Sample> From<Audio<S>> for Vec<S> {
-    /// Get internal pixel data as `Vec` of samples.
-    fn from(audio: Audio<S>) -> Self {
-        audio.samples.into()
+impl<F: Frame> From<Audio<F>> for Vec<F> {
+    /// Get internal sample data as `Vec` of audio frames.
+    fn from(audio: Audio<F>) -> Self {
+        audio.frames.into()
     }
 }
 
-impl<S> From<Audio<S>> for Box<[i8]>
-where
-    S: Sample<Chan = Ch8>,
-{
-    /// Get internal pixel data as boxed slice of *i8*.
+impl<F: Frame<Chan = Ch8>> From<Audio<F>> for Box<[i8]> {
+    /// Get internal sample data as boxed slice of *i8*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<S>) -> Self {
-        let samples = audio.samples;
-        let capacity = samples.len() * std::mem::size_of::<S>();
-        let slice = Box::<[S]>::into_raw(samples);
+    fn from(audio: Audio<F>) -> Self {
+        let frames = audio.frames;
+        let capacity = frames.len() * std::mem::size_of::<F>();
+        let slice = Box::<[F]>::into_raw(frames);
         let buffer: Box<[i8]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut i8;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
@@ -560,16 +553,13 @@ where
     }
 }
 
-impl<S> From<Audio<S>> for Box<[i16]>
-where
-    S: Sample<Chan = Ch16>,
-{
-    /// Get internal pixel data as boxed slice of *u16*.
+impl<F: Frame<Chan = Ch16>> From<Audio<F>> for Box<[i16]> {
+    /// Get internal sample data as boxed slice of *u16*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<S>) -> Self {
-        let samples = audio.samples;
-        let capacity = samples.len() * std::mem::size_of::<S>() / 2;
-        let slice = Box::<[S]>::into_raw(samples);
+    fn from(audio: Audio<F>) -> Self {
+        let frames = audio.frames;
+        let capacity = frames.len() * std::mem::size_of::<F>() / 2;
+        let slice = Box::<[F]>::into_raw(frames);
         let buffer: Box<[i16]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut i16;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
@@ -578,16 +568,13 @@ where
     }
 }
 
-impl<S> From<Audio<S>> for Box<[f32]>
-where
-    S: Sample<Chan = Ch32>,
-{
-    /// Get internal pixel data as boxed slice of *u16*.
+impl<F: Frame<Chan = Ch32>> From<Audio<F>> for Box<[f32]> {
+    /// Get internal sample data as boxed slice of *u16*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<S>) -> Self {
-        let samples = audio.samples;
-        let capacity = samples.len() * std::mem::size_of::<S>() / 4;
-        let slice = Box::<[S]>::into_raw(samples);
+    fn from(audio: Audio<F>) -> Self {
+        let frames = audio.frames;
+        let capacity = frames.len() * std::mem::size_of::<F>() / 4;
+        let slice = Box::<[F]>::into_raw(frames);
         let buffer: Box<[f32]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut f32;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
@@ -596,16 +583,13 @@ where
     }
 }
 
-impl<S> From<Audio<S>> for Box<[f64]>
-where
-    S: Sample<Chan = Ch64>,
-{
-    /// Get internal pixel data as boxed slice of *u16*.
+impl<F: Frame<Chan = Ch64>> From<Audio<F>> for Box<[f64]> {
+    /// Get internal sample data as boxed slice of *u16*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<S>) -> Self {
-        let samples = audio.samples;
-        let capacity = samples.len() * std::mem::size_of::<S>() / 8;
-        let slice = Box::<[S]>::into_raw(samples);
+    fn from(audio: Audio<F>) -> Self {
+        let frames = audio.frames;
+        let capacity = frames.len() * std::mem::size_of::<F>() / 8;
+        let slice = Box::<[F]>::into_raw(frames);
         let buffer: Box<[f64]> = unsafe {
             let ptr = (*slice).as_mut_ptr() as *mut f64;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))

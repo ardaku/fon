@@ -10,7 +10,9 @@
 
 //! Synthesis and mixing operations.
 //!
-//! Used in `Audio` methods `blend_sample` and `blend_audio`.
+//! Used in [`Stream::stream`](crate::Stream::stream),
+//! [`Sink::sink`](crate::Sink::sink), and
+//! [`Sink::sink_panned`](crate::Sink::sink_panned) methods.
 
 use crate::chan::Channel;
 use core::any::Any;

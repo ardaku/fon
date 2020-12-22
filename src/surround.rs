@@ -12,11 +12,12 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    sample::Sample,
+    Frame,
 };
 
-/// Surround Sound 5.1 sample format (front left channel, rear left channel,
-/// rear right, front right channel, center, lfe).
+/// Surround Sound 5.1 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, rear left, rear right, front right, center, and lfe
+/// [`Channel`](crate::chan::Channel)).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Surround<C: Channel> {
@@ -41,7 +42,7 @@ impl<C: Channel> Surround<C> {
     }
 }
 
-impl<C: Channel> Sample for Surround<C> {
+impl<C: Channel> Frame for Surround<C> {
     const CONFIG: &'static [[f64; 2]] = &[
         [1.0 / 12.0, 0.25],         // Front Left (Centered at 1/6)
         [0.25, 0.5],                // Rear Left (Centered at 1/3)
@@ -66,11 +67,11 @@ impl<C: Channel> Sample for Surround<C> {
     }
 }
 
-/// 5.1 Surround [8-bit PCM](../chan/struct.Ch8.html) format.
+/// 5.1 Surround [8-bit PCM](crate::chan::Ch8) format.
 pub type Surround8 = Surround<Ch8>;
-/// 5.1 Surround [16-bit PCM](../chan/struct.Ch16.html) format.
+/// 5.1 Surround [16-bit PCM](crate::chan::Ch16) format.
 pub type Surround16 = Surround<Ch16>;
-/// 5.1 Surround [32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// 5.1 Surround [32-bit Floating Point](crate::chan::Ch32) format.
 pub type Surround32 = Surround<Ch32>;
-/// 5.1 Surround [64-bit Floating Point](../chan/struct.Ch64.html) format.
+/// 5.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Surround64 = Surround<Ch64>;

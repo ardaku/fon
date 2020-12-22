@@ -12,19 +12,19 @@ use crate::{
     chan::{Ch64, Channel},
     mono::Mono,
     ops::Blend,
-    sample::Sample,
+    Frame,
 };
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
-pub struct Resampler<S: Sample> {
-    /// How much of a sample is represented by `part`
+pub struct Resampler<F: Frame> {
+    /// How much of an audio frame is represented by `part`
     phase: f64,
-    /// A last sample read
-    part: S,
+    /// A last audio frame read
+    part: F,
 }
 
-impl<S: Sample> Resampler<S> {
+impl<F: Frame> Resampler<F> {
     /// Create a new resampler context.
     pub fn new() -> Self {
         Self::default()
@@ -34,7 +34,7 @@ impl<S: Sample> Resampler<S> {
 /// Audio sink - a type that consumes a *finite* number of audio samples.
 pub trait Sink: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.
-    fn sink<O: Blend, Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M, op: O) {
+    fn sink<O: Blend, Z: Frame, M: Stream<Z>>(&mut self, stream: &mut M, op: O) {
         stream.stream(self, op)
     }
 
@@ -91,7 +91,7 @@ pub trait Sink: Sized {
     fn sample_rate(&self) -> u32;
 
     /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<O: Blend, Z: Sample>(&mut self, sample: Z, op: O);
+    fn sink_sample<O: Blend, Z: Frame>(&mut self, sample: Z, op: O);
 
     /// This function is called when the sink receives a sample from a stream.
     fn sink_sample_panned<O: Blend, C: Channel>(&mut self, sample: Mono<C>, op: O, pan: f64);
@@ -104,12 +104,12 @@ pub trait Sink: Sized {
 
 /// Audio stream - a type that generates audio (may be *infinite*, but is not
 /// required).
-pub trait Stream<S: Sample>: Sized {
+pub trait Stream<F: Frame>: Sized {
     /// Transfer the audio from a `Stream` into a `Sink`.  You may write to the
     /// same sink multiple times, blending audio with `Blend` operations.
     fn stream<O: Blend, K: Sink>(&mut self, sink: &mut K, op: O) {
         // Silence
-        let zero = Mono::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
+        let zero = Mono::<F::Chan>::new::<F::Chan>(F::Chan::MID).convert();
 
         // Faster algorithm if sample rates match.
         if self.sample_rate() == sink.sample_rate() {
@@ -137,7 +137,7 @@ pub trait Stream<S: Sample>: Sized {
                     self.resampler().phase = self.resampler().phase - 1.0;
                     self.resampler().part = sample;
                 }
-                let amount = Mono::<S::Chan>::new(Ch64::new(old_phase)).convert();
+                let amount = Mono::<F::Chan>::new(Ch64::new(old_phase)).convert();
                 let sample = self.resampler().part.lerp(sample, amount);
                 sink.sink_sample(sample, op);
             } else {
@@ -151,8 +151,8 @@ pub trait Stream<S: Sample>: Sized {
     fn sample_rate(&self) -> u32;
 
     /// This function is called when a sink requests a sample from the stream.
-    fn stream_sample(&mut self) -> Option<S>;
+    fn stream_sample(&mut self) -> Option<F>;
 
     /// Get this streams's resampler context.
-    fn resampler(&mut self) -> &mut Resampler<S>;
+    fn resampler(&mut self) -> &mut Resampler<F>;
 }
