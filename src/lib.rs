@@ -31,9 +31,9 @@
 //!
 //! # 8-Bit Sawtooth Wave Example
 //! ```rust
-//! use fon::mono::{Mono8};
-//! use fon::stereo::{Stereo16};
 //! use fon::chan::Ch8;
+//! use fon::mono::Mono8;
+//! use fon::stereo::Stereo16;
 //! use fon::{Audio, Sample};
 //!
 //! let mut a = Audio::<Mono8>::with_silence(44_100, 256);

@@ -130,8 +130,6 @@ impl<S: Sample> Audio<S> {
             // Get interpolation amount.
             let amt = j % 1.0;
 
-            dbg!(floor, ceil, amt);
-
             // Interpolate between the samples.
             *dst = floor.lerp(ceil, Mono64::new(Ch64::from(amt)).convert());
         }
