@@ -87,168 +87,166 @@ impl Eq for Ch64 {}
 
 impl Ch8 {
     /// Create a new 8-bit `Channel` value.
-    pub const fn new(value: i8) -> Self {
+    #[inline(always)]
+    pub fn new(value: i8) -> Self {
         Ch8(value)
     }
 }
 
 impl Ch16 {
     /// Create a new 16-bit `Channel` value.
-    pub const fn new(value: i16) -> Self {
+    #[inline(always)]
+    pub fn new(value: i16) -> Self {
         Ch16(value)
     }
 }
 
 impl Ch32 {
     /// Create a new 32-bit `Channel` value.
-    pub const fn new(value: f32) -> Self {
-        Ch32(value)
+    #[inline(always)]
+    pub fn new(value: f32) -> Self {
+        Ch32(value.min(1.0).max(-1.0))
     }
 }
 
 impl Ch64 {
     /// Create a new 64-bit `Channel` value.
-    pub const fn new(value: f64) -> Self {
-        Ch64(value)
+    #[inline(always)]
+    pub fn new(value: f64) -> Self {
+        Ch64(value.min(1.0).max(-1.0))
     }
 }
 
 impl From<i8> for Ch8 {
+    #[inline(always)]
     fn from(value: i8) -> Self {
         Ch8(value)
     }
 }
 
 impl From<Ch8> for i8 {
+    #[inline(always)]
     fn from(c: Ch8) -> i8 {
         c.0
     }
 }
 
 impl From<i16> for Ch16 {
+    #[inline(always)]
     fn from(value: i16) -> Self {
         Ch16(value)
     }
 }
 
 impl From<Ch16> for i16 {
+    #[inline(always)]
     fn from(c: Ch16) -> i16 {
         c.0
     }
 }
 
 impl From<f32> for Ch32 {
+    #[inline(always)]
     fn from(value: f32) -> Self {
-        Ch32(value.min(1.0).max(0.0))
+        Self(value.min(1.0).max(-1.0))
     }
 }
 
 impl From<Ch32> for f32 {
+    #[inline(always)]
     fn from(c: Ch32) -> f32 {
         c.0
     }
 }
 
 impl From<Ch64> for f64 {
+    #[inline(always)]
     fn from(c: Ch64) -> f64 {
         c.0
     }
 }
 
-impl<R> Add<R> for Ch8
-where
-    Self: From<R>,
-{
+// test: ch8_arith()
+impl<R: Into<Self>> Sub<R> for Ch8 {
     type Output = Self;
-    fn add(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        Ch8(self.0.saturating_add(rhs.0))
-    }
-}
 
-impl<R> Sub<R> for Ch8
-where
-    Self: From<R>,
-{
-    type Output = Self;
+    #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        Ch8(self.0.saturating_sub(rhs.0))
+        self + -rhs.into()
     }
 }
 
-impl<R> Add<R> for Ch16
-where
-    Self: From<R>,
-{
+// test: ch16_arith()
+impl<R: Into<Self>> Sub<R> for Ch16 {
     type Output = Self;
-    fn add(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        Ch16(self.0.saturating_add(rhs.0))
-    }
-}
 
-impl<R> Sub<R> for Ch16
-where
-    Self: From<R>,
-{
-    type Output = Self;
+    #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        let rhs = Self::from(rhs);
-        Ch16(self.0.saturating_sub(rhs.0))
+        self + -rhs.into()
     }
 }
 
-impl<R> Add<R> for Ch32
-where
-    Self: From<R>,
-{
+// test: ch32_arith()
+impl<R: Into<Self>> Sub<R> for Ch32 {
     type Output = Self;
-    fn add(self, rhs: R) -> Self {
-        let value = self.0 + Self::from(rhs).0;
-        Ch32(value.min(1.0))
-    }
-}
 
-impl<R> Sub<R> for Ch32
-where
-    Self: From<R>,
-{
-    type Output = Self;
+    #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        let value = self.0 - Self::from(rhs).0;
-        Ch32(value.max(0.0))
+        self + -rhs.into()
     }
 }
 
-impl<R> Add<R> for Ch64
-where
-    Self: From<R>,
-{
+// test: ch64_arith()
+impl<R: Into<Self>> Sub<R> for Ch64 {
     type Output = Self;
-    fn add(self, rhs: R) -> Self {
-        let value = self.0 + Self::from(rhs).0;
-        Ch64(value.min(1.0))
-    }
-}
 
-impl<R> Sub<R> for Ch64
-where
-    Self: From<R>,
-{
-    type Output = Self;
+    #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        let value = self.0 - Self::from(rhs).0;
-        Ch64(value.max(0.0))
+        self + -rhs.into()
     }
 }
 
+// test: ch8_arith()
+impl<R: Into<Self>> Add<R> for Ch8 {
+    type Output = Self;
 
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        Self(self.0.saturating_add(rhs.into().0))
+    }
+}
 
+// test: ch16_arith()
+impl<R: Into<Self>> Add<R> for Ch16 {
+    type Output = Self;
 
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        Self(self.0.saturating_add(rhs.into().0))
+    }
+}
 
+// test: ch32_arith()
+impl<R: Into<Self>> Add<R> for Ch32 {
+    type Output = Self;
 
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        let value = self.0 + rhs.into().0;
+        Self(value.min(1.0).max(-1.0))
+    }
+}
 
+// test: ch64_arith()
+impl<R: Into<Self>> Add<R> for Ch64 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        let value = self.0 + rhs.into().0;
+        Self(value.min(1.0).max(-1.0))
+    }
+}
 
 // test: ch8_arith()
 impl<R: Into<Self>> Div<R> for Ch8 {
@@ -261,9 +259,9 @@ impl<R: Into<Self>> Div<R> for Ch8 {
             let ss = i32::from(self.0) << 8;
             let rr = i32::from(rhs);
             let value = (ss / rr).min(127).max(-128) as i8;
-            Ch8(value)
+            Self(value)
         } else {
-            Ch8::MAX
+            Self::MAX
         }
     }
 }
@@ -279,9 +277,9 @@ impl<R: Into<Self>> Div<R> for Ch16 {
             let ss = i32::from(self.0) << 16;
             let rr = i32::from(rhs);
             let value = (ss / rr).min(i16::MAX.into()).max(i16::MIN.into());
-            Ch16(value as i16)
+            Self(value as i16)
         } else {
-            Ch16::MAX
+            Self::MAX
         }
     }
 }
@@ -773,6 +771,15 @@ mod tests {
 
     #[test]
     fn ch8_arith() {
+        // Test addition
+        assert_eq!(Ch8::new(-1), Ch8::new(-128) + Ch8::new(127));
+        assert_eq!(Ch8::new(32), Ch8::new(-32) + Ch8::new(64));
+        assert_eq!(Ch8::new(127), Ch8::new(0) + Ch8::new(127));
+        assert_eq!(Ch8::new(-128), Ch8::new(-64) + Ch8::new(-64));
+        // Test subtraction
+        assert_eq!(Ch8::new(-1), Ch8::new(-128) - Ch8::new(-128));
+        assert_eq!(Ch8::new(-1), Ch8::new(127) - Ch8::new(127));
+        assert_eq!(Ch8::new(-128), Ch8::new(0) - Ch8::new(127));
         // Test multiplication
         assert_eq!(Ch8::new(0), Ch8::new(0) * Ch8::new(127));
         assert_eq!(Ch8::new(127), Ch8::new(127) * Ch8::new(127));
@@ -790,6 +797,15 @@ mod tests {
 
     #[test]
     fn ch16_arith() {
+        // Test addition
+        assert_eq!(Ch16::new(-1), Ch16::new(-32768) + Ch16::new(32767));
+        assert_eq!(Ch16::new(8192), Ch16::new(-8192) + Ch16::new(16384));
+        assert_eq!(Ch16::new(32767), Ch16::new(0) + Ch16::new(32767));
+        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) + Ch16::new(-16384));
+        // Test subtraction
+        assert_eq!(Ch16::new(-1), Ch16::new(-32768) - Ch16::new(-32768));
+        assert_eq!(Ch16::new(-1), Ch16::new(32767) - Ch16::new(32767));
+        assert_eq!(Ch16::new(-32768), Ch16::new(0) - Ch16::new(32767));
         // Test multiplication
         assert_eq!(Ch16::new(0), Ch16::new(0) * Ch16::new(32767));
         assert_eq!(Ch16::new(32767), Ch16::new(32767) * Ch16::new(32767));
@@ -807,6 +823,15 @@ mod tests {
 
     #[test]
     fn ch32_arith() {
+        // Test addition
+        assert_eq!(Ch32::new(0.0), Ch32::new(-1.0) + Ch32::new(1.0));
+        assert_eq!(Ch32::new(0.25), Ch32::new(-0.25) + Ch32::new(0.5));
+        assert_eq!(Ch32::new(1.0), Ch32::new(0.0) + Ch32::new(1.0));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(-0.5) + Ch32::new(-0.5));
+        // Test subtraction
+        assert_eq!(Ch32::new(0.0), Ch32::new(-1.0) - Ch32::new(-1.0));
+        assert_eq!(Ch32::new(0.0), Ch32::new(1.0) - Ch32::new(1.0));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(0.0) - Ch32::new(1.0));
         // Test multiplication
         assert_eq!(Ch32::new(0.0), Ch32::new(0.0) * Ch32::new(1.0));
         assert_eq!(Ch32::new(1.0), Ch32::new(1.0) * Ch32::new(1.0));
@@ -824,6 +849,15 @@ mod tests {
 
     #[test]
     fn ch64_arith() {
+        // Test addition
+        assert_eq!(Ch64::new(0.0), Ch64::new(-1.0) + Ch64::new(1.0));
+        assert_eq!(Ch64::new(0.25), Ch64::new(-0.25) + Ch64::new(0.5));
+        assert_eq!(Ch64::new(1.0), Ch64::new(0.0) + Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) + Ch64::new(-0.5));
+        // Test subtraction
+        assert_eq!(Ch64::new(0.0), Ch64::new(-1.0) - Ch64::new(-1.0));
+        assert_eq!(Ch64::new(0.0), Ch64::new(1.0) - Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(0.0) - Ch64::new(1.0));
         // Test multiplication
         assert_eq!(Ch64::new(0.0), Ch64::new(0.0) * Ch64::new(1.0));
         assert_eq!(Ch64::new(1.0), Ch64::new(1.0) * Ch64::new(1.0));
@@ -837,5 +871,41 @@ mod tests {
         assert_eq!(Ch64::new(-1.0), Ch64::new(-1.0) / Ch64::new(1.0));
         assert_eq!(Ch64::new(1.0), Ch64::new(-1.0) / Ch64::new(-1.0));
         assert_eq!(Ch64::new(-1.0), Ch64::new(0.5) / Ch64::new(-0.5));
+    }
+
+    #[test]
+    fn ch8_saturation() {
+        assert_eq!(Ch8::new(127), Ch8::new(96) + Ch8::new(64));
+        assert_eq!(Ch8::new(-128), Ch8::new(-64) + Ch8::new(-96));
+        assert_eq!(Ch8::new(-128), Ch8::new(-64) - Ch8::new(96));
+        assert_eq!(Ch8::new(127), Ch8::new(64) / Ch8::new(32));
+        assert_eq!(Ch8::new(-128), Ch8::new(64) / Ch8::new(-32));
+    }
+
+    #[test]
+    fn ch16_saturation() {
+        assert_eq!(Ch16::new(32767), Ch16::new(24576) + Ch16::new(16384));
+        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) + Ch16::new(-24576));
+        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) - Ch16::new(24576));
+        assert_eq!(Ch16::new(32767), Ch16::new(16384) / Ch16::new(8192));
+        assert_eq!(Ch16::new(-32768), Ch16::new(16384) / Ch16::new(-8192));
+    }
+
+    #[test]
+    fn ch32_saturation() {
+        assert_eq!(Ch32::new(1.0), Ch32::new(0.75) + Ch32::new(0.5));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(-0.5) + Ch32::new(-0.75));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(-0.5) - Ch32::new(0.75));
+        assert_eq!(Ch32::new(1.0), Ch32::new(0.5) / Ch32::new(0.25));
+        assert_eq!(Ch32::new(-1.0), Ch32::new(0.5) / Ch32::new(-0.25));
+    }
+
+    #[test]
+    fn ch64_saturation() {
+        assert_eq!(Ch64::new(1.0), Ch64::new(0.75) + Ch64::new(0.5));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) + Ch64::new(-0.75));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) - Ch64::new(0.75));
+        assert_eq!(Ch64::new(1.0), Ch64::new(0.5) / Ch64::new(0.25));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(0.5) / Ch64::new(-0.25));
     }
 }
