@@ -10,7 +10,7 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    mono::{Mono, Mono64},
+    mono::{Mono},
     ops::Blend,
     Frame, Resampler, Sink, Stream,
 };
@@ -39,19 +39,13 @@ pub struct Audio<F: Frame> {
 
 impl<F: Frame> Audio<F> {
     /// Get an audio frame.
-    ///
-    /// # Panics
-    /// If index is out of bounds
-    pub fn get(&self, index: usize) -> &F {
-        self.frames.get(index).expect("Sample out of bounds")
+    pub fn get(&self, index: usize) -> Option<F> {
+        self.frames.get(index).cloned()
     }
 
     /// Get a mutable reference to an audio frame.
-    ///
-    /// # Panics
-    /// If index is out of bounds
-    pub fn get_mut(&mut self, index: usize) -> &mut F {
-        self.frames.get_mut(index).expect("Sample out of bounds")
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut F> {
+        self.frames.get_mut(index)
     }
 
     /// Get a slice of all audio frames.
@@ -88,6 +82,7 @@ impl<F: Frame> Audio<F> {
     /// Construct an `Audio` buffer with another `Audio` buffer.
     ///
     /// The audio format can be converted with this function.
+    // FIXME: Change to `with_stream`
     pub fn with_audio<S: Frame>(s_rate: u32, src: &Audio<S>) -> Self
     where
         F::Chan: From<S::Chan>,
@@ -111,28 +106,32 @@ impl<F: Frame> Audio<F> {
         let sr_rat = s_rate as f64 / src_sr as f64;
         // Calculate total number of samples for destination.
         let dstlen = (sr_rat * src.len() as f64) as usize;
-        // Calculate the index multiplier.
-        let src_per_dst = (src.len() - 1) as f64 / (dstlen - 1) as f64;
         // Generate silence for destination.
         let mut dst = Audio::with_silence(s_rate, dstlen);
 
-        // Go through each destination sample and interpolate from source.
-        // FIXME: Optimize?
-        for (i, dst) in dst.iter_mut().enumerate() {
-            // Get index in source.
-            let j = i as f64 * src_per_dst;
-            // Get floor at source index.
-            let floor: F = src.get(j.floor() as usize).convert();
-            // Get ceiling at source index.
-            let ceil: F = src.get(j.ceil() as usize).convert();
-            // Get interpolation amount.
-            let amt = j % 1.0;
+        // Resampler Context.
+        let mut partial = F::default();
+        let mut offseti = 0.0;
 
-            // Interpolate between the samples.
-            *dst = floor.lerp(ceil, Mono64::new(Ch64::from(amt)).convert());
+        // Add left over audio.
+        *dst.get_mut(0).unwrap() = partial;
+
+        // Go through each source sample and add to destination.
+        for (i, src) in src.iter().enumerate() {
+            // Calculate destination index.
+            let i = sr_rat * i as f64 + offseti;
+            let ceil = i.ceil() as usize;
+            let floor = i.floor() as usize;
+            let ceil_f64 = i.fract().min(sr_rat);
+            let ceil_a = F::from_f64(ceil_f64);
+            let floor_a = F::from_f64(sr_rat - ceil_f64);
+            let src: F = src.convert();
+            *dst.get_mut(floor).unwrap() += src * floor_a;
+            *dst.get_mut(ceil).unwrap_or(&mut partial) += src * ceil_a;
         }
 
-        //
+        // Set offseti
+        offseti = (sr_rat * (src.len() - 1) as f64 + offseti).fract();
 
         dst
     }
@@ -424,7 +423,7 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink for A
                 Excluded(index) => *index + 1,
             };
         }
-        self.audio.get_mut(self.cursor).blend(&sample.convert(), op);
+        self.audio.get_mut(self.cursor).unwrap().blend(&sample.convert(), op);
         self.cursor += 1;
     }
 
@@ -439,7 +438,8 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink for A
         }
         self.audio
             .get_mut(self.cursor)
-            .blend(&F::from_mono_panned(sample.convert(), pan), op);
+            .unwrap()
+            .blend(&F::from_mono_pan(sample.convert(), pan), op);
         self.cursor += 1;
     }
 
@@ -469,9 +469,9 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
         !self.range.contains(&self.cursor) {
             return None;
         }
-        let sample = self.audio.get(self.cursor);
+        let sample = self.audio.get(self.cursor).unwrap();
         self.cursor += 1;
-        Some(*sample)
+        Some(sample)
     }
 
     fn resampler(&mut self) -> &mut Resampler<F> {
@@ -501,9 +501,9 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> St
         !self.range.contains(&self.cursor) || self.cursor == self.audio.len() {
             return None;
         }
-        let frame = self.audio.get(self.cursor);
+        let frame = self.audio.get(self.cursor).unwrap();
         self.cursor += 1;
-        Some(*frame)
+        Some(frame)
     }
 
     fn resampler(&mut self) -> &mut Resampler<F> {

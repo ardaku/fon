@@ -15,7 +15,7 @@ use crate::{
     mono::Mono,
     ops::Blend,
 };
-use std::{fmt::Debug, mem::size_of};
+use std::{fmt::Debug, mem::size_of, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},};
 
 /// Returns how much src covers dst.  Units are counterclockwise from 0 to 1+
 fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
@@ -49,7 +49,17 @@ fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
 /// Frame - A number of interleaved sample [channel]s.
 ///
 /// [channel]: crate::chan::Channel
-pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin {
+pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
+    + Add<Output = Self>
+    + Div<Output = Self>
+    + Mul<Output = Self>
+    + Sub<Output = Self>
+    + Neg<Output = Self>
+    + AddAssign
+    + SubAssign
+    + DivAssign
+    + MulAssign
+{
     /// Channel type
     type Chan: Channel;
 
@@ -67,11 +77,34 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Get the channels mutably.
     fn channels_mut(&mut self) -> &mut [Self::Chan];
 
+    /// Make an audio frame with all channels set from a floating point value.
+    fn from_f64(value: f64) -> Self {
+        let mut ret = Self::default();
+        for chan in ret.channels_mut() {
+            *chan = Self::Chan::from_f64(value);
+        }
+        ret
+    }
+
+    /// Make an audio frame from a singular channel.
+    fn from_channel(ch: Self::Chan) -> Self {
+        let mut ret = Self::default();
+        for chan in ret.channels_mut() {
+            *chan = ch;
+        }
+        ret
+    }
+
     /// Make an audio frame from a slice of channels.
     fn from_channels(ch: &[Self::Chan]) -> Self;
 
+    /// Make an audio frame from a mono frame.
+    fn from_mono(frame: Mono<Self::Chan>) -> Self {
+        Self::from_channel(frame.channels()[0])
+    }
+
     /// Pan a channel into this Sample type, units are in clockwise rotations.
-    fn from_channel_panned(ch: Self::Chan, cw_rot: f64) -> Self {
+    fn from_channel_pan(ch: Self::Chan, cw_rot: f64) -> Self {
         let mut out = [Self::Chan::MID; 8];
 
         // Convert to widdershins rotations offset by a quarter clockwise (-ws).
@@ -79,7 +112,7 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin {
 
         // Cycle through configurations.
         for (i, dst) in Self::CONFIG.iter().enumerate() {
-            out[i] = Self::Chan::from(ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]));
+            out[i] = Self::Chan::from_f64(ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]));
         }
 
         Self::from_channels(&out)
@@ -88,8 +121,8 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Pan a mono sample into this Sample type, units are in clockwise
     /// rotations.
     #[inline(always)]
-    fn from_mono_panned(ch: Mono<Self::Chan>, cw_rot: f64) -> Self {
-        Self::from_channel_panned(ch.channels()[0], cw_rot)
+    fn from_mono_pan(ch: Mono<Self::Chan>, cw_rot: f64) -> Self {
+        Self::from_channel_pan(ch.channels()[0], cw_rot)
     }
 
     /// Linear interpolation.

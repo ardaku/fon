@@ -10,6 +10,7 @@
 
 //! Stereo speaker configuration and types.
 
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
     Frame,
@@ -49,6 +50,86 @@ impl<C: Channel> Frame for Stereo<C> {
 
     fn from_channels(ch: &[Self::Chan]) -> Self {
         Self::new::<C>(ch[0], ch[1])
+    }
+}
+
+impl<C: Channel> AddAssign for Stereo<C> {
+    fn add_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan += *ch;
+        }
+    }
+}
+
+impl<C: Channel> Add for Stereo<C> {
+    type Output = Stereo<C>;
+
+    fn add(mut self, other: Self) -> Self {
+        self += other;
+        self
+    }
+}
+
+impl<C: Channel> SubAssign for Stereo<C> {
+    fn sub_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan -= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Sub for Stereo<C> {
+    type Output = Stereo<C>;
+
+    fn sub(mut self, other: Self) -> Self {
+        self -= other;
+        self
+    }
+}
+
+impl<C: Channel> MulAssign for Stereo<C> {
+    fn mul_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan *= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Mul for Stereo<C> {
+    type Output = Stereo<C>;
+
+    fn mul(mut self, other: Self) -> Self {
+        self *= other;
+        self
+    }
+}
+
+impl<C: Channel> DivAssign for Stereo<C> {
+    fn div_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan /= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Div for Stereo<C> {
+    type Output = Stereo<C>;
+
+    fn div(mut self, other: Self) -> Self {
+        self /= other;
+        self
+    }
+}
+
+impl<C: Channel> Neg for Stereo<C> {
+    type Output = Stereo<C>;
+
+    #[inline(always)]
+    fn neg(mut self) -> Self {
+        for chan in self.channels.iter_mut() {
+            *chan = -*chan;
+        }
+        self
     }
 }
 

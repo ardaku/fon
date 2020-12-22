@@ -21,12 +21,12 @@ pub trait Channel:
     Copy
     + Debug
     + Default
-    + From<f64>
     + PartialOrd
     + Add<Output = Self>
     + Div<Output = Self>
     + Mul<Output = Self>
     + Sub<Output = Self>
+    + Neg<Output = Self>
     + AddAssign
     + SubAssign
     + DivAssign
@@ -53,6 +53,9 @@ pub trait Channel:
 
     /// Convert to `f64`
     fn to_f64(self) -> f64;
+    
+    /// Convert from `f64`
+    fn from_f64(from: f64) -> Self;
 
     /// Linear interpolation
     #[inline(always)]
@@ -488,6 +491,11 @@ impl Channel for Ch8 {
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
     }
+    
+    #[inline(always)]
+    fn from_f64(from: f64) -> Self {
+        Self::from(Ch64::new(from))
+    }
 }
 
 // test: all
@@ -499,6 +507,11 @@ impl Channel for Ch16 {
     #[inline(always)]
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
+    }
+    
+    #[inline(always)]
+    fn from_f64(from: f64) -> Self {
+        Self::from(Ch64::new(from))
     }
 }
 
@@ -512,6 +525,11 @@ impl Channel for Ch32 {
     fn to_f64(self) -> f64 {
         self.0 as f64
     }
+    
+    #[inline(always)]
+    fn from_f64(from: f64) -> Self {
+        Self(from as f32)
+    }
 }
 
 // test: all
@@ -524,37 +542,10 @@ impl Channel for Ch64 {
     fn to_f64(self) -> f64 {
         self.0
     }
-}
-
-// test:
-impl From<f64> for Ch8 {
+    
     #[inline(always)]
-    fn from(value: f64) -> Self {
-        Ch64::new(value).into()
-    }
-}
-
-// test:
-impl From<f64> for Ch16 {
-    #[inline(always)]
-    fn from(value: f64) -> Self {
-        Ch64::new(value).into()
-    }
-}
-
-// test:
-impl From<f64> for Ch32 {
-    #[inline(always)]
-    fn from(value: f64) -> Self {
-        Ch64::new(value).into()
-    }
-}
-
-// test:
-impl From<f64> for Ch64 {
-    #[inline(always)]
-    fn from(value: f64) -> Self {
-        Ch64::new(value)
+    fn from_f64(from: f64) -> Self {
+        Self(from)
     }
 }
 
