@@ -72,7 +72,7 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
 
     /// Pan a channel into this Sample type, units are in clockwise rotations.
     fn from_channel_panned(ch: Self::Chan, cw_rot: f64) -> Self {
-        let mut out = [Self::Chan::default(); 8];
+        let mut out = [Self::Chan::MID; 8];
 
         // Convert to widdershins rotations offset by a quarter clockwise (-ws).
         let ws_rot = 1.0 - (cw_rot + 0.25) % 1.0;
@@ -118,36 +118,20 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
     /// Convert a sample to another format.
     #[inline(always)]
     fn convert<D: Sample>(self) -> D {
-        // Limit to 8 channels.
-        let output = &mut [0.0f64; 8][..D::CONFIG.len()];
-        let mut config = Self::CONFIG.iter().enumerate().peekable();
+        let mut out = [D::Chan::MID; 8];
 
-        for (i, out) in output.iter_mut().enumerate() {
-            let [out_start, out_end] = D::CONFIG[i];
-            let one = out_end - out_start;
-
-            // Calculate amount of each input to go in the output.
-            'amt: while let Some((j, [start, end])) = config.peek() {
-                if *end > out_end {
-                    let cover = 1.0 - (start / one);
-                    *out += cover * self.channels()[*j].to_f64();
-                    // Should be reused if falls after, end of arc.
-                    break 'amt;
-                }
-                let cover = (end - start) / one;
-                *out += cover * self.channels()[*j].to_f64();
-                // unwrap: never fails because of previous peek.
-                config.next().unwrap();
+        // Cycle through configurations.
+        for (j, src) in Self::CONFIG.iter().enumerate() {
+            dbg!(self.channels()[j]);
+            let ch = self.channels()[j].to_f64();
+            for (i, dst) in D::CONFIG.iter().enumerate() {
+                dbg!(ch, src, dst);
+                dbg!(arc_cover(*dst, *src));
+                out[i] += D::Chan::from(Ch64::new(ch * arc_cover(*dst, *src)));
             }
         }
 
-        let out = &mut [D::Chan::default(); 8][..];
-
-        for (o, i) in out.iter_mut().zip(output.iter()) {
-            *o = D::Chan::from(Ch64::from(*i));
-        }
-
-        D::from_channels(out)
+        D::from_channels(&out)
     }
 }
 

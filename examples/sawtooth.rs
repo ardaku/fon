@@ -9,7 +9,7 @@ fn main() {
         s.channels_mut()[0] = Ch8::new((i as i16 - 128) as i8);
     }
     // Convert to stereo 16-Bit 48_000 KHz audio format
-    let audio = Audio::<Mono8>::with_audio(44_100, &a);
+    let audio = Audio::<Mono8>::with_audio(48_000, &a);
 
     // Print out original wave.
     /*for sample in a.as_i8_slice() {

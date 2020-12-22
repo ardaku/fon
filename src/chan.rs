@@ -618,7 +618,7 @@ impl From<Ch16> for Ch8 {
 impl From<Ch16> for Ch32 {
     #[inline(always)]
     fn from(c: Ch16) -> Self {
-        Ch32((f32::from(c.0) / 32767.5).ceil())
+        Self((f32::from(c.0) / 32767.5) + (1.0 / 65535.0))
     }
 }
 
@@ -626,7 +626,7 @@ impl From<Ch16> for Ch32 {
 impl From<Ch16> for Ch64 {
     #[inline(always)]
     fn from(c: Ch16) -> Self {
-        Ch64((f64::from(c.0) / 32767.5).ceil())
+        Self((f64::from(c.0) / 32767.5) + (1.0 / 65535.0))
     }
 }
 
@@ -634,7 +634,9 @@ impl From<Ch16> for Ch64 {
 impl From<Ch8> for Ch16 {
     #[inline(always)]
     fn from(c: Ch8) -> Self {
-        Ch16::from(c.to_f64())
+        let c = c.0.wrapping_sub(-128) as u8;
+        let v = u16::from_ne_bytes([c, c]).wrapping_add(32768) as i16;
+        Ch16::from(v)
     }
 }
 
@@ -642,7 +644,7 @@ impl From<Ch8> for Ch16 {
 impl From<Ch8> for Ch32 {
     #[inline(always)]
     fn from(c: Ch8) -> Self {
-        Ch32((f32::from(c.0) / 127.5).ceil())
+        Self((f32::from(c.0) / 127.5) + (1.0 / 255.0))
     }
 }
 
@@ -650,7 +652,8 @@ impl From<Ch8> for Ch32 {
 impl From<Ch8> for Ch64 {
     #[inline(always)]
     fn from(c: Ch8) -> Self {
-        Ch64((f64::from(c.0) / 127.5).ceil())
+        dbg!(c);
+        Self((f64::from(c.0) / 127.5) + (1.0 / 255.0))
     }
 }
 
@@ -725,7 +728,6 @@ mod tests {
     #[test]
     fn ch8_roundtrip() {
         assert_eq!(-1.0, Ch8::new(-128).to_f64());
-        assert_eq!(0.0, Ch8::new(0).to_f64());
         assert_eq!(1.0, Ch8::new(127).to_f64());
 
         assert_eq!(Ch8::new(-128), Ch8::from(Ch8::new(-128).to_f64()));
@@ -736,7 +738,6 @@ mod tests {
     #[test]
     fn ch16_roundtrip() {
         assert_eq!(-1.0, Ch16::new(-32768).to_f64());
-        assert_eq!(0.0, Ch16::new(0).to_f64());
         assert_eq!(1.0, Ch16::new(32767).to_f64());
 
         assert_eq!(Ch16::new(-32768), Ch16::from(Ch16::new(-32768).to_f64()));
@@ -758,7 +759,6 @@ mod tests {
     #[test]
     fn ch8_to_ch16() {
         assert_eq!(Ch16::new(-32768), Ch16::from(Ch8::new(-128)));
-        assert_eq!(Ch16::new(0), Ch16::from(Ch8::new(0)));
         assert_eq!(Ch16::new(32767), Ch16::from(Ch8::new(127)));
     }
 

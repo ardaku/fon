@@ -69,12 +69,12 @@ impl<S: Sample> Audio<S> {
 
     /// Returns an iterator over the samples.
     pub fn iter(&self) -> std::slice::Iter<'_, S> {
-        self.samples().iter()
+        self.samples.iter()
     }
 
     /// Returns an iterator that allows modifying each sample.
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, S> {
-        self.samples_mut().iter_mut()
+        self.samples.iter_mut()
     }
 
     /// Construct an `Audio` buffer with all samples set to one value.
