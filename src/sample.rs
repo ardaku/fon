@@ -122,11 +122,8 @@ pub trait Sample: Clone + Copy + Debug + Default + PartialEq + Unpin {
 
         // Cycle through configurations.
         for (j, src) in Self::CONFIG.iter().enumerate() {
-            dbg!(self.channels()[j]);
             let ch = self.channels()[j].to_f64();
             for (i, dst) in D::CONFIG.iter().enumerate() {
-                dbg!(ch, src, dst);
-                dbg!(arc_cover(*dst, *src));
                 out[i] += D::Chan::from(Ch64::new(ch * arc_cover(*dst, *src)));
             }
         }

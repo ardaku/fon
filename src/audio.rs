@@ -10,7 +10,7 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    mono::Mono,
+    mono::{Mono, Mono64},
     ops::Blend,
     sample::Sample,
     Resampler, Sink, Stream,
@@ -97,35 +97,46 @@ impl<S: Sample> Audio<S> {
         S::Chan: From<SrcS::Chan>,
     {
         let src_sr = src.sample_rate();
+
+        // Check if resampling can be skipped.
         if src_sr == s_rate {
-            println!("NR");
             let mut dst = Audio::with_silence(src_sr, src.len());
-            // No Resampling Necessary
+
             for (dst, src) in dst.samples.iter_mut().zip(src.samples.iter()) {
                 *dst = src.convert();
-                dbg!((dst, src));
             }
 
-            dst
-        } else {
-            println!("RN");
-            // Resampling Necessary
-            let sr_rat = s_rate as f64 / src_sr as f64; // Length ratio
-            let dstlen = (sr_rat * src.len() as f64) as usize;
-            let mut dst = Audio::with_silence(s_rate, dstlen);
-
-            for (i, dst) in dst.samples.iter_mut().enumerate() {
-                let i = sr_rat * i as f64;
-                let j = (i.trunc() as usize).min(src.len() - 1);
-                let k = (j + 1).min(src.len() - 1);
-                let f = SrcS::from_channels(&[SrcS::Chan::from(Ch64::new(i.fract()))]);
-                let first = src.samples[j];
-                let second = src.samples[k];
-                *dst = (first.lerp(second, f)).convert();
-            }
-
-            dst
+            return dst;
         }
+
+        // Calculate ratio of how many destination samples per source samples.
+        let sr_rat = s_rate as f64 / src_sr as f64;
+        // Calculate total number of samples for destination.
+        let dstlen = (sr_rat * src.len() as f64) as usize;
+        // Calculate the index multiplier.
+        let src_per_dst = (src.len() - 1) as f64 / (dstlen - 1) as f64;
+        // Generate silence for destination.
+        let mut dst = Audio::with_silence(s_rate, dstlen);
+
+        // Go through each destination sample and interpolate from source.
+        // FIXME: Optimize?
+        for (i, dst) in dst.samples.iter_mut().enumerate() {
+            // Get index in source.
+            let j = i as f64 * src_per_dst;
+            // Get floor at source index.
+            let floor: S = src.samples[j.floor() as usize].convert();
+            // Get ceiling at source index.
+            let ceil: S = src.samples[j.ceil() as usize].convert();
+            // Get interpolation amount.
+            let amt = j % 1.0;
+
+            dbg!(floor, ceil, amt);
+
+            // Interpolate between the samples.
+            *dst = floor.lerp(ceil, Mono64::new(Ch64::from(amt)).convert());
+        }
+
+        dst
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get

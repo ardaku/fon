@@ -172,7 +172,7 @@ impl<R: Into<Self>> Sub<R> for Ch8 {
 
     #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        self + -rhs.into()
+        Self(self.0.saturating_sub(rhs.into().0))
     }
 }
 
@@ -182,7 +182,7 @@ impl<R: Into<Self>> Sub<R> for Ch16 {
 
     #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        self + -rhs.into()
+        Self(self.0.saturating_sub(rhs.into().0))
     }
 }
 
@@ -192,7 +192,7 @@ impl<R: Into<Self>> Sub<R> for Ch32 {
 
     #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        self + -rhs.into()
+        Self((self.0 - rhs.into().0).min(1.0).max(-1.0))
     }
 }
 
@@ -202,7 +202,7 @@ impl<R: Into<Self>> Sub<R> for Ch64 {
 
     #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        self + -rhs.into()
+        Self((self.0 - rhs.into().0).min(1.0).max(-1.0))
     }
 }
 
@@ -652,7 +652,6 @@ impl From<Ch8> for Ch32 {
 impl From<Ch8> for Ch64 {
     #[inline(always)]
     fn from(c: Ch8) -> Self {
-        dbg!(c);
         Self((f64::from(c.0) / 127.5) + (1.0 / 255.0))
     }
 }
@@ -777,9 +776,9 @@ mod tests {
         assert_eq!(Ch8::new(127), Ch8::new(0) + Ch8::new(127));
         assert_eq!(Ch8::new(-128), Ch8::new(-64) + Ch8::new(-64));
         // Test subtraction
-        assert_eq!(Ch8::new(-1), Ch8::new(-128) - Ch8::new(-128));
-        assert_eq!(Ch8::new(-1), Ch8::new(127) - Ch8::new(127));
-        assert_eq!(Ch8::new(-128), Ch8::new(0) - Ch8::new(127));
+        assert_eq!(Ch8::new(0), Ch8::new(-128) - Ch8::new(-128));
+        assert_eq!(Ch8::new(0), Ch8::new(127) - Ch8::new(127));
+        assert_eq!(Ch8::new(-127), Ch8::new(0) - Ch8::new(127));
         // Test multiplication
         assert_eq!(Ch8::new(0), Ch8::new(0) * Ch8::new(127));
         assert_eq!(Ch8::new(127), Ch8::new(127) * Ch8::new(127));
@@ -803,9 +802,9 @@ mod tests {
         assert_eq!(Ch16::new(32767), Ch16::new(0) + Ch16::new(32767));
         assert_eq!(Ch16::new(-32768), Ch16::new(-16384) + Ch16::new(-16384));
         // Test subtraction
-        assert_eq!(Ch16::new(-1), Ch16::new(-32768) - Ch16::new(-32768));
-        assert_eq!(Ch16::new(-1), Ch16::new(32767) - Ch16::new(32767));
-        assert_eq!(Ch16::new(-32768), Ch16::new(0) - Ch16::new(32767));
+        assert_eq!(Ch16::new(0), Ch16::new(-32768) - Ch16::new(-32768));
+        assert_eq!(Ch16::new(0), Ch16::new(32767) - Ch16::new(32767));
+        assert_eq!(Ch16::new(-32767), Ch16::new(0) - Ch16::new(32767));
         // Test multiplication
         assert_eq!(Ch16::new(0), Ch16::new(0) * Ch16::new(32767));
         assert_eq!(Ch16::new(32767), Ch16::new(32767) * Ch16::new(32767));
