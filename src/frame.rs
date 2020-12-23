@@ -186,7 +186,7 @@ impl<T: Frame> crate::Stream<T> for T {
         None
     }
 
-    fn size(&self) -> Option<usize> {
+    fn len(&self) -> Option<usize> {
         None
     }
 }

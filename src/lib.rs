@@ -32,7 +32,7 @@
 //!     s.channels_mut()[0] = Ch8::new(i as i8);
 //! }
 //! // Convert to stereo 16-Bit 48_000 KHz audio format
-//! let audio = Audio::<Stereo16>::with_audio(48_000, &a);
+//! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
 //! ```
 //!
 //! To understand some of the concepts used in this library, I think
@@ -90,11 +90,3 @@ pub mod surround;
 pub use audio::Audio;
 pub use frame::Frame;
 pub use streaming::{Resampler, Sink, Stream};
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}

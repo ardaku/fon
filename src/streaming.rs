@@ -41,7 +41,7 @@ pub trait Sink<F: Frame>: Sized {
 
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
     #[inline(always)]
-    fn sink<S: Frame, M: Stream<S>>(&mut self, stream: &mut M) {
+    fn sink<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
             self.sample_rate() / stream_sr
@@ -57,8 +57,8 @@ pub trait Sink<F: Frame>: Sized {
         }
 
         // Go through each source sample and add to destination.
-        let mut srclen = stream.size();
-        for (i, src) in stream.enumerate() {
+        let mut srclen = stream.len();
+        for (i, src) in stream.into_iter().enumerate() {
             // Calculate destination index.
             let j = ratio * i as f64 + self.resampler().offseti;
             let ceil = math::ceil_usize(j);
@@ -89,7 +89,7 @@ pub trait Sink<F: Frame>: Sized {
 
 /// Audio stream - a type that generates audio (may be *infinite*, but is not
 /// required).
-pub trait Stream<F: Frame>: Sized + Iterator<Item = F> {
+pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
     /// Get the (source) sample rate of the stream.
     fn sample_rate(&self) -> Option<f64>;
 
@@ -99,8 +99,7 @@ pub trait Stream<F: Frame>: Sized + Iterator<Item = F> {
         panic!("set_sample_rate() called on a fixed-sample rate stream!")
     }
 
-    /// Like [`Iterator::size_hint`](core::iter::Iterator::size_hint), except
-    /// that the size is known.  Returns the remaining length of the stream
-    /// exactly.
-    fn size(&self) -> Option<usize>;
+    /// Returns the length of the stream exactly.  `None` represents an infinite
+    /// iterator.
+    fn len(&self) -> Option<usize>;
 }

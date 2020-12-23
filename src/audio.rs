@@ -10,7 +10,7 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
-    math, Frame, Resampler, Sink, Stream,
+    Frame, Resampler, Sink, Stream,
 };
 use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
@@ -18,6 +18,7 @@ use core::{
     mem::{size_of, swap},
     ops::{Bound::*, RangeBounds},
     slice::{from_raw_parts_mut, Iter, IterMut, SliceIndex},
+    iter::Cloned,
 };
 
 // Channel Identification
@@ -80,63 +81,32 @@ impl<F: Frame> Audio<F> {
         Self::with_frame(s_rate, len, F::default())
     }
 
-    /// Construct an `Audio` buffer with another `Audio` buffer.
+    /// Construct an [`Audio`](crate::Audio) buffer from the contents of a
+    /// [`Stream`](crate::Stream).
     ///
     /// The audio format can be converted with this function.
-    // FIXME: Change to `with_stream`
-    pub fn with_audio<S: Frame, R>(s_rate: R, src: &Audio<S>) -> Self
+    ///
+    /// # Panics
+    /// When an infinite stream is passed in.
+    pub fn with_stream<S, R, M>(s_rate: R, src: M) -> Self
     where
         F::Chan: From<S::Chan>,
-        R: Into<f64>,
+        R: Into<f64>, M: Stream<S>, S: Frame,
     {
         let s_rate = s_rate.into();
+    
+        // Get stream length.
+        let srclen = src.len().expect("Audio::with_stream() called on infinite stream.");
 
-        // FIXME: Use Stream and Sink traits.
+        // Get source stream sample rate.
+        let dstlen = if let Some(src_sr) = src.sample_rate() {
+            (s_rate * srclen as f64 / src_sr) as usize + 1
+        } else {
+            srclen
+        };
 
-        let src_sr = src.sample_rate();
-
-        // Check if resampling can be skipped.
-        if src_sr == s_rate {
-            let mut dst = Audio::with_silence(src_sr, src.len());
-
-            for (dst, src) in dst.iter_mut().zip(src.iter()) {
-                *dst = src.convert();
-            }
-
-            return dst;
-        }
-
-        // Calculate ratio of how many destination samples per source samples.
-        let sr_rat = s_rate as f64 / src_sr as f64;
-        // Calculate total number of samples for destination.
-        let dstlen = (sr_rat * src.len() as f64) as usize;
-        // Generate silence for destination.
         let mut dst = Audio::with_silence(s_rate, dstlen);
-
-        // Resampler Context.
-        let mut partial = F::default();
-        let mut offseti = 0.0;
-
-        // Add left over audio.
-        *dst.get_mut(0).unwrap() = partial;
-
-        // Go through each source sample and add to destination.
-        for (i, src) in src.iter().enumerate() {
-            // Calculate destination index.
-            let i = sr_rat * i as f64 + offseti;
-            let ceil = math::ceil_usize(i);
-            let floor = i as usize;
-            let ceil_f64 = (i % 1.0).min(sr_rat);
-            let ceil_a = F::from_f64(ceil_f64);
-            let floor_a = F::from_f64(sr_rat - ceil_f64);
-            let src: F = src.convert();
-            *dst.get_mut(floor).unwrap() += src * floor_a;
-            *dst.get_mut(ceil).unwrap_or(&mut partial) += src * ceil_a;
-        }
-
-        // Set offseti
-        offseti = (sr_rat * (src.len() - 1) as f64 + offseti) % 1.0;
-
+        dst.sink(..).sink(src);
         dst
     }
 
@@ -260,7 +230,7 @@ impl<F: Frame> Audio<F> {
     >(
         &'a self,
         reg: R,
-    ) -> impl Stream<F> + 'a {
+    ) -> impl Stream<F> + '_ {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         let index = match reg.start_bound() {
             Unbounded => 0,
@@ -291,7 +261,7 @@ impl<F: Frame> Audio<F> {
     >(
         &'a mut self,
         reg: R,
-    ) -> impl Stream<F> + 'a {
+    ) -> impl Stream<F> + '_ {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         let index = match reg.start_bound() {
             Unbounded => 0,
@@ -322,7 +292,7 @@ impl<F: Frame> Audio<F> {
     >(
         &'a mut self,
         reg: R,
-    ) -> impl Sink<F> + 'a {
+    ) -> impl Sink<F> + '_ {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         AudioSink {
             cursor: match reg.start_bound() {
@@ -441,6 +411,25 @@ impl<F: Frame<Chan = Ch64>> Audio<F> {
     }
 }
 
+impl<'a, F: Frame> IntoIterator for &'a Audio<F> {
+    type IntoIter = Cloned<Iter<'a, F>>;
+    type Item = F;
+
+    fn into_iter(self) -> Cloned<Iter<'a, F>> {
+        self.frames.iter().cloned()
+    }
+}
+
+impl<F: Frame> Stream<F> for &Audio<F> {
+    fn sample_rate(&self) -> Option<f64> {
+        Some(self.s_rate)
+    }
+
+    fn len(&self) -> Option<usize> {
+        Some(self.frames.len())
+    }
+}
+
 /// A `Sink` created with `Audio.sink()`
 struct AudioSink<
     'a,
@@ -503,7 +492,7 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
         Some(self.audio.sample_rate())
     }
 
-    fn size(&self) -> Option<usize> {
+    fn len(&self) -> Option<usize> {
         Some(self.size)
     }
 }
@@ -547,7 +536,7 @@ impl<
         Some(self.audio.sample_rate())
     }
 
-    fn size(&self) -> Option<usize> {
+    fn len(&self) -> Option<usize> {
         Some(self.size)
     }
 }
