@@ -10,7 +10,7 @@
 
 //! Surround Sound 5.1 speaker configuration and types.
 
-use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
     Frame,
@@ -145,6 +145,14 @@ impl<C: Channel> Neg for Surround<C> {
             *chan = -*chan;
         }
         self
+    }
+}
+
+impl<C: Channel> Iterator for Surround<C> {
+    type Item = Self;
+
+    fn next(&mut self) -> Option<Self> {
+        Some(*self)
     }
 }
 

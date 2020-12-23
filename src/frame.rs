@@ -15,7 +15,7 @@ use crate::{
     mono::Mono,
     ops::Blend,
 };
-use std::{fmt::Debug, mem::size_of, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},};
+use core::{fmt::Debug, mem::size_of, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},};
 
 /// Returns how much src covers dst.  Units are counterclockwise from 0 to 1+
 fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
@@ -55,6 +55,7 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
     + Mul<Output = Self>
     + Sub<Output = Self>
     + Neg<Output = Self>
+    + Iterator<Item = Self>
     + AddAssign
     + SubAssign
     + DivAssign
@@ -166,21 +167,11 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
 }
 
 impl<T: Frame> crate::Stream<T> for T {
-    fn stream<O: Blend, K: crate::Sink>(&mut self, sink: &mut K, op: O) {
-        for _ in 0..sink.capacity() {
-            sink.sink_sample(*self, op);
-        }
+    fn sample_rate(&self) -> Option<f64> {
+        None
     }
 
-    fn sample_rate(&self) -> u32 {
-        panic!("No sample rate for constant stream.")
-    }
-
-    fn stream_sample(&mut self) -> Option<T> {
-        Some(*self)
-    }
-
-    fn resampler(&mut self) -> &mut crate::Resampler<T> {
-        panic!("No resampler for constant stream.")
+    fn size(&self) -> Option<usize> {
+        None
     }
 }

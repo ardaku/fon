@@ -35,6 +35,11 @@
 //! let audio = Audio::<Stereo16>::with_audio(48_000, &a);
 //! ```
 //!
+//! To understand some of the concepts used in this library, I think
+//! [this MDN article] is a good read (although the stuff about compression
+//! isn't relevant to this crate's functionality).  This crate uses the MDN
+//! definitions for what an audio frame and audio channel are.
+//!
 //! [audio buffer]: crate::Audio
 //! [8]: crate::chan::Ch8
 //! [16]: crate::chan::Ch16
@@ -44,6 +49,32 @@
 //! [Stereo]: crate::stereo::Stereo
 //! [5.1 Surround]: crate::surround::Surround
 //! [operations]: crate::ops
+//! [this]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
+
+#![no_std]
+#![doc(
+    html_logo_url = "https://libcala.github.io/logo.svg",
+    html_favicon_url = "https://libcala.github.io/icon.svg",
+    html_root_url = "https://docs.rs/fon"
+)]
+// #![deny(unsafe_code)]
+#![warn(
+    anonymous_parameters,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    nonstandard_style,
+    rust_2018_idioms,
+    single_use_lifetimes,
+    trivial_casts,
+    trivial_numeric_casts,
+    unreachable_pub,
+    unused_extern_crates,
+    unused_qualifications,
+    variant_size_differences
+)]
+
+extern crate alloc;
 
 mod audio;
 pub mod chan;
@@ -54,6 +85,7 @@ mod private;
 pub mod stereo;
 mod streaming;
 pub mod surround;
+mod math;
 
 pub use audio::Audio;
 pub use frame::Frame;

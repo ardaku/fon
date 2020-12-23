@@ -9,19 +9,16 @@
 // according to those terms.
 
 use crate::{
-    chan::{Ch64, Channel},
-    mono::Mono,
-    ops::Blend,
-    Frame,
+    Frame, math
 };
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Resampler<F: Frame> {
-    /// How much of an audio frame is represented by `part`
-    phase: f64,
-    /// A last audio frame read
-    part: F,
+    /// Left over partial frame.
+    partial: F,
+    /// Left over partial index.
+    offseti: f64,
 }
 
 impl<F: Frame> Resampler<F> {
@@ -31,128 +28,79 @@ impl<F: Frame> Resampler<F> {
     }
 }
 
-/// Audio sink - a type that consumes a *finite* number of audio samples.
-pub trait Sink: Sized {
-    /// Transfer the audio from a `Stream` into a `Sink`.
-    fn sink<O: Blend, Z: Frame, M: Stream<Z>>(&mut self, stream: &mut M, op: O) {
-        stream.stream(self, op)
-    }
+/// Audio sink - a type that consumes audio samples.
+pub trait Sink<F: Frame>: Sized {
+    /// Get the (target) sample rate of the [`Sink`](crate::Sink).
+    fn sample_rate(&self) -> f64;
 
-    /// Transfer the audio from a `Stream` panned left or right into a `Sink`.
-    ///
-    /// Pan of 0 is front, negative pan for left (-0.5 is back), and positive
-    /// pan for right (0.5 is also back).  Values outside the range will wrap.
-    fn sink_panned<O: Blend, C: Channel, M: Stream<Mono<C>>>(
-        &mut self,
-        stream: &mut M,
-        op: O,
-        pan: f64,
-    ) {
-        // Silence
-        let zero = Mono::new(C::MID);
+    /// Get the [`Resampler`](crate::Resampler) context for this
+    /// [`Sink`](crate::Sink).
+    fn resampler(&mut self) -> &mut Resampler<F>;
 
-        // Faster algorithm if sample rates match.
-        if stream.sample_rate() == self.sample_rate() {
-            for _ in 0..self.capacity() {
-                self.sink_sample(stream.stream_sample().unwrap_or(zero), op)
-            }
-            return;
+    /// Get the (target) audio [Frame](crate::Frame) buffer of the
+    /// [`Sink`](crate::Sink).
+    fn buffer(&mut self) -> &mut [F];
+
+    /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
+    #[inline(always)]
+    fn sink<S: Frame, M: Stream<S>>(&mut self, stream: &mut M) {
+        // Ratio of destination samples per stream samples.
+        let ratio = if let Some(stream_sr) = stream.sample_rate() {
+            self.sample_rate() / stream_sr
+        } else {
+            stream.set_sample_rate(self.sample_rate());
+            1.0
+        };
+
+        // Add left over audio.
+        let partial = self.resampler().partial;
+        if let Some(dst) = self.buffer().get_mut(0) {
+            *dst = partial;
         }
 
-        // How many samples to read for each sample written.
-        let sr_ratio = stream.sample_rate() as f64 / self.sample_rate() as f64;
-
-        // Write into the entire capacity of the `Sink`.
-        for _ in 0..self.capacity() {
-            let old_phase = stream.resampler().phase;
-            // Increment phase
-            stream.resampler().phase += sr_ratio;
-
-            if stream.resampler().phase >= 1.0 {
-                // Value is always overwritten, but Rust compiler can't prove it
-                let mut sample = zero;
-                // Read one or more samples to interpolate & write out
-                while stream.resampler().phase >= 1.0 {
-                    sample = stream.stream_sample().unwrap_or(zero);
-                    stream.resampler().phase = stream.resampler().phase - 1.0;
-                    stream.resampler().part = sample;
-                }
-                let amount = Mono::new::<C>(Ch64::new(old_phase).into());
-                let sample = stream.resampler().part.lerp(sample, amount);
-                self.sink_sample_panned(sample, op, pan);
+        // Go through each source sample and add to destination.
+        let mut srclen = stream.size();
+        for (i, src) in stream.enumerate() {
+            // Calculate destination index.
+            let j = ratio * i as f64 + self.resampler().offseti;
+            let ceil = math::ceil_usize(j);
+            let floor = j as usize;
+            let ceil_f64 = (j % 1.0).min(ratio);
+            let ceil_a = F::from_f64(ceil_f64);
+            let floor_a = F::from_f64(ratio - ceil_f64);
+            let src: F = src.convert();
+            if let Some(buf) = self.buffer().get_mut(floor) {
+                *buf += src * floor_a;
             } else {
-                // Don't read any samples - copy & write the last one
-                self.sink_sample_panned(stream.resampler().part, op, pan);
+                srclen = Some(i);
+                break;
+            }
+            if let Some(buf) = self.buffer().get_mut(ceil) {
+                *buf += src * ceil_a;
+            } else {
+                self.resampler().partial += src * ceil_a;
             }
         }
+
+        // Set offseti
+        self.resampler().offseti = (ratio * (srclen.unwrap() - 1) as f64 + self.resampler().offseti) % 1.0;
     }
-
-    /// Get the (target) sample rate of the sink.
-    fn sample_rate(&self) -> u32;
-
-    /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<O: Blend, Z: Frame>(&mut self, sample: Z, op: O);
-
-    /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample_panned<O: Blend, C: Channel>(&mut self, sample: Mono<C>, op: O, pan: f64);
-
-    /// Get the (target) capacity of the sink.  Returns the number of times it's
-    /// permitted to call `sink_sample()`.  Additional calls over capacity
-    /// should wrap around to the beginning of the buffer.
-    fn capacity(&self) -> usize;
 }
 
 /// Audio stream - a type that generates audio (may be *infinite*, but is not
 /// required).
-pub trait Stream<F: Frame>: Sized {
-    /// Transfer the audio from a `Stream` into a `Sink`.  You may write to the
-    /// same sink multiple times, blending audio with `Blend` operations.
-    fn stream<O: Blend, K: Sink>(&mut self, sink: &mut K, op: O) {
-        // Silence
-        let zero = Mono::<F::Chan>::new::<F::Chan>(F::Chan::MID).convert();
+pub trait Stream<F: Frame>: Sized + Iterator<Item = F> {
+    /// Get the (source) sample rate of the stream.
+    fn sample_rate(&self) -> Option<f64>;
 
-        // Faster algorithm if sample rates match.
-        if self.sample_rate() == sink.sample_rate() {
-            for _ in 0..sink.capacity() {
-                sink.sink_sample(self.stream_sample().unwrap_or(zero), op)
-            }
-            return;
-        }
-
-        // How many samples to read for each sample written.
-        let sr_ratio = self.sample_rate() as f64 / sink.sample_rate() as f64;
-
-        // Write into the entire capacity of the `Sink`.
-        for _ in 0..sink.capacity() {
-            let old_phase = self.resampler().phase;
-            // Increment phase
-            self.resampler().phase += sr_ratio;
-
-            if self.resampler().phase >= 1.0 {
-                // Value is always overwritten, but Rust compiler can't prove it
-                let mut sample = zero;
-                // Read one or more samples to interpolate & write out
-                while self.resampler().phase >= 1.0 {
-                    sample = self.stream_sample().unwrap_or(zero);
-                    self.resampler().phase = self.resampler().phase - 1.0;
-                    self.resampler().part = sample;
-                }
-                let amount = Mono::<F::Chan>::new(Ch64::new(old_phase)).convert();
-                let sample = self.resampler().part.lerp(sample, amount);
-                sink.sink_sample(sample, op);
-            } else {
-                // Don't read any samples - copy & write the last one
-                sink.sink_sample(self.resampler().part, op);
-            }
-        }
+    /// Set the source sample rate of the stream.  Will usually panic (default
+    /// behavior), unless the stream is configurable.
+    fn set_sample_rate(&mut self, _sr: f64) {
+        panic!("set_sample_rate() called on a fixed-sample rate stream!")
     }
 
-    /// Get the (source) sample rate of the stream.
-    fn sample_rate(&self) -> u32;
-
-    /// This function is called when a sink requests a sample from the stream.
-    fn stream_sample(&mut self) -> Option<F>;
-
-    /// Get this streams's resampler context.
-    fn resampler(&mut self) -> &mut Resampler<F>;
+    /// Like [`Iterator::size_hint`](core::iter::Iterator::size_hint), except
+    /// that the size is known.  Returns the remaining length of the stream
+    /// exactly.
+    fn size(&self) -> Option<usize>;
 }

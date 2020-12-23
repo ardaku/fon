@@ -10,7 +10,7 @@
 
 //! Component channels
 
-use crate::private::Sealed;
+use crate::{private::Sealed, math};
 use core::{
     fmt::Debug,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
@@ -553,7 +553,7 @@ impl Channel for Ch64 {
 impl From<Ch64> for Ch8 {
     #[inline(always)]
     fn from(value: Ch64) -> Self {
-        Ch8::new((value.0 * 127.5 as f64).floor() as i8)
+        Ch8::new(math::floor_i8(value.0 * 127.5))
     }
 }
 
@@ -561,7 +561,7 @@ impl From<Ch64> for Ch8 {
 impl From<Ch64> for Ch16 {
     #[inline(always)]
     fn from(value: Ch64) -> Self {
-        Ch16::new((value.0 * 32767.5 as f64).floor() as i16)
+        Ch16::new(math::floor_i16(value.0 * 32767.5))
     }
 }
 
@@ -577,7 +577,7 @@ impl From<Ch64> for Ch32 {
 impl From<Ch32> for Ch8 {
     #[inline(always)]
     fn from(value: Ch32) -> Self {
-        Ch8::new((value.0 * 127.5 as f32).floor() as i8)
+        Ch8::new(math::floorh_i8(value.0 * 127.5))
     }
 }
 
@@ -585,7 +585,7 @@ impl From<Ch32> for Ch8 {
 impl From<Ch32> for Ch16 {
     #[inline(always)]
     fn from(value: Ch32) -> Self {
-        Ch16::new((value.0 * 32767.5 as f32).floor() as i16)
+        Ch16::new(math::floorh_i16(value.0 * 32767.5))
     }
 }
 
@@ -720,9 +720,9 @@ mod tests {
         assert_eq!(-1.0, Ch8::new(-128).to_f64());
         assert_eq!(1.0, Ch8::new(127).to_f64());
 
-        assert_eq!(Ch8::new(-128), Ch8::from(Ch8::new(-128).to_f64()));
-        assert_eq!(Ch8::new(0), Ch8::from(Ch8::new(0).to_f64()));
-        assert_eq!(Ch8::new(127), Ch8::from(Ch8::new(127).to_f64()));
+        assert_eq!(Ch8::new(-128), Ch8::from_f64(Ch8::new(-128).to_f64()));
+        assert_eq!(Ch8::new(0), Ch8::from_f64(Ch8::new(0).to_f64()));
+        assert_eq!(Ch8::new(127), Ch8::from_f64(Ch8::new(127).to_f64()));
     }
 
     #[test]
@@ -730,9 +730,9 @@ mod tests {
         assert_eq!(-1.0, Ch16::new(-32768).to_f64());
         assert_eq!(1.0, Ch16::new(32767).to_f64());
 
-        assert_eq!(Ch16::new(-32768), Ch16::from(Ch16::new(-32768).to_f64()));
-        assert_eq!(Ch16::new(0), Ch16::from(Ch16::new(0).to_f64()));
-        assert_eq!(Ch16::new(32767), Ch16::from(Ch16::new(32767).to_f64()));
+        assert_eq!(Ch16::new(-32768), Ch16::from_f64(Ch16::new(-32768).to_f64()));
+        assert_eq!(Ch16::new(0), Ch16::from_f64(Ch16::new(0).to_f64()));
+        assert_eq!(Ch16::new(32767), Ch16::from_f64(Ch16::new(32767).to_f64()));
     }
 
     #[test]
@@ -741,9 +741,9 @@ mod tests {
         assert_eq!(0.0, Ch32::new(0.0).to_f64());
         assert_eq!(1.0, Ch32::new(1.0).to_f64());
 
-        assert_eq!(Ch32::new(-1.0), Ch32::from(Ch32::new(-1.0).to_f64()));
-        assert_eq!(Ch32::new(0.0), Ch32::from(Ch32::new(0.0).to_f64()));
-        assert_eq!(Ch32::new(1.0), Ch32::from(Ch32::new(1.0).to_f64()));
+        assert_eq!(Ch32::new(-1.0), Ch32::from_f64(Ch32::new(-1.0).to_f64()));
+        assert_eq!(Ch32::new(0.0), Ch32::from_f64(Ch32::new(0.0).to_f64()));
+        assert_eq!(Ch32::new(1.0), Ch32::from_f64(Ch32::new(1.0).to_f64()));
     }
 
     #[test]
