@@ -10,10 +10,12 @@
 
 //! Component channels
 
-use crate::{private::Sealed, math};
+use crate::{math, private::Sealed};
 use core::{
     fmt::Debug,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
+    },
 };
 
 /// Component of a speaker configuration, such as *front left*, *lfe*, *etc*.
@@ -53,7 +55,7 @@ pub trait Channel:
 
     /// Convert to `f64`
     fn to_f64(self) -> f64;
-    
+
     /// Convert from `f64`
     fn from_f64(from: f64) -> Self;
 
@@ -491,7 +493,7 @@ impl Channel for Ch8 {
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
     }
-    
+
     #[inline(always)]
     fn from_f64(from: f64) -> Self {
         Self::from(Ch64::new(from))
@@ -508,7 +510,7 @@ impl Channel for Ch16 {
     fn to_f64(self) -> f64 {
         Ch64::from(self).0
     }
-    
+
     #[inline(always)]
     fn from_f64(from: f64) -> Self {
         Self::from(Ch64::new(from))
@@ -525,7 +527,7 @@ impl Channel for Ch32 {
     fn to_f64(self) -> f64 {
         self.0 as f64
     }
-    
+
     #[inline(always)]
     fn from_f64(from: f64) -> Self {
         Self(from as f32)
@@ -542,7 +544,7 @@ impl Channel for Ch64 {
     fn to_f64(self) -> f64 {
         self.0
     }
-    
+
     #[inline(always)]
     fn from_f64(from: f64) -> Self {
         Self(from)
@@ -730,7 +732,10 @@ mod tests {
         assert_eq!(-1.0, Ch16::new(-32768).to_f64());
         assert_eq!(1.0, Ch16::new(32767).to_f64());
 
-        assert_eq!(Ch16::new(-32768), Ch16::from_f64(Ch16::new(-32768).to_f64()));
+        assert_eq!(
+            Ch16::new(-32768),
+            Ch16::from_f64(Ch16::new(-32768).to_f64())
+        );
         assert_eq!(Ch16::new(0), Ch16::from_f64(Ch16::new(0).to_f64()));
         assert_eq!(Ch16::new(32767), Ch16::from_f64(Ch16::new(32767).to_f64()));
     }

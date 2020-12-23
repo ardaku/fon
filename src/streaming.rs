@@ -8,9 +8,7 @@
 // at your option. This file may not be copied, modified, or distributed except
 // according to those terms.
 
-use crate::{
-    Frame, math
-};
+use crate::{math, Frame};
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
@@ -83,7 +81,9 @@ pub trait Sink<F: Frame>: Sized {
         }
 
         // Set offseti
-        self.resampler().offseti = (ratio * (srclen.unwrap() - 1) as f64 + self.resampler().offseti) % 1.0;
+        self.resampler().offseti = (ratio * (srclen.unwrap() - 1) as f64
+            + self.resampler().offseti)
+            % 1.0;
     }
 }
 

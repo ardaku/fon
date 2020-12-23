@@ -15,7 +15,13 @@ use crate::{
     mono::Mono,
     ops::Blend,
 };
-use core::{fmt::Debug, mem::size_of, ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},};
+use core::{
+    fmt::Debug,
+    mem::size_of,
+    ops::{
+        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
+    },
+};
 
 /// Returns how much src covers dst.  Units are counterclockwise from 0 to 1+
 fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
@@ -49,7 +55,13 @@ fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
 /// Frame - A number of interleaved sample [channel]s.
 ///
 /// [channel]: crate::chan::Channel
-pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
+pub trait Frame:
+    Clone
+    + Copy
+    + Debug
+    + Default
+    + PartialEq
+    + Unpin
     + Add<Output = Self>
     + Div<Output = Self>
     + Mul<Output = Self>
@@ -113,7 +125,9 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
 
         // Cycle through configurations.
         for (i, dst) in Self::CONFIG.iter().enumerate() {
-            out[i] = Self::Chan::from_f64(ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]));
+            out[i] = Self::Chan::from_f64(
+                ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]),
+            );
         }
 
         Self::from_channels(&out)
@@ -144,7 +158,8 @@ pub trait Frame: Clone + Copy + Debug + Default + PartialEq + Unpin
     where
         O: Blend,
     {
-        for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter()) {
+        for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter())
+        {
             O::synthesize(d, s)
         }
     }

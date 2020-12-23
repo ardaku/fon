@@ -10,10 +10,12 @@
 
 //! Mono speaker configuration and types.
 
-use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
     Frame,
+};
+use core::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
 
 /// Mono audio format (Audio [`Frame`](crate::frame::Frame) containing one

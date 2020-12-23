@@ -79,13 +79,13 @@ extern crate alloc;
 mod audio;
 pub mod chan;
 mod frame;
+mod math;
 pub mod mono;
 pub mod ops;
 mod private;
 pub mod stereo;
 mod streaming;
 pub mod surround;
-mod math;
 
 pub use audio::Audio;
 pub use frame::Frame;

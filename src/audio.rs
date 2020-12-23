@@ -10,17 +10,14 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
-    Frame, Resampler, Sink, Stream,
-    math,
+    math, Frame, Resampler, Sink, Stream,
 };
+use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
     fmt::Debug,
-    ops::{Bound::*, RangeBounds},
-    slice::{from_raw_parts_mut, SliceIndex, Iter, IterMut},
     mem::{size_of, swap},
-};
-use alloc::{
-    boxed::Box, vec::{Vec}, vec
+    ops::{Bound::*, RangeBounds},
+    slice::{from_raw_parts_mut, Iter, IterMut, SliceIndex},
 };
 
 // Channel Identification
@@ -89,10 +86,11 @@ impl<F: Frame> Audio<F> {
     // FIXME: Change to `with_stream`
     pub fn with_audio<S: Frame, R>(s_rate: R, src: &Audio<S>) -> Self
     where
-        F::Chan: From<S::Chan>, R: Into<f64>
+        F::Chan: From<S::Chan>,
+        R: Into<f64>,
     {
         let s_rate = s_rate.into();
-    
+
         // FIXME: Use Stream and Sink traits.
 
         let src_sr = src.sample_rate();
@@ -145,7 +143,10 @@ impl<F: Frame> Audio<F> {
     /// Construct an `Audio` buffer with owned sample data.   You can get
     /// ownership of the sample data back from the `Audio` buffer as either a
     /// `Vec<S>` or a `Box<[S]>` by calling into().
-    pub fn with_frames<B: Into<Box<[F]>>, R: Into<f64>>(s_rate: R, frames: B) -> Self {
+    pub fn with_frames<B: Into<Box<[F]>>, R: Into<f64>>(
+        s_rate: R,
+        frames: B,
+    ) -> Self {
         let s_rate = s_rate.into();
         let frames = frames.into();
         Audio { s_rate, frames }
@@ -253,7 +254,10 @@ impl<F: Frame> Audio<F> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn stream<'a, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + 'a>(
+    pub fn stream<
+        'a,
+        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + 'a,
+    >(
         &'a self,
         reg: R,
     ) -> impl Stream<F> + 'a {
@@ -268,7 +272,7 @@ impl<F: Frame> Audio<F> {
             Included(index) => *index + 1,
             Excluded(index) => *index,
         };
-        
+
         AudioStream {
             cursor: index,
             size: until - index,
@@ -281,7 +285,10 @@ impl<F: Frame> Audio<F> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn drain<'a, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone + 'a>(
+    pub fn drain<
+        'a,
+        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone + 'a,
+    >(
         &'a mut self,
         reg: R,
     ) -> impl Stream<F> + 'a {
@@ -309,7 +316,10 @@ impl<F: Frame> Audio<F> {
     ///
     /// # Panics
     /// If range is out of bounds
-    pub fn sink<'a, R: 'a + RangeBounds<usize> + SliceIndex<[F], Output = [F]>>(
+    pub fn sink<
+        'a,
+        R: 'a + RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
+    >(
         &'a mut self,
         reg: R,
     ) -> impl Sink<F> + 'a {
@@ -432,14 +442,20 @@ impl<F: Frame<Chan = Ch64>> Audio<F> {
 }
 
 /// A `Sink` created with `Audio.sink()`
-struct AudioSink<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> {
+struct AudioSink<
+    'a,
+    F: Frame,
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
+> {
     audio: &'a mut Audio<F>,
     cursor: usize,
     range: R,
     resampler: Resampler<F>,
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink<F> for AudioSink<'_, F, R> {
+impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink<F>
+    for AudioSink<'_, F, R>
+{
     fn sample_rate(&self) -> f64 {
         self.audio.sample_rate()
     }
@@ -454,7 +470,11 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink<F> fo
 }
 
 /// A `Stream` created with `Audio.stream()`
-struct AudioStream<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> {
+struct AudioStream<
+    'a,
+    F: Frame,
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
+> {
     audio: &'a Audio<F>,
     cursor: usize,
     range: R,
@@ -489,7 +509,11 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
 }
 
 /// A `Stream` created with `Audio.drain()`
-struct AudioDrain<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> {
+struct AudioDrain<
+    'a,
+    F: Frame,
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
+> {
     audio: &'a mut Audio<F>,
     start: usize,
     cursor: usize,
@@ -497,11 +521,13 @@ struct AudioDrain<'a, F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output =
     range: R,
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> Iterator
-    for AudioDrain<'_, F, R>
+impl<
+        F: Frame,
+        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
+    > Iterator for AudioDrain<'_, F, R>
 {
     type Item = F;
-    
+
     fn next(&mut self) -> Option<F> {
         if !self.range.contains(&self.cursor) {
             return None;
@@ -512,8 +538,10 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> It
     }
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> Stream<F>
-    for AudioDrain<'_, F, R>
+impl<
+        F: Frame,
+        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
+    > Stream<F> for AudioDrain<'_, F, R>
 {
     fn sample_rate(&self) -> Option<f64> {
         Some(self.audio.sample_rate())
@@ -524,8 +552,10 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> St
     }
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone> Drop
-    for AudioDrain<'_, F, R>
+impl<
+        F: Frame,
+        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
+    > Drop for AudioDrain<'_, F, R>
 {
     fn drop(&mut self) {
         let mut audio: Box<[F]> = Vec::new().into();
