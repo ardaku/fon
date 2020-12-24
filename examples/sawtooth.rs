@@ -8,6 +8,7 @@ fn main() {
     for (i, s) in a.iter_mut().enumerate() {
         s.channels_mut()[0] = Ch8::new((i as i16 - 128) as i8);
     }
+
     // Convert to stereo 16-Bit 48_000 KHz audio format
     let audio = Audio::<Stereo16>::with_stream(48_000, &a);
 

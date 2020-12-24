@@ -46,8 +46,12 @@ pub trait Sink<F: Frame>: Sized {
     /// Flush the partial sample from the resampler into the audio buffer if
     /// there is one.
     fn flush(mut self) {
-        let i = self.resampler().offseti as usize;
-        self.buffer()[i] = self.resampler().partial;
+        if self.resampler().offseti % 1.0 > f64::EPSILON
+            || self.resampler().offseti % 1.0 < -f64::EPSILON
+        {
+            let i = self.resampler().offseti as usize;
+            self.buffer()[i] = self.resampler().partial;
+        }
     }
 
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
@@ -83,6 +87,7 @@ pub trait Sink<F: Frame>: Sized {
             let ceil_a = F::from_f64(ceil_f64);
             let floor_a = F::from_f64(ratio - ceil_f64);
             let src: F = src.convert();
+            
             if let Some(buf) = self.buffer()[dst_range].get_mut(floor) {
                 *buf += src * floor_a;
             } else {

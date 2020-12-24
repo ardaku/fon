@@ -11,6 +11,7 @@
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
     Frame, Resampler, Sink, Stream,
+    math,
 };
 use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
@@ -295,7 +296,7 @@ impl<F: Frame> Audio<F> {
 
         // Get source stream sample rate.
         let dstlen = if let Some(src_sr) = stream.sample_rate() {
-            (s_rate * srclen as f64 / src_sr) as usize + 1
+            math::ceil(s_rate * srclen as f64 / src_sr) as usize
         } else {
             srclen
         };

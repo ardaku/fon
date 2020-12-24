@@ -317,10 +317,10 @@ impl<R: Into<Self>> Mul<R> for Ch8 {
 
     #[inline(always)]
     fn mul(self, rhs: R) -> Self {
-        let l = i16::from(self.0) + 1;
+        let l = i16::from(self.0);
         let r = i16::from(rhs.into().0);
-        let v = (l * r) >> 7;
-        Self(v as i8)
+        let v = (l * r) / 127;
+        Self(v.min(127) as i8)
     }
 }
 
@@ -330,10 +330,10 @@ impl<R: Into<Self>> Mul<R> for Ch16 {
 
     #[inline(always)]
     fn mul(self, rhs: R) -> Self {
-        let l = i32::from(self.0) + 1;
+        let l = i32::from(self.0);
         let r = i32::from(rhs.into().0);
-        let v = (l * r) >> 15;
-        Self(v as i16)
+        let v = (l * r) / 32767;
+        Self(v.min(32767) as i16)
     }
 }
 
@@ -781,6 +781,7 @@ mod tests {
         assert_eq!(Ch8::new(0), Ch8::new(0) * Ch8::new(127));
         assert_eq!(Ch8::new(127), Ch8::new(127) * Ch8::new(127));
         assert_eq!(Ch8::new(-128), Ch8::new(127) * Ch8::new(-128));
+        assert_eq!(Ch8::new(-128), Ch8::new(-128) * Ch8::new(127));
         assert_eq!(Ch8::new(127), Ch8::new(-128) * Ch8::new(-128));
         assert_eq!(Ch8::new(-64), Ch8::new(127) * Ch8::new(-64));
         // Test division
@@ -807,6 +808,7 @@ mod tests {
         assert_eq!(Ch16::new(0), Ch16::new(0) * Ch16::new(32767));
         assert_eq!(Ch16::new(32767), Ch16::new(32767) * Ch16::new(32767));
         assert_eq!(Ch16::new(-32768), Ch16::new(32767) * Ch16::new(-32768));
+        assert_eq!(Ch16::new(-32768), Ch16::new(-32768) * Ch16::new(32767));
         assert_eq!(Ch16::new(32767), Ch16::new(-32768) * Ch16::new(-32768));
         assert_eq!(Ch16::new(-16384), Ch16::new(32767) * Ch16::new(-16384));
         // Test division
