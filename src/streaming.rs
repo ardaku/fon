@@ -200,7 +200,7 @@ where
         self.0
             .into_iter()
             .zip(self.1.into_iter())
-            .map(|(a, b)| O::compose(a, b.into()))
+            .map(|(a, b)| O::blend_frames(a, b.into()))
     }
 }
 

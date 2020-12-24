@@ -10,9 +10,7 @@
 
 //! Sample types
 
-use crate::{
-    chan::Channel, mono::Mono, ops::Blend, stereo::Stereo, surround::Surround,
-};
+use crate::{chan::Channel, mono::Mono, stereo::Stereo, surround::Surround};
 use core::{
     any::TypeId,
     fmt::Debug,
@@ -98,19 +96,6 @@ pub trait Frame:
             *out = this.lerp(*rhs, *t);
         }
         out
-    }
-
-    /// Composite two frames together using a `Blend` operation.
-    #[inline(always)]
-    fn composite<O>(&mut self, src: &Self, op: O)
-    where
-        O: Blend,
-    {
-        let _op = op;
-        for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter())
-        {
-            O::composite(d, s)
-        }
     }
 
     /// Convert a sample to another format.

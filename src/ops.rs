@@ -15,17 +15,17 @@ use core::any::Any;
 
 /// Blending operation for mixing
 pub trait Blend: Any + Copy + Clone {
-    /// Composite a destination and source.
-    fn composite<C: Channel>(dst: &mut C, src: &C);
+    /// blend a destination and source.
+    fn blend<C: Channel>(dst: &mut C, src: &C);
 
     /// Compose frames.
     #[inline(always)]
-    fn compose<F: Frame>(dst: F, src: F) -> F {
+    fn blend_frames<F: Frame>(dst: F, src: F) -> F {
         let mut dst = dst;
         for (dst, src) in
             dst.channels_mut().iter_mut().zip(src.channels().iter())
         {
-            Self::composite(dst, src);
+            Self::blend(dst, src);
         }
         dst
     }
@@ -59,54 +59,54 @@ pub struct Pan;
 
 impl Blend for Src {
     #[inline(always)]
-    fn composite<C: Channel>(dst: &mut C, src: &C) {
+    fn blend<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src;
     }
 }
 
 impl Blend for Dest {
     #[inline(always)]
-    fn composite<C: Channel>(_dst: &mut C, _src: &C) {
+    fn blend<C: Channel>(_dst: &mut C, _src: &C) {
         // leave _dst as is
     }
 }
 
 impl Blend for Clear {
     #[inline(always)]
-    fn composite<C: Channel>(dst: &mut C, _src: &C) {
+    fn blend<C: Channel>(dst: &mut C, _src: &C) {
         *dst = C::default();
     }
 }
 
 impl Blend for Amplify {
     #[inline(always)]
-    fn composite<C: Channel>(dst: &mut C, src: &C) {
+    fn blend<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src * *dst;
     }
 }
 
 impl Blend for Mix {
     #[inline(always)]
-    fn composite<C: Channel>(dst: &mut C, src: &C) {
+    fn blend<C: Channel>(dst: &mut C, src: &C) {
         *dst = *src + *dst;
     }
 }
 
 impl Blend for Compress {
     #[inline(always)]
-    fn composite<C: Channel>(_dst: &mut C, _src: &C) {
+    fn blend<C: Channel>(_dst: &mut C, _src: &C) {
         todo!()
     }
 }
 
 impl Blend for Pan {
     #[inline(always)]
-    fn composite<C: Channel>(_dst: &mut C, _src: &C) {
+    fn blend<C: Channel>(_dst: &mut C, _src: &C) {
         panic!("Panning is useless on one channel!")
     }
 
     #[inline(always)]
-    fn compose<F: Frame>(dst: F, src: F) -> F {
+    fn blend_frames<F: Frame>(dst: F, src: F) -> F {
         let mut out = F::default();
         for (d, s) in dst.channels().iter().zip(src.channels().iter()) {
             // Get the panning amount for this channel.
