@@ -11,46 +11,16 @@
 //! Sample types
 
 use crate::{
-    chan::{Ch64, Channel},
-    mono::Mono,
-    ops::Blend,
+    chan::Channel, mono::Mono, ops::Blend, stereo::Stereo, surround::Surround,
 };
 use core::{
+    any::TypeId,
     fmt::Debug,
     mem::size_of,
     ops::{
         Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
     },
 };
-
-/// Returns how much src covers dst.  Units are counterclockwise from 0 to 1+
-fn arc_cover(dst: [f64; 2], mut src: [f64; 2]) -> f64 {
-    // Check if a point lies within an arc.
-    fn point_in_arc(arc: [f64; 2], pt: f64) -> bool {
-        let dst = [arc[0] % 1.0, arc[1] % 1.0];
-        let pt = pt % 1.0;
-        if dst[0] > dst[1] {
-            // Inverted range; pt must fall in dst[1] to dst[0]
-            pt > dst[1] && pt < dst[0]
-        } else {
-            // Regular range; pt must fall in dst[0] to dst[1]
-            pt > dst[0] && pt < dst[1]
-        }
-    }
-    // Adjust area when src begins before dst (outside overlapping zone).
-    if !point_in_arc(dst, src[0]) {
-        src[0] = dst[0];
-    }
-    // Adjust area when src ends after dst (outside overlapping zone).
-    if !point_in_arc(dst, src[1]) {
-        src[1] = dst[1];
-    }
-    // Calculate areas
-    let src_area = src[1] - src[0];
-    let dst_area = dst[1] - dst[0];
-    // Amount of dst cover by src
-    src_area / dst_area
-}
 
 /// Frame - A number of interleaved sample [channel]s.
 ///
@@ -72,6 +42,7 @@ pub trait Frame:
     + SubAssign
     + DivAssign
     + MulAssign
+    + 'static
 {
     /// Channel type
     type Chan: Channel;
@@ -79,10 +50,11 @@ pub trait Frame:
     /// Number of channels
     const CHAN_COUNT: usize = size_of::<Self>() / size_of::<Self::Chan>();
 
-    /// Speaker configuration (Stored as a list of relative areas, stored as
-    /// cycles - 0.25 is left, 0.5 is behind, 0.75 is right, 1.0 is front).
-    /// These must be listed in increasing order counterclockwise/widdershins.
-    const CONFIG: &'static [[f64; 2]];
+    /// Speaker configuration (Stored as a list of locations, -1.0 refers to
+    /// the back going left, 1.0 also refers to the back - but going right, and
+    /// 0.0 refers to center (straight ahead).  These should be listed from
+    /// left to right, does not include LFE.
+    const CONFIG: &'static [f64];
 
     /// Get the channels.
     fn channels(&self) -> &[Self::Chan];
@@ -116,30 +88,6 @@ pub trait Frame:
         Self::from_channel(frame.channels()[0])
     }
 
-    /// Pan a channel into this Sample type, units are in clockwise rotations.
-    fn from_channel_pan(ch: Self::Chan, cw_rot: f64) -> Self {
-        let mut out = [Self::Chan::MID; 8];
-
-        // Convert to widdershins rotations offset by a quarter clockwise (-ws).
-        let ws_rot = 1.0 - (cw_rot + 0.25) % 1.0;
-
-        // Cycle through configurations.
-        for (i, dst) in Self::CONFIG.iter().enumerate() {
-            out[i] = Self::Chan::from_f64(
-                ch.to_f64() * arc_cover(*dst, [ws_rot, ws_rot + 0.5]),
-            );
-        }
-
-        Self::from_channels(&out)
-    }
-
-    /// Pan a mono sample into this Sample type, units are in clockwise
-    /// rotations.
-    #[inline(always)]
-    fn from_mono_pan(ch: Mono<Self::Chan>, cw_rot: f64) -> Self {
-        Self::from_channel_pan(ch.channels()[0], cw_rot)
-    }
-
     /// Linear interpolation.
     #[inline(always)]
     fn lerp(&self, rhs: Self, t: Self) -> Self {
@@ -152,32 +100,114 @@ pub trait Frame:
         out
     }
 
-    /// Synthesize two samples together.
+    /// Composite two frames together using a `Blend` operation.
     #[inline(always)]
-    fn blend<O>(&mut self, src: &Self, _op: O)
+    fn composite<O>(&mut self, src: &Self, op: O)
     where
         O: Blend,
     {
+        let _op = op;
         for (d, s) in self.channels_mut().iter_mut().zip(src.channels().iter())
         {
-            O::synthesize(d, s)
+            O::composite(d, s)
         }
     }
 
     /// Convert a sample to another format.
     #[inline(always)]
     fn convert<D: Frame>(self) -> D {
-        let mut out = [D::Chan::MID; 8];
-
-        // Cycle through configurations.
-        for (j, src) in Self::CONFIG.iter().enumerate() {
-            let ch = self.channels()[j].to_f64();
-            for (i, dst) in D::CONFIG.iter().enumerate() {
-                out[i] += D::Chan::from(Ch64::new(ch * arc_cover(*dst, *src)));
+        match (TypeId::of::<Self>(), TypeId::of::<D>()) {
+            (a, b)
+                if (a == TypeId::of::<Mono<Self::Chan>>()
+                    && b == TypeId::of::<Mono<D::Chan>>())
+                    || (a == TypeId::of::<Stereo<Self::Chan>>()
+                        && b == TypeId::of::<Stereo<D::Chan>>())
+                    || (a == TypeId::of::<Surround<Self::Chan>>()
+                        && b == TypeId::of::<Surround<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 5];
+                // Same type, 1:1
+                for (src, dst) in self.channels().iter().zip(out.iter_mut()) {
+                    *dst = D::Chan::from_f64(src.to_f64());
+                }
+                //
+                D::from_channels(&out)
             }
+            (a, b)
+                if (a == TypeId::of::<Mono<Self::Chan>>()
+                    && b == TypeId::of::<Stereo<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 2];
+                // Mono -> Stereo, Duplicate The Channel
+                out[0] = D::Chan::from_f64(self.channels()[0].to_f64());
+                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
+                //
+                D::from_channels(&out)
+            }
+            (a, b)
+                if (a == TypeId::of::<Mono<Self::Chan>>()
+                    && b == TypeId::of::<Surround<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 5];
+                // Mono -> Surround (Mono -> Stereo -> Surround)
+                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
+                out[3] = D::Chan::from_f64(self.channels()[0].to_f64());
+                //
+                D::from_channels(&out)
+            }
+            (a, b)
+                if (a == TypeId::of::<Stereo<Self::Chan>>()
+                    && b == TypeId::of::<Surround<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 5];
+                // Stereo -> Surround
+                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
+                out[3] = D::Chan::from_f64(self.channels()[1].to_f64());
+                //
+                D::from_channels(&out)
+            }
+            (a, b)
+                if (a == TypeId::of::<Surround<Self::Chan>>()
+                    && b == TypeId::of::<Stereo<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 2];
+                // Surround -> Stereo
+                out[0] = D::Chan::from_f64(self.channels()[1].to_f64());
+                out[1] = D::Chan::from_f64(self.channels()[3].to_f64());
+                //
+                D::from_channels(&out)
+            }
+            (a, b)
+                if (a == TypeId::of::<Surround<Self::Chan>>()
+                    && b == TypeId::of::<Mono<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 1];
+                // Surround -> Stereo -> Mono
+                out[0] = D::Chan::from_f64(
+                    (self.channels()[1].to_f64() + self.channels()[3].to_f64())
+                        * 0.5,
+                );
+                //
+                D::from_channels(&out)
+            }
+            (a, b)
+                if (a == TypeId::of::<Stereo<Self::Chan>>()
+                    && b == TypeId::of::<Mono<D::Chan>>()) =>
+            {
+                let mut out = [D::Chan::MID; 1];
+                // Stereo -> Mono
+                out[0] = D::Chan::from_f64(
+                    (self.channels()[0].to_f64() + self.channels()[1].to_f64())
+                        * 0.5,
+                );
+                //
+                D::from_channels(&out)
+            }
+            _ => panic!(
+                "Cannot convert custom speaker configurations, \
+                implement custom Frame::convert() method to override."
+            ),
         }
-
-        D::from_channels(&out)
     }
 }
 

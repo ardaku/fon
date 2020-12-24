@@ -8,7 +8,8 @@
 // at your option. This file may not be copied, modified, or distributed except
 // according to those terms.
 
-//! Component channels
+//! Audio channels (left, right, etc. samples that make up each audio
+//! [`Frame`](crate::Frame))
 
 use crate::{math, private::Sealed};
 use core::{
@@ -43,6 +44,7 @@ pub trait Channel:
     + Into<Ch16>
     + Into<Ch32>
     + Into<Ch64>
+    + 'static
 {
     /// Minimum value (*negative one*)
     const MIN: Self;

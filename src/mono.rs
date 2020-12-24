@@ -38,7 +38,7 @@ impl<C: Channel> Mono<C> {
 }
 
 impl<C: Channel> Frame for Mono<C> {
-    const CONFIG: &'static [[f64; 2]] = &[[0.0, 1.0]];
+    const CONFIG: &'static [f64] = &[0.0 /* one centered speaker */];
 
     type Chan = C;
 

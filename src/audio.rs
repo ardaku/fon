@@ -15,10 +15,10 @@ use crate::{
 use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
     fmt::Debug,
+    iter::Cloned,
     mem::{size_of, swap},
     ops::{Bound::*, RangeBounds},
     slice::{from_raw_parts_mut, Iter, IterMut, SliceIndex},
-    iter::Cloned,
 };
 
 // Channel Identification
@@ -31,7 +31,10 @@ use core::{
 // 6. Side Left
 // 7. Side Right
 
-/// Audio buffer (array of audio `Sample`s at sample rate specified in hertz).
+/// Audio buffer (array of audio [`Frame`](crate::Frame)s at sample rate
+/// specified in hertz).
+///
+/// `Audio` implements the [`Stream`](crate::Stream) trait.
 #[derive(Debug)]
 pub struct Audio<F: Frame> {
     s_rate: f64,
@@ -91,23 +94,14 @@ impl<F: Frame> Audio<F> {
     pub fn with_stream<S, R, M>(s_rate: R, src: M) -> Self
     where
         F::Chan: From<S::Chan>,
-        R: Into<f64>, M: Stream<S>, S: Frame,
+        R: Into<f64>,
+        M: Stream<S>,
+        S: Frame,
     {
         let s_rate = s_rate.into();
-    
-        // Get stream length.
-        let srclen = src.len().expect("Audio::with_stream() called on infinite stream.");
-
-        // Get source stream sample rate.
-        let dstlen = if let Some(src_sr) = src.sample_rate() {
-            (s_rate * srclen as f64 / src_sr) as usize + 1
-        } else {
-            srclen
-        };
-
-        let mut dst = Audio::with_silence(s_rate, dstlen);
-        dst.sink(..).sink(src);
-        dst
+        let mut audio = Self::with_frames::<[F; 0], f64>(s_rate, []);
+        audio.extend(src);
+        audio
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get
@@ -220,37 +214,6 @@ impl<F: Frame> Audio<F> {
         self.s_rate
     }
 
-    /// Create an audio stream over this `Audio` buffer.
-    ///
-    /// # Panics
-    /// If range is out of bounds
-    pub fn stream<
-        'a,
-        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + 'a,
-    >(
-        &'a self,
-        reg: R,
-    ) -> impl Stream<F> + '_ {
-        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
-        let index = match reg.start_bound() {
-            Unbounded => 0,
-            Included(index) => *index,
-            Excluded(index) => *index + 1,
-        };
-        let until = match reg.end_bound() {
-            Unbounded => self.len(),
-            Included(index) => *index + 1,
-            Excluded(index) => *index,
-        };
-
-        AudioStream {
-            cursor: index,
-            size: until - index,
-            range: reg,
-            audio: self,
-        }
-    }
-
     /// Create a draining audio stream over this `Audio` buffer.
     ///
     /// # Panics
@@ -263,22 +226,23 @@ impl<F: Frame> Audio<F> {
         reg: R,
     ) -> impl Stream<F> + '_ {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
-        let index = match reg.start_bound() {
+
+        // Convert audio into a Vec.
+        let mut temp_move = Self::with_frames::<[F; 0], f64>(self.s_rate, []);
+        swap(self, &mut temp_move);
+        let audio: Box<[F]> = temp_move.into();
+        let audio: Vec<F> = audio.into();
+        let cursor = match reg.start_bound() {
+            Included(a) => *a,
+            Excluded(a) => *a + 1,
             Unbounded => 0,
-            Included(index) => *index,
-            Excluded(index) => *index + 1,
         };
-        let until = match reg.end_bound() {
-            Unbounded => self.len(),
-            Included(index) => *index + 1,
-            Excluded(index) => *index,
-        };
+
         AudioDrain {
-            cursor: index,
-            start: index,
-            size: until - index,
-            range: reg,
-            audio: self,
+            audio,
+            region: reg,
+            cursor,
+            buffer: self,
         }
     }
 
@@ -295,32 +259,58 @@ impl<F: Frame> Audio<F> {
     ) -> impl Sink<F> + '_ {
         assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
         AudioSink {
-            cursor: match reg.start_bound() {
-                Unbounded => 0,
-                Included(index) => *index,
-                Excluded(index) => *index + 1,
-            },
-            range: reg,
-            audio: self,
+            s_rate: self.sample_rate(),
+            frames: &mut self.frames[reg],
             resampler: Resampler::default(),
         }
     }
 
-    // FIXME:
-    /*/// Extend the audio buffer with all of the audio from a stream.
+    /// Extend the audio buffer with all of the audio from a stream.
     ///
-    /// *Don't call this with an infinite stream!*  This is the only way to
-    /// collect a stream without knowing the size ahead of time.
-    pub fn extend<M: Stream<F>>(&mut self, stream: &mut M) {
-        let mut audio: Box<[F]> = Vec::new().into();
-        swap(&mut audio, &mut self.frames);
+    /// # Notes
+    /// Do not call repeatedly on a stream with a differnt sample rate.  It will
+    /// create extra "partial" samples.
+    ///
+    /// # Panics
+    /// When an infinite stream is passed in.
+    pub fn extend<G: Frame, M: Stream<G>>(&mut self, stream: M)
+    where
+        F::Chan: From<G::Chan>,
+    {
+        let mut temp_move = Self::with_frames::<[F; 0], f64>(0.0, []);
+        swap(self, &mut temp_move);
+        *self = temp_move.extend_internal(stream);
+    }
+
+    fn extend_internal<G: Frame, M: Stream<G>>(self, stream: M) -> Self
+    where
+        F::Chan: From<G::Chan>,
+    {
+        let s_rate = self.s_rate;
+
+        // Get stream length.
+        let srclen = stream
+            .len()
+            .expect("Audio::extend() called on infinite stream.");
+
+        // Get source stream sample rate.
+        let dstlen = if let Some(src_sr) = stream.sample_rate() {
+            (s_rate * srclen as f64 / src_sr) as usize + 1
+        } else {
+            srclen
+        };
+
+        // Resize the audio buffer.
+        let audio: Box<[F]> = self.into();
         let mut audio: Vec<F> = audio.into();
-        while let Some(sample) = stream.stream_sample() {
-            audio.push(sample);
-        }
-        let mut audio: Box<[F]> = audio.into();
-        swap(&mut audio, &mut self.frames);
-    }*/
+        let orig_len = audio.len();
+        audio.resize_with(orig_len + dstlen, Default::default);
+        let mut audio = Self::with_frames(s_rate, audio);
+
+        // Write to new audio.
+        audio.sink(orig_len..).sink(stream);
+        audio
+    }
 }
 
 impl<F: Frame<Chan = Ch8>> Audio<F> {
@@ -431,22 +421,15 @@ impl<F: Frame> Stream<F> for &Audio<F> {
 }
 
 /// A `Sink` created with `Audio.sink()`
-struct AudioSink<
-    'a,
-    F: Frame,
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
-> {
-    audio: &'a mut Audio<F>,
-    cursor: usize,
-    range: R,
+struct AudioSink<'a, F: Frame> {
+    s_rate: f64,
+    frames: &'a mut [F],
     resampler: Resampler<F>,
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink<F>
-    for AudioSink<'_, F, R>
-{
+impl<F: Frame> Sink<F> for AudioSink<'_, F> {
     fn sample_rate(&self) -> f64 {
-        self.audio.sample_rate()
+        self.s_rate
     }
 
     fn resampler(&mut self) -> &mut Resampler<F> {
@@ -454,7 +437,7 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Sink<F>
     }
 
     fn buffer(&mut self) -> &mut [F] {
-        self.audio.as_mut_slice()
+        self.frames
     }
 }
 
@@ -503,56 +486,51 @@ struct AudioDrain<
     F: Frame,
     R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
 > {
-    audio: &'a mut Audio<F>,
-    start: usize,
     cursor: usize,
-    size: usize, // Size
-    range: R,
+    audio: Vec<F>,
+    region: R,
+    buffer: &'a mut Audio<F>,
 }
 
-impl<
-        F: Frame,
-        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-    > Iterator for AudioDrain<'_, F, R>
+impl<F: Frame, R> Iterator for AudioDrain<'_, F, R>
+where
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
 {
     type Item = F;
 
     fn next(&mut self) -> Option<F> {
-        if !self.range.contains(&self.cursor) {
+        if !self.region.contains(&self.cursor) {
             return None;
         }
-        let frame = self.audio.get(self.cursor)?;
-        self.cursor += 1;
-        Some(frame)
+
+        Some(self.audio[self.cursor])
     }
 }
 
-impl<
-        F: Frame,
-        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-    > Stream<F> for AudioDrain<'_, F, R>
+impl<'a, F: Frame, R> Stream<F> for AudioDrain<'_, F, R>
+where
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
 {
     fn sample_rate(&self) -> Option<f64> {
-        Some(self.audio.sample_rate())
+        Some(self.buffer.s_rate)
     }
 
     fn len(&self) -> Option<usize> {
-        Some(self.size)
+        Some(self.audio[self.region.clone()].len())
     }
 }
 
-impl<
-        F: Frame,
-        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-    > Drop for AudioDrain<'_, F, R>
+impl<'a, F: Frame, R> Drop for AudioDrain<'_, F, R>
+where
+    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
 {
     fn drop(&mut self) {
-        let mut audio: Box<[F]> = Vec::new().into();
-        swap(&mut audio, &mut self.audio.frames);
-        let mut audio: Vec<F> = audio.into();
-        audio.drain(self.start..self.cursor);
-        let mut audio: Box<[F]> = audio.into();
-        swap(&mut audio, &mut self.audio.frames);
+        {
+            self.audio.drain(self.region.clone());
+        }
+        let mut buffer = Vec::new();
+        swap(&mut buffer, &mut self.audio);
+        *self.buffer = Audio::with_frames(self.buffer.s_rate, buffer);
     }
 }
 

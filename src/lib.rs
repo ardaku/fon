@@ -35,7 +35,8 @@
 //! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
 //! ```
 //!
-//! To understand some of the concepts used in this library, I think
+//! # Further Resources
+//! To understand some of the concepts used in this library,
 //! [this MDN article] is a good read (although the stuff about compression
 //! isn't relevant to this crate's functionality).  This crate uses the MDN
 //! definitions for what an audio frame and audio channel are.
@@ -49,9 +50,12 @@
 //! [Stereo]: crate::stereo::Stereo
 //! [5.1 Surround]: crate::surround::Surround
 //! [operations]: crate::ops
-//! [this]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
+//! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
 
-#![no_std]
+// FIXME: Doesn't quite work yet because fon needs sine and cosine.  No_std trig
+// crate would be nice for a fon feature enabling no_std, but I couldn't find
+// one.
+//#![no_std]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
     html_favicon_url = "https://libcala.github.io/icon.svg",

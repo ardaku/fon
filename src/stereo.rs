@@ -38,7 +38,7 @@ impl<C: Channel> Stereo<C> {
 }
 
 impl<C: Channel> Frame for Stereo<C> {
-    const CONFIG: &'static [[f64; 2]] = &[[0.0, 0.5], [0.5, 1.0]];
+    const CONFIG: &'static [f64] = &[-0.5, 0.5];
 
     type Chan = C;
 

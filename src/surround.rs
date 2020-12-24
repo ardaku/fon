@@ -46,13 +46,12 @@ impl<C: Channel> Surround<C> {
 }
 
 impl<C: Channel> Frame for Surround<C> {
-    const CONFIG: &'static [[f64; 2]] = &[
-        [1.0 / 12.0, 0.25],         // Front Left (Centered at 1/6)
-        [0.25, 0.5],                // Rear Left (Centered at 1/3)
-        [0.5, 0.75],                // Rear Right (Centered at 2/3)
-        [0.75, 11.0 / 12.0],        // Front Right (Centered at 5/6)
-        [11.0 / 12.0, 13.0 / 12.0], // Front Center
-        [f64::NAN, f64::NAN],       // LFE
+    const CONFIG: &'static [f64] = &[
+        -2.0 / 3.0, // Rear Left
+        -1.0 / 3.0, // Front Left
+        0.0 / 3.0,  // Center
+        1.0 / 3.0,  // Front Right
+        2.0 / 3.0,  // Rear Right
     ];
 
     type Chan = C;
