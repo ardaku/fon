@@ -139,7 +139,7 @@ pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
     ///
     /// # Panics
     /// If the sample rates are not compatible.
-    fn blend<G: Frame + Into<F>, M: Stream<G>, O: Blend>(
+    fn blend<G: Frame, M: Stream<G>, O: Blend>(
         self,
         other: M,
         op: O,
@@ -193,7 +193,7 @@ impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
 pub struct BlendStream<F, G, A, B, O>(A, B, PhantomData<(F, G, O)>)
 where
     F: Frame,
-    G: Frame + Into<F>,
+    G: Frame,
     A: Stream<F>,
     B: Stream<G>,
     O: Blend;
@@ -201,7 +201,7 @@ where
 impl<F, G, A, B, O> IntoIterator for BlendStream<F, G, A, B, O>
 where
     F: Frame,
-    G: Frame + Into<F>,
+    G: Frame,
     A: Stream<F>,
     B: Stream<G>,
     O: Blend,
@@ -215,14 +215,14 @@ where
         self.0
             .into_iter()
             .zip(self.1.into_iter())
-            .map(|(a, b)| O::mix_frames(a, b.into()))
+            .map(|(a, b)| O::mix_frames(a, b.convert()))
     }
 }
 
 impl<F, G, A, B, O> Stream<F> for BlendStream<F, G, A, B, O>
 where
     F: Frame,
-    G: Frame + Into<F>,
+    G: Frame,
     A: Stream<F>,
     B: Stream<G>,
     O: Blend,
