@@ -43,6 +43,13 @@ pub trait Sink<F: Frame>: Sized {
     /// [`Sink`](crate::Sink).
     fn buffer(&mut self) -> &mut [F];
 
+    /// Flush the partial sample from the resampler into the audio buffer if
+    /// there is one.
+    fn flush(mut self) {
+        let i = self.resampler().offseti as usize;
+        self.buffer()[i] = self.resampler().partial;
+    }
+
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
     #[inline(always)]
     fn sink<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
@@ -62,6 +69,11 @@ pub trait Sink<F: Frame>: Sized {
 
         // Go through each source sample and add to destination.
         let mut srclen = stream.len();
+        let dst_range = if let Some(len) = stream.len() {
+            ..(ratio * len as f64) as usize
+        } else {
+            ..self.buffer().len()
+        };
         for (i, src) in stream.into_iter().enumerate() {
             // Calculate destination index.
             let j = ratio * i as f64 + self.resampler().offseti;
@@ -71,23 +83,21 @@ pub trait Sink<F: Frame>: Sized {
             let ceil_a = F::from_f64(ceil_f64);
             let floor_a = F::from_f64(ratio - ceil_f64);
             let src: F = src.convert();
-            if let Some(buf) = self.buffer().get_mut(floor) {
+            if let Some(buf) = self.buffer()[dst_range].get_mut(floor) {
                 *buf += src * floor_a;
             } else {
                 srclen = Some(i);
                 break;
             }
-            if let Some(buf) = self.buffer().get_mut(ceil) {
+            if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
                 *buf += src * ceil_a;
             } else {
                 self.resampler().partial += src * ceil_a;
             }
         }
 
-        // Set offseti
-        self.resampler().offseti = (ratio * (srclen.unwrap() - 1) as f64
-            + self.resampler().offseti)
-            % 1.0;
+        // Increment offseti
+        self.resampler().offseti += ratio * srclen.unwrap() as f64;
     }
 }
 
@@ -200,7 +210,7 @@ where
         self.0
             .into_iter()
             .zip(self.1.into_iter())
-            .map(|(a, b)| O::blend_frames(a, b.into()))
+            .map(|(a, b)| O::mix_frames(a, b.into()))
     }
 }
 

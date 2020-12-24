@@ -308,7 +308,11 @@ impl<F: Frame> Audio<F> {
         let mut audio = Self::with_frames(s_rate, audio);
 
         // Write to new audio.
-        audio.sink(orig_len..).sink(stream);
+        let mut sink = audio.sink(orig_len..);
+        sink.sink(stream);
+        // Flush partial sample
+        sink.flush();
+        // Return audio
         audio
     }
 }
