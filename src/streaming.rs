@@ -94,21 +94,26 @@ pub trait Sink<F: Frame>: Sized {
             *f = F::default();
         }
         // Go through each source sample and add to destination.
-        for (i, src) in stream.into_iter().enumerate() {
+        let mut stream_iter = stream.into_iter();
+        for i in 0.. {
             // Calculate destination index.
             let j = ratio * i as f64 + self.resampler().offseti;
             let ceil = math::ceil_usize(j);
             let floor = j as usize;
-            let ceil_f64 = (j % 1.0).min(ratio);
-            let ceil_a = F::from_f64(ceil_f64);
-            let floor_a = F::from_f64(ratio - ceil_f64);
-            let src: F = src.convert();
-            if let Some(buf) = self.buffer()[dst_range].get_mut(floor) {
-                *buf += src * floor_a;
-            } else {
+            if !dst_range.contains(&floor) {
                 srclen = Some(i);
                 break;
             }
+            let ceil_f64 = (j % 1.0).min(ratio);
+            let ceil_a = F::from_f64(ceil_f64);
+            let floor_a = F::from_f64(ratio - ceil_f64);
+            let src = if let Some(src) = stream_iter.next() {
+                src
+            } else {
+                break;
+            };
+            let src: F = src.convert();
+            self.buffer()[dst_range][floor] += src * floor_a;
             if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
                 *buf += src * ceil_a;
             } else {
