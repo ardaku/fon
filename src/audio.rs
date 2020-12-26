@@ -10,8 +10,7 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8},
-    Frame, Resampler, Sink, Stream,
-    math,
+    math, Frame, Resampler, Sink, Stream,
 };
 use alloc::{boxed::Box, vec, vec::Vec};
 use core::{
@@ -310,7 +309,7 @@ impl<F: Frame> Audio<F> {
 
         // Write to new audio.
         let mut sink = audio.sink(orig_len..);
-        sink.sink(stream);
+        sink.stream(stream);
         // Flush partial sample
         sink.flush();
         // Return audio

@@ -110,7 +110,7 @@ pub trait Frame:
                     || (a == TypeId::of::<Surround<Self::Chan>>()
                         && b == TypeId::of::<Surround<D::Chan>>()) =>
             {
-                let mut out = [D::Chan::MID; 5];
+                let mut out = [D::Chan::MID; 6];
                 // Same type, 1:1
                 for (src, dst) in self.channels().iter().zip(out.iter_mut()) {
                     *dst = D::Chan::from_f64(src.to_f64());
@@ -133,7 +133,7 @@ pub trait Frame:
                 if (a == TypeId::of::<Mono<Self::Chan>>()
                     && b == TypeId::of::<Surround<D::Chan>>()) =>
             {
-                let mut out = [D::Chan::MID; 5];
+                let mut out = [D::Chan::MID; 6];
                 // Mono -> Surround (Mono -> Stereo -> Surround)
                 out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
                 out[3] = D::Chan::from_f64(self.channels()[0].to_f64());
@@ -144,7 +144,7 @@ pub trait Frame:
                 if (a == TypeId::of::<Stereo<Self::Chan>>()
                     && b == TypeId::of::<Surround<D::Chan>>()) =>
             {
-                let mut out = [D::Chan::MID; 5];
+                let mut out = [D::Chan::MID; 6];
                 // Stereo -> Surround
                 out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
                 out[3] = D::Chan::from_f64(self.channels()[1].to_f64());

@@ -25,8 +25,21 @@ pub struct Resampler<F: Frame> {
 
 impl<F: Frame> Resampler<F> {
     /// Create a new resampler context.
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(frame: F, index: f64) -> Self {
+        Self {
+            partial: frame,
+            offseti: index,
+        }
+    }
+
+    /// Get the left over partial frame.
+    pub fn frame(&self) -> F {
+        self.partial
+    }
+
+    /// Get the left over partial index.
+    pub fn index(&self) -> f64 {
+        self.offseti
     }
 }
 
@@ -56,7 +69,7 @@ pub trait Sink<F: Frame>: Sized {
 
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
     #[inline(always)]
-    fn sink<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
+    fn stream<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
             self.sample_rate() / stream_sr
@@ -64,20 +77,23 @@ pub trait Sink<F: Frame>: Sized {
             stream.set_sample_rate(self.sample_rate());
             1.0
         };
-
         // Add left over audio.
         let partial = self.resampler().partial;
         if let Some(dst) = self.buffer().get_mut(0) {
             *dst += partial;
         }
-
-        // Go through each source sample and add to destination.
+        // Calculate Ranges
         let mut srclen = stream.len();
         let dst_range = if let Some(len) = stream.len() {
             ..(ratio * len as f64) as usize
         } else {
             ..self.buffer().len()
         };
+        // Clear destination range.
+        for f in self.buffer()[dst_range].iter_mut() {
+            *f = F::default();
+        }
+        // Go through each source sample and add to destination.
         for (i, src) in stream.into_iter().enumerate() {
             // Calculate destination index.
             let j = ratio * i as f64 + self.resampler().offseti;
@@ -87,7 +103,6 @@ pub trait Sink<F: Frame>: Sized {
             let ceil_a = F::from_f64(ceil_f64);
             let floor_a = F::from_f64(ratio - ceil_f64);
             let src: F = src.convert();
-            
             if let Some(buf) = self.buffer()[dst_range].get_mut(floor) {
                 *buf += src * floor_a;
             } else {
@@ -100,7 +115,6 @@ pub trait Sink<F: Frame>: Sized {
                 self.resampler().partial += src * ceil_a;
             }
         }
-
         // Increment offseti
         self.resampler().offseti += ratio * srclen.unwrap() as f64;
     }
