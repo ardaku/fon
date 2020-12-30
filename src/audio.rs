@@ -214,39 +214,7 @@ impl<F: Frame> Audio<F> {
         self.s_rate
     }
 
-    /// Create a draining audio stream over this `Audio` buffer.
-    ///
-    /// # Panics
-    /// If range is out of bounds
-    pub fn drain<
-        'a,
-        R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone + 'a,
-    >(
-        &'a mut self,
-        reg: R,
-    ) -> impl Stream<F> + '_ {
-        assert!(reg.end_bound() == Unbounded || !reg.contains(&self.len()));
-
-        // Convert audio into a Vec.
-        let mut temp_move = Self::with_frames::<[F; 0], f64>(self.s_rate, []);
-        swap(self, &mut temp_move);
-        let audio: Box<[F]> = temp_move.into();
-        let audio: Vec<F> = audio.into();
-        let cursor = match reg.start_bound() {
-            Included(a) => *a,
-            Excluded(a) => *a + 1,
-            Unbounded => 0,
-        };
-
-        AudioDrain {
-            audio,
-            region: reg,
-            cursor,
-            buffer: self,
-        }
-    }
-
-    /// Create an audio sink to overwrite this `Audio` buffer.
+    /// Create an audio sink to overwrite a region of this `Audio` buffer.
     ///
     /// # Panics
     /// If range is out of bounds
@@ -262,6 +230,22 @@ impl<F: Frame> Audio<F> {
             s_rate: self.sample_rate(),
             frames: &mut self.frames[reg],
             resampler: Resampler::default(),
+        }
+    }
+
+    /// Create a draining audio stream from this `Audio` buffer.  When the
+    /// stream is dropped, only sinked audio samples will be removed.
+    pub fn drain<'a>(&'a mut self) -> impl Stream<F> + '_ {
+        // Convert audio into a Vec.
+        let mut temp_move = Self::with_frames::<[F; 0], f64>(self.s_rate, []);
+        swap(self, &mut temp_move);
+        let audio: Box<[F]> = temp_move.into();
+        let audio: Vec<F> = audio.into();
+
+        AudioDrain {
+            audio,
+            cursor: 0,
+            buffer: self,
         }
     }
 
@@ -446,6 +430,7 @@ impl<F: Frame> Sink<F> for AudioSink<'_, F> {
 }
 
 /// A `Stream` created with `Audio.stream()`
+// FIXME
 struct AudioStream<
     'a,
     F: Frame,
@@ -488,50 +473,35 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
 struct AudioDrain<
     'a,
     F: Frame,
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
 > {
     cursor: usize,
     audio: Vec<F>,
-    region: R,
     buffer: &'a mut Audio<F>,
 }
 
-impl<F: Frame, R> Iterator for AudioDrain<'_, F, R>
-where
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-{
+impl<F: Frame> Iterator for AudioDrain<'_, F> {
     type Item = F;
 
     fn next(&mut self) -> Option<F> {
-        if !self.region.contains(&self.cursor) {
-            return None;
-        }
-
-        Some(self.audio[self.cursor])
+        let sample = self.audio.get(self.cursor).cloned()?;
+        self.cursor += 1;
+        Some(sample)
     }
 }
 
-impl<'a, F: Frame, R> Stream<F> for AudioDrain<'_, F, R>
-where
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-{
+impl<'a, F: Frame> Stream<F> for AudioDrain<'_, F> {
     fn sample_rate(&self) -> Option<f64> {
         Some(self.buffer.s_rate)
     }
 
     fn len(&self) -> Option<usize> {
-        Some(self.audio[self.region.clone()].len())
+        Some(self.audio.len())
     }
 }
 
-impl<'a, F: Frame, R> Drop for AudioDrain<'_, F, R>
-where
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]> + Clone,
-{
+impl<'a, F: Frame> Drop for AudioDrain<'_, F> {
     fn drop(&mut self) {
-        {
-            self.audio.drain(self.region.clone());
-        }
+        self.audio.drain(..self.cursor);
         let mut buffer = Vec::new();
         swap(&mut buffer, &mut self.audio);
         *self.buffer = Audio::with_frames(self.buffer.s_rate, buffer);

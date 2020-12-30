@@ -85,7 +85,7 @@ pub trait Sink<F: Frame>: Sized {
         // Calculate Ranges
         let mut srclen = stream.len();
         let dst_range = if let Some(len) = stream.len() {
-            ..(ratio * len as f64) as usize
+            ..((ratio * len as f64) as usize).min(self.buffer().len())
         } else {
             ..self.buffer().len()
         };
