@@ -4,6 +4,65 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
+## [0.4.0] - 2020-12-30
+### Added
+ - `ops::Pan` for panning audio left and right.
+ - `ops::Blend::mix_frames()` provided method on trait.
+ - `Audio` now implements `Stream`.
+ - `Audio::as_i8_slice()`
+ - `Audio::as_i8_slice_mut()`
+ - `Audio::as_i16_slice()`
+ - `Audio::as_i16_slice_mut()`
+ - `Audio::as_f32_slice()`
+ - `Audio::as_f32_slice_mut()`
+ - `Audio::as_f64_slice()`
+ - `Audio::as_f64_slice_mut()`
+ - `Resampler::frame()`
+ - `Resampler::index()`
+ - `Frame::from_f64()`
+ - `Frame::from_channel()`
+ - `Frame::from_mono()`
+ - `Sink::flush()`
+ - `Stream::blend()`
+ - `Stream::take()`
+ - `Stream::set_sample_rate()`
+ - `Stream::is_empty()`
+
+### Changed
+ - Rename `Sample` to `Frame` to be more consistent with the audio community.
+ - Sample rate on `Audio` is no longer required to be an integer.
+ - Rename `ops::Mix` to `ops::Plus`
+ - Rename `Audio::sample()` to `Audio::get()`
+ - Rename `Audio::sample_mut()` to `Audio::get_mut()`
+ - Rename `Audio::samples()` to `Audio::as_slice()`
+ - Rename `Audio::samples_mut()` to `Audio::as_mut_slice()`
+ - Rename `Audio::with_sample()` to `Audio::with_frame()`
+ - Replaced `Audio::with_audio()` with `Audio::with_stream()`
+ - Replaced `Audio::with_samples()` with `Audio::with_frames()`
+ - `Audio::drain()` no longer takes any arguments.
+ - `Audio::extend()` now takes a stream instead of a mutable reference to a
+   stream.
+ - `Resampler` is now attached to the `Sink` rather than the `Stream`.
+ - Rename `Sink::sink()` to `Sink::stream()`
+ - Required methods on `Sink` and `Stream`
+
+### Removed
+ - `Audio::blend_sample()`
+ - `Audio::blend_audio()`
+ - `Audio::copy_silence()`
+ - `Audio::copy_sample()`
+ - `Audio::stream()`
+ - `Sample::blend_sample()`
+ - `Sample::blend_slice()`
+ - `Sample::blend_blend()`
+ - `Stream::stream()`
+
+### Fixed
+ - Almost none of the channel arithmetic working (it all works now and there's
+   unit tests!).
+ - Buggy resampler
+ - A lot of other bugs
+
 ## [0.3.0] - 2020-12-19
 ### Added
  - `CONFIG` constant to `Sample` to define speaker configurations.
