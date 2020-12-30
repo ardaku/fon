@@ -8,99 +8,263 @@
 // at your option. This file may not be copied, modified, or distributed except
 // according to those terms.
 
-use crate::{chan::Channel, mono::Mono, sample::Sample};
+use crate::{math, ops::Blend, Frame};
+use core::{
+    iter::{Map, Take, Zip},
+    marker::PhantomData,
+};
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
-pub struct Resampler<S: Sample> {
-    /// How much of a sample is represented by `part`
-    phase: f64,
-    /// A last sample read
-    part: S,
+pub struct Resampler<F: Frame> {
+    /// Left over partial frame.
+    partial: F,
+    /// Left over partial index.
+    offseti: f64,
 }
 
-impl<S: Sample> Resampler<S> {
+impl<F: Frame> Resampler<F> {
     /// Create a new resampler context.
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-/// Audio sink - a type that consumes a *finite* number of audio samples.
-pub trait Sink<S: Sample>: Sized {
-    /// Transfer the audio from a `Stream` into a `Sink`.
-    fn sink<Z: Sample, M: Stream<Z>>(&mut self, stream: &mut M)
-    where
-        S: From<Z>,
-    {
-        stream.stream(self)
-    }
-
-    /// Get the (target) sample rate of the sink.
-    fn sample_rate(&self) -> u32;
-
-    /// This function is called when the sink receives a sample from a stream.
-    fn sink_sample<Z: Sample>(&mut self, sample: Z)
-    where
-        S: From<Z>;
-
-    /// Get the (target) capacity of the sink.  Returns the number of times it's
-    /// permitted to call `sink_sample()`.  Additional calls over capacity may
-    /// panic, but shouldn't cause undefined behavior.
-    fn capacity(&self) -> usize;
-}
-
-/// Audio stream - a type that generates audio (may be *infinite*, but is not
-/// required).
-pub trait Stream<S: Sample>: Sized {
-    /// Transfer the audio from a `Stream` into a `Sink`.  Should only be called
-    /// once on a `Sink`.  Additonal calls may panic.
-    fn stream<N: From<S> + Sample, K: Sink<N>>(&mut self, sink: &mut K) {
-        // Silence
-        let zero = Mono::<S::Chan>::new::<S::Chan>(S::Chan::MID).convert();
-
-        // Faster algorithm if sample rates match.
-        if self.sample_rate() == sink.sample_rate() {
-            for _ in 0..sink.capacity() {
-                sink.sink_sample(self.stream_sample().unwrap_or(zero))
-            }
-            return;
+    pub fn new(frame: F, index: f64) -> Self {
+        Self {
+            partial: frame,
+            offseti: index,
         }
+    }
 
-        // How many samples to read for each sample written.
-        let sr_ratio = self.sample_rate() as f64 / sink.sample_rate() as f64;
+    /// Get the left over partial frame.
+    pub fn frame(&self) -> F {
+        self.partial
+    }
 
-        // Write into the entire capacity of the `Sink`.
-        for _ in 0..sink.capacity() {
-            let old_phase = self.resampler().phase;
-            // Increment phase
-            self.resampler().phase += sr_ratio;
+    /// Get the left over partial index.
+    pub fn index(&self) -> f64 {
+        self.offseti
+    }
+}
 
-            if self.resampler().phase >= 1.0 {
-                // Value is always overwritten, but Rust compiler can't prove it
-                let mut sample = zero;
-                // Read one or more samples to interpolate & write out
-                while self.resampler().phase >= 1.0 {
-                    sample = self.stream_sample().unwrap_or(zero);
-                    self.resampler().phase = self.resampler().phase - 1.0;
-                    self.resampler().part = sample;
-                }
-                let amount = Mono::<S::Chan>::new(old_phase).convert();
-                let sample = self.resampler().part.lerp(sample, amount);
-                sink.sink_sample(sample);
+/// Audio sink - a type that consumes audio samples.
+pub trait Sink<F: Frame>: Sized {
+    /// Get the (target) sample rate of the [`Sink`](crate::Sink).
+    fn sample_rate(&self) -> f64;
+
+    /// Get the [`Resampler`](crate::Resampler) context for this
+    /// [`Sink`](crate::Sink).
+    fn resampler(&mut self) -> &mut Resampler<F>;
+
+    /// Get the (target) audio [Frame](crate::Frame) buffer of the
+    /// [`Sink`](crate::Sink).
+    fn buffer(&mut self) -> &mut [F];
+
+    /// Flush the partial sample from the resampler into the audio buffer if
+    /// there is one.
+    fn flush(mut self) {
+        if self.resampler().offseti % 1.0 > f64::EPSILON
+            || self.resampler().offseti % 1.0 < -f64::EPSILON
+        {
+            let i = self.resampler().offseti as usize;
+            self.buffer()[i] = self.resampler().partial;
+        }
+    }
+
+    /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
+    #[inline(always)]
+    fn stream<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
+        // Ratio of destination samples per stream samples.
+        let ratio = if let Some(stream_sr) = stream.sample_rate() {
+            self.sample_rate() / stream_sr
+        } else {
+            stream.set_sample_rate(self.sample_rate());
+            1.0
+        };
+        // Add left over audio.
+        let partial = self.resampler().partial;
+        if let Some(dst) = self.buffer().get_mut(0) {
+            *dst += partial;
+        }
+        // Calculate Ranges
+        let mut srclen = stream.len();
+        let dst_range = if let Some(len) = stream.len() {
+            ..((ratio * len as f64) as usize).min(self.buffer().len())
+        } else {
+            ..self.buffer().len()
+        };
+        // Clear destination range.
+        for f in self.buffer()[dst_range].iter_mut() {
+            *f = F::default();
+        }
+        // Go through each source sample and add to destination.
+        let mut stream_iter = stream.into_iter();
+        for i in 0.. {
+            // Calculate destination index.
+            let j = ratio * i as f64 + self.resampler().offseti;
+            let ceil = math::ceil_usize(j);
+            let floor = j as usize;
+            if !dst_range.contains(&floor) {
+                srclen = Some(i);
+                break;
+            }
+            let ceil_f64 = (j % 1.0).min(ratio);
+            let ceil_a = F::from_f64(ceil_f64);
+            let floor_a = F::from_f64(ratio - ceil_f64);
+            let src = if let Some(src) = stream_iter.next() {
+                src
             } else {
-                // Don't read any samples - copy & write the last one
-                sink.sink_sample(self.resampler().part);
+                break;
+            };
+            let src: F = src.convert();
+            self.buffer()[dst_range][floor] += src * floor_a;
+            if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
+                *buf += src * ceil_a;
+            } else {
+                self.resampler().partial += src * ceil_a;
             }
+        }
+        // Increment offseti
+        self.resampler().offseti += ratio * srclen.unwrap() as f64;
+    }
+}
+
+/// Audio stream - a type that generates audio samples.
+pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
+    /// Get the (source) sample rate of the stream.
+    fn sample_rate(&self) -> Option<f64>;
+
+    /// Returns the length of the stream exactly.  `None` represents an infinite
+    /// iterator.
+    fn len(&self) -> Option<usize>;
+
+    /// Check if the stream is empty (will not produce any frames).
+    fn is_empty(&self) -> bool {
+        self.len() == Some(0)
+    }
+
+    /// Set the source sample rate of the stream.  Will usually panic (default
+    /// behavior), unless the stream is configurable.
+    fn set_sample_rate<R: Into<f64>>(&mut self, sr: R) {
+        let sr = sr.into();
+        panic!(
+            "set_sample_rate({}) called on a fixed-sample rate stream!",
+            sr
+        )
+    }
+
+    /// Take at most `samples` samples as a stream.
+    fn take(self, samples: usize) -> TakeStream<F, Self> {
+        TakeStream(self, samples, PhantomData)
+    }
+
+    /// Blend this stream with another.
+    ///
+    /// # Panics
+    /// If the sample rates are not compatible.
+    fn blend<G: Frame, M: Stream<G>, O: Blend>(
+        self,
+        other: M,
+        op: O,
+    ) -> BlendStream<F, G, Self, M, O> {
+        let mut first = self;
+        let mut second = other;
+
+        let _op = op;
+        let (sr_a, sr_b) = (first.sample_rate(), second.sample_rate());
+        if sr_a != sr_b {
+            assert!(sr_a.is_none() || sr_b.is_none());
+            match (sr_a, sr_b) {
+                (None, None) => { /* Do nothing */ }
+                (None, Some(sr)) => first.set_sample_rate(sr),
+                (Some(sr), None) => second.set_sample_rate(sr),
+                (Some(_), Some(_)) => unreachable!(),
+            }
+        }
+        BlendStream(first, second, PhantomData)
+    }
+}
+
+/// Take stream.
+#[derive(Debug)]
+pub struct TakeStream<F: Frame, S: Stream<F>>(S, usize, PhantomData<F>);
+
+impl<F: Frame, S: Stream<F>> IntoIterator for TakeStream<F, S> {
+    type Item = F;
+    type IntoIter = Take<S::IntoIter>;
+
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter().take(self.1)
+    }
+}
+
+impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
+    #[inline(always)]
+    fn sample_rate(&self) -> Option<f64> {
+        self.0.sample_rate()
+    }
+
+    #[inline(always)]
+    fn len(&self) -> Option<usize> {
+        self.0.len().map(|a| a.min(self.1))
+    }
+}
+
+/// Blended stream.
+#[derive(Debug)]
+pub struct BlendStream<F, G, A, B, O>(A, B, PhantomData<(F, G, O)>)
+where
+    F: Frame,
+    G: Frame,
+    A: Stream<F>,
+    B: Stream<G>,
+    O: Blend;
+
+impl<F, G, A, B, O> IntoIterator for BlendStream<F, G, A, B, O>
+where
+    F: Frame,
+    G: Frame,
+    A: Stream<F>,
+    B: Stream<G>,
+    O: Blend,
+{
+    type Item = F;
+    #[allow(clippy::type_complexity)]
+    type IntoIter = Map<Zip<A::IntoIter, B::IntoIter>, fn((F, G)) -> F>;
+
+    #[inline(always)]
+    fn into_iter(self) -> Self::IntoIter {
+        self.0
+            .into_iter()
+            .zip(self.1.into_iter())
+            .map(|(a, b)| O::mix_frames(a, b.convert()))
+    }
+}
+
+impl<F, G, A, B, O> Stream<F> for BlendStream<F, G, A, B, O>
+where
+    F: Frame,
+    G: Frame,
+    A: Stream<F>,
+    B: Stream<G>,
+    O: Blend,
+{
+    #[inline(always)]
+    fn sample_rate(&self) -> Option<f64> {
+        self.0.sample_rate()
+    }
+
+    #[inline(always)]
+    fn len(&self) -> Option<usize> {
+        match (self.0.len(), self.1.len()) {
+            (None, None) => None,
+            (None, Some(len)) => Some(len),
+            (Some(len), None) => Some(len),
+            (Some(a), Some(b)) => Some(a.min(b)),
         }
     }
 
-    /// Get the (source) sample rate of the stream.
-    fn sample_rate(&self) -> u32;
-
-    /// This function is called when a sink requests a sample from the stream.
-    fn stream_sample(&mut self) -> Option<S>;
-
-    /// Get this streams's resampler context.
-    fn resampler(&mut self) -> &mut Resampler<S>;
+    #[inline(always)]
+    fn set_sample_rate<R: Into<f64>>(&mut self, sr: R) {
+        let sr = sr.into();
+        self.0.set_sample_rate(sr);
+        self.1.set_sample_rate(sr);
+    }
 }

@@ -12,10 +12,14 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    sample::Sample,
+    Frame,
+};
+use core::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
 
-/// Mono sample format (one channel).
+/// Mono audio format (Audio [`Frame`](crate::frame::Frame) containing one
+/// [`Channel`](crate::chan::Channel)).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Mono<C: Channel> {
@@ -23,7 +27,7 @@ pub struct Mono<C: Channel> {
 }
 
 impl<C: Channel> Mono<C> {
-    /// Create a one-channel Sample.
+    /// Create a one-channel audio [`Frame`](crate::frame::Frame).
     pub fn new<H>(one: H) -> Self
     where
         C: From<H>,
@@ -33,8 +37,8 @@ impl<C: Channel> Mono<C> {
     }
 }
 
-impl<C: Channel> Sample for Mono<C> {
-    const CONFIG: &'static [[f64; 2]] = &[[0.0, 1.0]];
+impl<C: Channel> Frame for Mono<C> {
+    const CONFIG: &'static [f64] = &[0.0 /* one centered speaker */];
 
     type Chan = C;
 
@@ -51,11 +55,99 @@ impl<C: Channel> Sample for Mono<C> {
     }
 }
 
-/// Mono [8-bit PCM](../chan/struct.Ch8.html) format.
+impl<C: Channel> AddAssign for Mono<C> {
+    fn add_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan += *ch;
+        }
+    }
+}
+
+impl<C: Channel> Add for Mono<C> {
+    type Output = Mono<C>;
+
+    fn add(mut self, other: Self) -> Self {
+        self += other;
+        self
+    }
+}
+
+impl<C: Channel> SubAssign for Mono<C> {
+    fn sub_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan -= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Sub for Mono<C> {
+    type Output = Mono<C>;
+
+    fn sub(mut self, other: Self) -> Self {
+        self -= other;
+        self
+    }
+}
+
+impl<C: Channel> MulAssign for Mono<C> {
+    fn mul_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan *= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Mul for Mono<C> {
+    type Output = Mono<C>;
+
+    fn mul(mut self, other: Self) -> Self {
+        self *= other;
+        self
+    }
+}
+
+impl<C: Channel> DivAssign for Mono<C> {
+    fn div_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan /= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Div for Mono<C> {
+    type Output = Mono<C>;
+
+    fn div(mut self, other: Self) -> Self {
+        self /= other;
+        self
+    }
+}
+
+impl<C: Channel> Neg for Mono<C> {
+    type Output = Mono<C>;
+
+    #[inline(always)]
+    fn neg(mut self) -> Self {
+        for chan in self.channels.iter_mut() {
+            *chan = -*chan;
+        }
+        self
+    }
+}
+
+impl<C: Channel> Iterator for Mono<C> {
+    type Item = Self;
+
+    fn next(&mut self) -> Option<Self> {
+        Some(*self)
+    }
+}
+
+/// Mono [8-bit PCM](crate::chan::Ch8) format.
 pub type Mono8 = Mono<Ch8>;
-/// Mono [16-bit PCM](../chan/struct.Ch16.html) format.
+/// Mono [16-bit PCM](crate::chan::Ch16) format.
 pub type Mono16 = Mono<Ch16>;
-/// Mono [32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// Mono [32-bit Floating Point](crate::chan::Ch32) format.
 pub type Mono32 = Mono<Ch32>;
-/// Mono [64-bit Floating Point](../chan/struct.Ch64.html) format.
+/// Mono [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Mono64 = Mono<Ch64>;

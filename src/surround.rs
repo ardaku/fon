@@ -12,11 +12,15 @@
 
 use crate::{
     chan::{Ch16, Ch32, Ch64, Ch8, Channel},
-    sample::Sample,
+    Frame,
+};
+use core::ops::{
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
 };
 
-/// Surround Sound 5.1 sample format (front left channel, rear left channel,
-/// rear right, front right channel, center, lfe).
+/// Surround Sound 5.1 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, rear left, rear right, front right, center, and lfe
+/// [`Channel`](crate::chan::Channel)).
 #[derive(Default, PartialEq, Copy, Clone, Debug)]
 #[repr(transparent)]
 pub struct Surround<C: Channel> {
@@ -41,14 +45,13 @@ impl<C: Channel> Surround<C> {
     }
 }
 
-impl<C: Channel> Sample for Surround<C> {
-    const CONFIG: &'static [[f64; 2]] = &[
-        [1.0 / 12.0, 0.25],         // Front Left (Centered at 1/6)
-        [0.25, 0.5],                // Rear Left (Centered at 1/3)
-        [0.5, 0.75],                // Rear Right (Centered at 2/3)
-        [0.75, 11.0 / 12.0],        // Front Right (Centered at 5/6)
-        [11.0 / 12.0, 13.0 / 12.0], // Front Center
-        [f64::NAN, f64::NAN],       // LFE
+impl<C: Channel> Frame for Surround<C> {
+    const CONFIG: &'static [f64] = &[
+        -2.0 / 3.0, // Rear Left
+        -1.0 / 3.0, // Front Left
+        0.0 / 3.0,  // Center
+        1.0 / 3.0,  // Front Right
+        2.0 / 3.0,  // Rear Right
     ];
 
     type Chan = C;
@@ -66,11 +69,99 @@ impl<C: Channel> Sample for Surround<C> {
     }
 }
 
-/// 5.1 Surround [8-bit PCM](../chan/struct.Ch8.html) format.
+impl<C: Channel> AddAssign for Surround<C> {
+    fn add_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan += *ch;
+        }
+    }
+}
+
+impl<C: Channel> Add for Surround<C> {
+    type Output = Surround<C>;
+
+    fn add(mut self, other: Self) -> Self {
+        self += other;
+        self
+    }
+}
+
+impl<C: Channel> SubAssign for Surround<C> {
+    fn sub_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan -= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Sub for Surround<C> {
+    type Output = Surround<C>;
+
+    fn sub(mut self, other: Self) -> Self {
+        self -= other;
+        self
+    }
+}
+
+impl<C: Channel> MulAssign for Surround<C> {
+    fn mul_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan *= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Mul for Surround<C> {
+    type Output = Surround<C>;
+
+    fn mul(mut self, other: Self) -> Self {
+        self *= other;
+        self
+    }
+}
+
+impl<C: Channel> DivAssign for Surround<C> {
+    fn div_assign(&mut self, other: Self) {
+        for (chan, ch) in self.channels.iter_mut().zip(other.channels.iter()) {
+            *chan /= *ch;
+        }
+    }
+}
+
+impl<C: Channel> Div for Surround<C> {
+    type Output = Surround<C>;
+
+    fn div(mut self, other: Self) -> Self {
+        self /= other;
+        self
+    }
+}
+
+impl<C: Channel> Neg for Surround<C> {
+    type Output = Surround<C>;
+
+    #[inline(always)]
+    fn neg(mut self) -> Self {
+        for chan in self.channels.iter_mut() {
+            *chan = -*chan;
+        }
+        self
+    }
+}
+
+impl<C: Channel> Iterator for Surround<C> {
+    type Item = Self;
+
+    fn next(&mut self) -> Option<Self> {
+        Some(*self)
+    }
+}
+
+/// 5.1 Surround [8-bit PCM](crate::chan::Ch8) format.
 pub type Surround8 = Surround<Ch8>;
-/// 5.1 Surround [16-bit PCM](../chan/struct.Ch16.html) format.
+/// 5.1 Surround [16-bit PCM](crate::chan::Ch16) format.
 pub type Surround16 = Surround<Ch16>;
-/// 5.1 Surround [32-bit Floating Point](../chan/struct.Ch32.html) format.
+/// 5.1 Surround [32-bit Floating Point](crate::chan::Ch32) format.
 pub type Surround32 = Surround<Ch32>;
-/// 5.1 Surround [64-bit Floating Point](../chan/struct.Ch64.html) format.
+/// 5.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Surround64 = Surround<Ch64>;
