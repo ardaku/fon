@@ -197,11 +197,16 @@ pub trait Frame:
 }
 
 impl<T: Frame> crate::Stream<T> for T {
+    #[inline(always)]
     fn sample_rate(&self) -> Option<f64> {
         None
     }
 
+    #[inline(always)]
     fn len(&self) -> Option<usize> {
         None
     }
+
+    #[inline(always)]
+    fn set_sample_rate<R: Into<f64>>(&mut self, _: R) { }
 }

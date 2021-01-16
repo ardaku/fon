@@ -203,7 +203,12 @@ impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
 
     #[inline(always)]
     fn len(&self) -> Option<usize> {
-        self.0.len().map(|a| a.min(self.1))
+        Some(self.0.len().map(|a| a.min(self.1)).unwrap_or(self.1))
+    }
+
+    #[inline(always)]
+    fn set_sample_rate<R: Into<f64>>(&mut self, rate: R) {
+        self.0.set_sample_rate(rate)
     }
 }
 
