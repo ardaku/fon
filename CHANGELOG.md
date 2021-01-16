@@ -4,6 +4,16 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
+## [0.5.0] - Unreleased
+### Changed
+ - `Audio` is now stored as a `VecDeque<F>` instead of a `Box<[F]>`
+ - There are now less cases where a panic will happen.
+
+### Removed
+ - `as_*_slice_mut()` and `as_mut_slice()` methods.  All `as_slice()` methods
+   now require a mutable reference due to the change to `VecDeque<F>` from
+   `Box<[F]>`.
+
 ## [0.4.0] - 2020-12-30
 ### Added
  - `ops::Pan` for panning audio left and right.

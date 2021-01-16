@@ -208,5 +208,5 @@ impl<T: Frame> crate::Stream<T> for T {
     }
 
     #[inline(always)]
-    fn set_sample_rate<R: Into<f64>>(&mut self, _: R) { }
+    fn set_sample_rate<R: Into<f64>>(&mut self, _: R) {}
 }
