@@ -1,12 +1,12 @@
-// Copyright Jeron Aldaron Lau 2020.
-// Distributed under either the Apache License, Version 2.0
-//    (See accompanying file LICENSE_APACHE_2_0.txt or copy at
-//          https://apache.org/licenses/LICENSE-2.0),
-// or the Boost Software License, Version 1.0.
-//    (See accompanying file LICENSE_BOOST_1_0.txt or copy at
-//          https://www.boost.org/LICENSE_1_0.txt)
-// at your option. This file may not be copied, modified, or distributed except
-// according to those terms.
+// Fon
+// Copyright © 2020-2021 Jeron Aldaron Lau.
+//
+// Licensed under any of:
+// - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+// - MIT License (https://mit-license.org/)
+// - Boost Software License, Version 1.0 (https://www.boost.org/LICENSE_1_0.txt)
+// At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
+// LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 //! Rust audio types and conversions.
 //!
@@ -20,7 +20,14 @@
 //!
 //! Blending [operations] are supported for all formats.
 //!
-//! # 8-Bit Sawtooth Wave Example
+//! # Getting Started
+//! 
+//! To understand some of the concepts used in this library,
+//! [this MDN article] is a good read (although the stuff about compression
+//! isn't relevant to this crate's functionality).  This crate uses the MDN
+//! definitions for what an audio frame and audio channel are.
+//!
+//! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::Ch8;
 //! use fon::mono::Mono8;
@@ -34,12 +41,6 @@
 //! // Convert to stereo 16-Bit 48_000 KHz audio format
 //! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
 //! ```
-//!
-//! # Further Resources
-//! To understand some of the concepts used in this library,
-//! [this MDN article] is a good read (although the stuff about compression
-//! isn't relevant to this crate's functionality).  This crate uses the MDN
-//! definitions for what an audio frame and audio channel are.
 //!
 //! [audio buffer]: crate::Audio
 //! [8]: crate::chan::Ch8
@@ -90,6 +91,7 @@ mod private;
 pub mod stereo;
 mod streaming;
 pub mod surround;
+// mod resampler;
 
 pub use audio::Audio;
 pub use frame::Frame;
