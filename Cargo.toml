@@ -22,5 +22,6 @@ readme = "README.md"
 description = "Rust audio types, resampling, processing and mixing library."
 keywords = ["audio", "resample", "processing", "wave", "sound"]
 categories = ["multimedia::audio", "multimedia", "algorithms", "data-structures"]
+include = ["Cargo.toml", "src/*"]
 
 [dependencies]
