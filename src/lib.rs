@@ -20,7 +20,14 @@
 //!
 //! Blending [operations] are supported for all formats.
 //!
-//! # 8-Bit Sawtooth Wave Example
+//! # Getting Started
+//! 
+//! To understand some of the concepts used in this library,
+//! [this MDN article] is a good read (although the stuff about compression
+//! isn't relevant to this crate's functionality).  This crate uses the MDN
+//! definitions for what an audio frame and audio channel are.
+//!
+//! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::Ch8;
 //! use fon::mono::Mono8;
@@ -34,12 +41,6 @@
 //! // Convert to stereo 16-Bit 48_000 KHz audio format
 //! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
 //! ```
-//!
-//! # Further Resources
-//! To understand some of the concepts used in this library,
-//! [this MDN article] is a good read (although the stuff about compression
-//! isn't relevant to this crate's functionality).  This crate uses the MDN
-//! definitions for what an audio frame and audio channel are.
 //!
 //! [audio buffer]: crate::Audio
 //! [8]: crate::chan::Ch8

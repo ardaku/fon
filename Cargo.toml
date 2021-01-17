@@ -21,6 +21,6 @@ repository = "https://github.com/AldaronLau/fon"
 readme = "README.md"
 description = "Rust audio types, resampling, processing and mixing library."
 keywords = ["audio", "resample", "processing", "wave", "sound"]
-categories = ["multimedia::audio", "multimedia"]
+categories = ["multimedia::audio", "multimedia", "algorithms", "data-structures"]
 
 [dependencies]
