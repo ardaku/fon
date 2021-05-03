@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{math, ops::Blend, Frame};
+use crate::{ops::Blend, Frame};
 use core::{
     iter::{Map, Take, Zip},
     marker::PhantomData,
@@ -20,12 +20,12 @@ pub struct Resampler<F: Frame> {
     /// Left over partial frame.
     partial: F,
     /// Left over partial index.
-    offseti: f64,
+    offseti: f32,
 }
 
 impl<F: Frame> Resampler<F> {
     /// Create a new resampler context.
-    pub fn new(frame: F, index: f64) -> Self {
+    pub fn new(frame: F, index: f32) -> Self {
         Self {
             partial: frame,
             offseti: index,
@@ -38,7 +38,7 @@ impl<F: Frame> Resampler<F> {
     }
 
     /// Get the left over partial index.
-    pub fn index(&self) -> f64 {
+    pub fn index(&self) -> f32 {
         self.offseti
     }
 }
@@ -46,7 +46,7 @@ impl<F: Frame> Resampler<F> {
 /// Audio sink - a type that consumes audio samples.
 pub trait Sink<F: Frame>: Sized {
     /// Get the (target) sample rate of the [`Sink`](crate::Sink).
-    fn sample_rate(&self) -> f64;
+    fn sample_rate(&self) -> u32;
 
     /// Get the [`Resampler`](crate::Resampler) context for this
     /// [`Sink`](crate::Sink).
@@ -59,8 +59,8 @@ pub trait Sink<F: Frame>: Sized {
     /// Flush the partial sample from the resampler into the audio buffer if
     /// there is one.
     fn flush(mut self) {
-        if self.resampler().offseti % 1.0 > f64::EPSILON
-            || self.resampler().offseti % 1.0 < -f64::EPSILON
+        if self.resampler().offseti % 1.0 > f32::EPSILON
+            || self.resampler().offseti % 1.0 < -f32::EPSILON
         {
             let i = self.resampler().offseti as usize;
             self.buffer()[i] = self.resampler().partial;
@@ -72,7 +72,7 @@ pub trait Sink<F: Frame>: Sized {
     fn stream<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
-            self.sample_rate() / stream_sr
+            self.sample_rate() as f32 / stream_sr as f32
         } else {
             stream.set_sample_rate(self.sample_rate());
             1.0
@@ -80,12 +80,12 @@ pub trait Sink<F: Frame>: Sized {
         // Add left over audio.
         let partial = self.resampler().partial;
         if let Some(dst) = self.buffer().get_mut(0) {
-            *dst += partial;
+            *dst = *dst + partial;
         }
         // Calculate Ranges
         let mut srclen = stream.len();
         let dst_range = if let Some(len) = stream.len() {
-            ..((ratio * len as f64) as usize).min(self.buffer().len())
+            ..((ratio * len as f32) as usize).min(self.buffer().len())
         } else {
             ..self.buffer().len()
         };
@@ -97,38 +97,38 @@ pub trait Sink<F: Frame>: Sized {
         let mut stream_iter = stream.into_iter();
         for i in 0.. {
             // Calculate destination index.
-            let j = ratio * i as f64 + self.resampler().offseti;
-            let ceil = math::ceil_usize(j);
+            let j = ratio * i as f32 + self.resampler().offseti;
+            let ceil = j.ceil() as usize;
             let floor = j as usize;
             if !dst_range.contains(&floor) {
                 srclen = Some(i);
                 break;
             }
             let ceil_f64 = (j % 1.0).min(ratio);
-            let ceil_a = F::from_f64(ceil_f64);
-            let floor_a = F::from_f64(ratio - ceil_f64);
+            let ceil_a = F::from(ceil_f64);
+            let floor_a = F::from(ratio - ceil_f64);
             let src = if let Some(src) = stream_iter.next() {
                 src
             } else {
                 break;
             };
             let src: F = src.convert();
-            self.buffer()[dst_range][floor] += src * floor_a;
+            self.buffer()[dst_range][floor] = self.buffer()[dst_range][floor] + src * floor_a;
             if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
-                *buf += src * ceil_a;
+                *buf = *buf + src * ceil_a;
             } else {
-                self.resampler().partial += src * ceil_a;
+                self.resampler().partial = self.resampler().partial + src * ceil_a;
             }
         }
         // Increment offseti
-        self.resampler().offseti += ratio * srclen.unwrap() as f64;
+        self.resampler().offseti += ratio * srclen.unwrap() as f32;
     }
 }
 
 /// Audio stream - a type that generates audio samples.
 pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
     /// Get the (source) sample rate of the stream.
-    fn sample_rate(&self) -> Option<f64>;
+    fn sample_rate(&self) -> Option<u32>;
 
     /// Returns the length of the stream exactly.  `None` represents an infinite
     /// iterator.
@@ -197,7 +197,7 @@ impl<F: Frame, S: Stream<F>> IntoIterator for TakeStream<F, S> {
 
 impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
     #[inline(always)]
-    fn sample_rate(&self) -> Option<f64> {
+    fn sample_rate(&self) -> Option<u32> {
         self.0.sample_rate()
     }
 
@@ -252,7 +252,7 @@ where
     O: Blend,
 {
     #[inline(always)]
-    fn sample_rate(&self) -> Option<f64> {
+    fn sample_rate(&self) -> Option<u32> {
         self.0.sample_rate()
     }
 

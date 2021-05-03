@@ -10,18 +10,33 @@
 
 //! Rust audio types and conversions.
 //!
-//! An [audio buffer] can be cheaply converted to and from raw samples (i8, i16,
+//! An [audio buffer] can be cheaply converted to and from raw samples (i16, u8,
 //! f32, and f64) buffers, enabling interoperability with other crates.
 //!
 //! Many audio formats are supported:
-//! - Any sample rate
-//! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
-//! - [Mono], [Stereo], [5.1 Surround]
-//!
+//!  - Any integer sample rate (32 bits needed to support at least 96_000 Hz)
+//!  - Common bit depths (you can use 16-bit to fake 12-/10-/8-bit, as well as
+//!    fake unsigned by XOR'ing the top bit)
+//!    - [16-bit Signed Integer PCM] (Listening/publishing standard)
+//!    - [24-bit Signed Integer PCM] (Older recording/processing standard)
+//!    - [32-bit Float PCM] (Newer recording/processing standard)
+//!    - [64-bit Float PCM] (Ultra high-quality audio standard)
+//!  - Up to 8 channels (following FLAC/SMPTE/ITU-R recommendations):
+//!    - 1 Channel: [Mono] (Mono)
+//!    - 2 Channels: [Stereo] (Left, Right)
+//!    - 3 Channels: [Surround 3.0] (Left, Right, Center)
+//!    - 4 Channels: [Surround 4.0] (F.Left, F.Right, B.Left, B.Right)
+//!    - 5 Channels: [Surround 5.0] (F.Left, F.Right, F.Center, B.Left, B.Right)
+//!    - 6 Channels: [Surround 5.1] (F.Left, F.Right, F.Center, LFE, B.Left,
+//!      B.Right)
+//!    - 7 Channels: [Surround 6.1] (F.Left, F.Right, F.Center, LFE, B.Center,
+//!      S.Left, S.Right)
+//!    - 8 Channels: [Surround 7.1] (F.Left, F.Right, F.Center, LFE, B.Left,
+//!      B.Right, S.Left, S.Right)
+//! 
 //! Blending [operations] are supported for all formats.
 //!
 //! # Getting Started
-//! 
 //! To understand some of the concepts used in this library,
 //! [this MDN article] is a good read (although the stuff about compression
 //! isn't relevant to this crate's functionality).  This crate uses the MDN
@@ -29,34 +44,38 @@
 //!
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
-//! use fon::chan::Ch8;
-//! use fon::mono::Mono8;
+//! use fon::chan::Ch32;
+//! use fon::mono::Mono32;
 //! use fon::stereo::Stereo16;
 //! use fon::{Audio, Frame};
-//!
-//! let mut a = Audio::<Mono8>::with_silence(44_100, 256);
-//! for (i, s) in a.iter_mut().enumerate() {
-//!     s.channels_mut()[0] = Ch8::new(i as i8);
+//! 
+//! let mut a = Audio::<Mono32>::with_silence(44_100, 256);
+//! let mut counter = 0.0;
+//! for s in a.iter_mut() {
+//!     s.channels_mut()[0] = Ch32::new(counter);
+//!     counter += 0.05;
 //! }
+//! 
 //! // Convert to stereo 16-Bit 48_000 KHz audio format
-//! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
+//! let mut audio = Audio::<Stereo16>::with_stream(48_000, &a);
 //! ```
 //!
 //! [audio buffer]: crate::Audio
-//! [8]: crate::chan::Ch8
-//! [16]: crate::chan::Ch16
-//! [32]: crate::chan::Ch32
-//! [64]: crate::chan::Ch64
+//! [16-bit Signed Integer PCM]: crate::chan::Ch16
+//! [24-bit Signed Integer PCM]: crate::chan::Ch24
+//! [32-bit Float PCM]: crate::chan::Ch32
+//! [64-bit Float PCM]: crate::chan::Ch64
 //! [Mono]: crate::mono::Mono
 //! [Stereo]: crate::stereo::Stereo
-//! [5.1 Surround]: crate::surround::Surround
+//! [Surround 3.0]: crate::surround30::Surround
+//! [Surround 4.0]: crate::surround40::Surround
+//! [Surround 5.0]: crate::surround50::Surround
+//! [Surround 5.1]: crate::surround51::Surround
+//! [Surround 6.1]: crate::surround61::Surround
+//! [Surround 7.1]: crate::surround71::Surround
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
 
-// FIXME: Doesn't quite work yet because fon needs sine and cosine.  No_std trig
-// crate would be nice for a fon feature enabling no_std, but I couldn't find
-// one.
-//#![no_std]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
     html_favicon_url = "https://libcala.github.io/icon.svg",
@@ -82,16 +101,17 @@
 extern crate alloc;
 
 mod audio;
-pub mod chan;
 mod frame;
-mod math;
+mod private;
+mod streaming;
+
+// mod resampler;
+
+pub mod chan;
 pub mod mono;
 pub mod ops;
-mod private;
 pub mod stereo;
-mod streaming;
-pub mod surround;
-// mod resampler;
+pub mod surround51;
 
 pub use audio::Audio;
 pub use frame::Frame;

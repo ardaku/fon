@@ -10,13 +10,13 @@
 
 //! Sample types
 
-use crate::{chan::Channel, mono::Mono, stereo::Stereo, surround::Surround};
+use crate::{chan::Channel, mono::Mono, stereo::Stereo, surround51::Surround};
 use core::{
     any::TypeId,
     fmt::Debug,
     mem::size_of,
     ops::{
-        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
+        Add, Mul, Neg, Sub,
     },
 };
 
@@ -31,15 +31,10 @@ pub trait Frame:
     + PartialEq
     + Unpin
     + Add<Output = Self>
-    + Div<Output = Self>
     + Mul<Output = Self>
     + Sub<Output = Self>
     + Neg<Output = Self>
     + Iterator<Item = Self>
-    + AddAssign
-    + SubAssign
-    + DivAssign
-    + MulAssign
     + 'static
 {
     /// Channel type
@@ -61,10 +56,10 @@ pub trait Frame:
     fn channels_mut(&mut self) -> &mut [Self::Chan];
 
     /// Make an audio frame with all channels set from a floating point value.
-    fn from_f64(value: f64) -> Self {
+    fn from(value: f32) -> Self {
         let mut ret = Self::default();
         for chan in ret.channels_mut() {
-            *chan = Self::Chan::from_f64(value);
+            *chan = Self::Chan::from(value);
         }
         ret
     }
@@ -113,7 +108,7 @@ pub trait Frame:
                 let mut out = [D::Chan::MID; 6];
                 // Same type, 1:1
                 for (src, dst) in self.channels().iter().zip(out.iter_mut()) {
-                    *dst = D::Chan::from_f64(src.to_f64());
+                    *dst = D::Chan::from(src.to_f32());
                 }
                 //
                 D::from_channels(&out)
@@ -124,8 +119,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 2];
                 // Mono -> Stereo, Duplicate The Channel
-                out[0] = D::Chan::from_f64(self.channels()[0].to_f64());
-                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
+                out[0] = D::Chan::from(self.channels()[0].to_f32());
+                out[1] = D::Chan::from(self.channels()[0].to_f32());
                 //
                 D::from_channels(&out)
             }
@@ -135,8 +130,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 6];
                 // Mono -> Surround (Mono -> Stereo -> Surround)
-                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
-                out[3] = D::Chan::from_f64(self.channels()[0].to_f64());
+                out[1] = D::Chan::from(self.channels()[0].to_f32());
+                out[3] = D::Chan::from(self.channels()[0].to_f32());
                 //
                 D::from_channels(&out)
             }
@@ -146,8 +141,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 6];
                 // Stereo -> Surround
-                out[1] = D::Chan::from_f64(self.channels()[0].to_f64());
-                out[3] = D::Chan::from_f64(self.channels()[1].to_f64());
+                out[1] = D::Chan::from(self.channels()[0].to_f32());
+                out[3] = D::Chan::from(self.channels()[1].to_f32());
                 //
                 D::from_channels(&out)
             }
@@ -157,8 +152,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 2];
                 // Surround -> Stereo
-                out[0] = D::Chan::from_f64(self.channels()[1].to_f64());
-                out[1] = D::Chan::from_f64(self.channels()[3].to_f64());
+                out[0] = D::Chan::from(self.channels()[1].to_f32());
+                out[1] = D::Chan::from(self.channels()[3].to_f32());
                 //
                 D::from_channels(&out)
             }
@@ -168,8 +163,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 1];
                 // Surround -> Stereo -> Mono
-                out[0] = D::Chan::from_f64(
-                    (self.channels()[1].to_f64() + self.channels()[3].to_f64())
+                out[0] = D::Chan::from(
+                    (self.channels()[1].to_f32() + self.channels()[3].to_f32())
                         * 0.5,
                 );
                 //
@@ -181,8 +176,8 @@ pub trait Frame:
             {
                 let mut out = [D::Chan::MID; 1];
                 // Stereo -> Mono
-                out[0] = D::Chan::from_f64(
-                    (self.channels()[0].to_f64() + self.channels()[1].to_f64())
+                out[0] = D::Chan::from(
+                    (self.channels()[0].to_f32() + self.channels()[1].to_f32())
                         * 0.5,
                 );
                 //
@@ -198,7 +193,7 @@ pub trait Frame:
 
 impl<T: Frame> crate::Stream<T> for T {
     #[inline(always)]
-    fn sample_rate(&self) -> Option<f64> {
+    fn sample_rate(&self) -> Option<u32> {
         None
     }
 

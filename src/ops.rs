@@ -49,13 +49,6 @@ pub struct Plus;
 /// Compression of channel (based on another channel)
 #[derive(Clone, Copy, Debug)]
 pub struct Compress;
-/// Pan channels
-///
-/// (MIN is left pan to back, MAX is right pan to back, MID is straight ahead).
-/// Each channel is panned separately to the destination.  The source panning is
-/// ignored.
-#[derive(Clone, Copy, Debug)]
-pub struct Pan;
 
 impl Blend for Src {
     #[inline(always)]
@@ -99,7 +92,16 @@ impl Blend for Compress {
     }
 }
 
-impl Blend for Pan {
+// FIXME: Do panning some other way.
+/*/// Pan channels
+///
+/// (MIN is left pan to back, MAX is right pan to back, MID is straight ahead).
+/// Each channel is panned separately to the destination.  The source panning is
+/// ignored.
+#[derive(Clone, Copy, Debug)]
+pub struct Pan;*/
+
+/*impl Blend for Pan {
     #[inline(always)]
     fn mix<C: Channel>(_dst: &mut C, _src: &C) {
         panic!("Panning is useless on one channel!")
@@ -110,7 +112,7 @@ impl Blend for Pan {
         let mut out = F::default();
         for (d, s) in dst.channels().iter().zip(src.channels().iter()) {
             // Get the panning amount for this channel.
-            let s = s.to_f64();
+            let s = s.to_f32();
             // Figure out which two destination channels the audio applies to.
             let mut start = F::CONFIG.len() - 1;
             for (i, location) in F::CONFIG.iter().enumerate() {
@@ -134,4 +136,4 @@ impl Blend for Pan {
         }
         out
     }
-}
+}*/
