@@ -1,4 +1,4 @@
-use fon::stereo::{Stereo16, Stereo32};
+use fon::chan::{Ch16, Ch32};
 use fon::{Audio, Sink, Stream};
 
 fn main() {
@@ -29,9 +29,9 @@ fn main() {
         audio.push(i16::from_le_bytes([sample[0], sample[1]]));
     }
     // Convert from 16-bit PCM array into fon Audio buffer.
-    let audio = Audio::<Stereo16>::with_i16_buffer(44_100, audio);
+    let audio = Audio::<Ch16, 2>::with_i16_buffer(44_100, audio);
     // Change the sample rate.
-    let mut output = Audio::<Stereo32>::with_stream(48_000, &audio);
+    let mut output = Audio::<Ch32, 2>::with_stream(48_000, &audio);
 
     // Overwrite it by converting it sample by sample.
     {
