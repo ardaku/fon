@@ -102,6 +102,7 @@ extern crate alloc;
 mod audio;
 mod private;
 mod streaming;
+mod pos;
 
 // mod resampler;
 
@@ -111,3 +112,4 @@ pub mod frame;
 
 pub use audio::Audio;
 pub use streaming::{Resampler, Sink, Stream};
+pub use pos::Position;
