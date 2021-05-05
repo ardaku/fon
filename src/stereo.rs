@@ -11,110 +11,13 @@
 //! Stereo speaker configuration and types.
 
 use crate::{
-    chan::{Ch16, Ch24, Ch32, Channel},
+    chan::{Ch16, Ch24, Ch32},
     Frame,
-};
-use core::ops::{
-    Add, Mul, Neg, Sub,
 };
 
 /// Stereo audio format (Audio [`Frame`](crate::frame::Frame) containing a left
 /// and right [`Channel`](crate::chan::Channel)).
-#[derive(Default, PartialEq, Copy, Clone, Debug)]
-#[repr(transparent)]
-pub struct Stereo<C: Channel> {
-    channels: [C; 2],
-}
-
-impl<C: Channel> Stereo<C> {
-    /// Create a two-channel Sample.
-    #[inline(always)]
-    pub fn new<H>(one: H, two: H) -> Self
-    where
-        C: From<H>,
-    {
-        let channels = [C::from(one), C::from(two)];
-        Self { channels }
-    }
-}
-
-impl<C: Channel> Frame for Stereo<C> {
-    const CONFIG: &'static [f64] = &[-0.5, 0.5];
-
-    type Chan = C;
-
-    #[inline(always)]
-    fn channels(&self) -> &[Self::Chan] {
-        &self.channels
-    }
-
-    #[inline(always)]
-    fn channels_mut(&mut self) -> &mut [Self::Chan] {
-        &mut self.channels
-    }
-
-    #[inline(always)]
-    fn from_channels(ch: &[Self::Chan]) -> Self {
-        Self::new::<C>(ch[0], ch[1])
-    }
-}
-
-impl<C: Channel> Add for Stereo<C> {
-    type Output = Stereo<C>;
-
-    #[inline(always)]
-    fn add(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a + *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Sub for Stereo<C> {
-    type Output = Stereo<C>;
-
-    #[inline(always)]
-    fn sub(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a - *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Mul for Stereo<C> {
-    type Output = Stereo<C>;
-
-    #[inline(always)]
-    fn mul(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a * *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Neg for Stereo<C> {
-    type Output = Stereo<C>;
-
-    #[inline(always)]
-    fn neg(mut self) -> Self {
-        for chan in self.channels.iter_mut() {
-            *chan = -*chan;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Iterator for Stereo<C> {
-    type Item = Self;
-
-    #[inline(always)]
-    fn next(&mut self) -> Option<Self> {
-        Some(*self)
-    }
-}
+pub type Stereo<Chan> = Frame<Chan, 2>;
 
 /// Stereo [16-bit PCM](crate::chan::Ch16) format.
 pub type Stereo16 = Stereo<Ch16>;

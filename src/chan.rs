@@ -30,11 +30,14 @@ pub trait Channel:
     + From<Ch16>
     + From<Ch24>
     + From<Ch32>
+    + From<Ch64>
     + Into<Ch16>
     + Into<Ch24>
     + Into<Ch32>
+    + Into<Ch64>
     + Sealed
     + Unpin
+    + Sized
     + 'static
 {
     /// Minimum value (*negative one*)
@@ -98,6 +101,13 @@ impl From<Ch32> for Ch16 {
     #[inline(always)]
     fn from(ch: Ch32) -> Self {
         Self::from(ch.0)
+    }
+}
+
+impl From<Ch64> for Ch16 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> Self {
+        Self::from(ch.0 as f32)
     }
 }
 
@@ -199,6 +209,13 @@ impl From<Ch32> for Ch24 {
     }
 }
 
+impl From<Ch64> for Ch24 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> Self {
+        Self::from(ch.0 as f32)
+    }
+}
+
 impl From<Ch24> for i32 {
     #[inline(always)]
     fn from(ch: Ch24) -> i32 {
@@ -290,6 +307,13 @@ impl From<Ch24> for Ch32 {
     }
 }
 
+impl From<Ch64> for Ch32 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> Self {
+        Self::new(ch.to_f32())
+    }
+}
+
 impl From<Ch32> for f32 {
     #[inline(always)]
     fn from(ch: Ch32) -> f32 {
@@ -330,6 +354,101 @@ impl Neg for Ch32 {
     #[inline(always)]
     fn neg(self) -> Self {
         Self(-f32::from(self))
+    }
+}
+
+/// 64-bit sample [Channel](Channel).
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct Ch64(f64);
+
+impl Channel for Ch64 {
+    const MIN: Ch64 = Ch64(-1.0);
+    const MID: Ch64 = Ch64(0.0);
+    const MAX: Ch64 = Ch64(1.0);
+
+    #[inline(always)]
+    fn to_f32(self) -> f32 {
+        self.0 as f32
+    }
+}
+
+impl Ch64 {
+    /// Create a new 32-bit [`Channel`](Channel) value.
+    #[inline(always)]
+    pub const fn new(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<f32> for Ch64 {
+    #[inline(always)]
+    fn from(value: f32) -> Self {
+        Self::new(value as f64)
+    }
+}
+
+impl From<Ch16> for Ch64 {
+    #[inline(always)]
+    fn from(ch: Ch16) -> Self {
+        Self::new(ch.to_f32() as f64)
+    }
+}
+
+impl From<Ch24> for Ch64 {
+    #[inline(always)]
+    fn from(ch: Ch24) -> Self {
+        Self::new(ch.to_f32() as f64)
+    }
+}
+
+impl From<Ch32> for Ch64 {
+    #[inline(always)]
+    fn from(ch: Ch32) -> Self {
+        Self::new(ch.0 as f64)
+    }
+}
+
+impl From<Ch64> for f32 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> f32 {
+        ch.0 as f32
+    }
+}
+
+impl<R: Into<Self>> Add<R> for Ch64 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        Self::new(Ch64::from(self).0 + Ch64::from(rhs.into()).0)
+    }
+}
+
+impl<R: Into<Self>> Sub<R> for Ch64 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(self, rhs: R) -> Self {
+        Self::new(Ch64::from(self).0 - Ch64::from(rhs.into()).0)
+    }
+}
+
+impl<R: Into<Self>> Mul<R> for Ch64 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        Self::new(Ch64::from(self).0 * Ch64::from(rhs.into()).0)
+    }
+}
+
+impl Neg for Ch64 {
+    type Output = Ch64;
+
+    #[inline(always)]
+    fn neg(self) -> Self {
+        Self(-Ch64::from(self).0)
     }
 }
 
@@ -390,6 +509,17 @@ mod tests {
         assert_eq!(Ch32::MIN, Ch32::from(Ch32::MIN.to_f32()));
         assert_eq!(Ch32::MID, Ch32::from(Ch32::MID.to_f32()));
         assert_eq!(Ch32::MAX, Ch32::from(Ch32::MAX.to_f32()));
+    }
+
+    #[test]
+    fn ch64() {
+        assert_eq!(-1.0, Ch64::MIN.to_f32());
+        assert_eq!(0.0, Ch64::MID.to_f32());
+        assert_eq!(1.0, Ch64::MAX.to_f32());
+
+        assert_eq!(Ch64::MIN, Ch64::from(Ch64::MIN.to_f32()));
+        assert_eq!(Ch64::MID, Ch64::from(Ch64::MID.to_f32()));
+        assert_eq!(Ch64::MAX, Ch64::from(Ch64::MAX.to_f32()));
     }
 
     #[test]
@@ -480,6 +610,29 @@ mod tests {
     }
 
     #[test]
+    fn ch64_arith() {
+        // Test addition
+        assert_eq!(Ch64::new(0.0), Ch64::new(-1.0) + Ch64::new(1.0));
+        assert_eq!(Ch64::new(0.25), Ch64::new(-0.25) + Ch64::new(0.5));
+        assert_eq!(Ch64::new(1.0), Ch64::new(0.0) + Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) + Ch64::new(-0.5));
+        // Test subtraction
+        assert_eq!(Ch64::new(0.0), Ch64::new(-1.0) - Ch64::new(-1.0));
+        assert_eq!(Ch64::new(0.0), Ch64::new(1.0) - Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(0.0) - Ch64::new(1.0));
+        // Test multiplication
+        assert_eq!(Ch64::new(0.0), Ch64::new(0.0) * Ch64::new(1.0));
+        assert_eq!(Ch64::new(1.0), Ch64::new(1.0) * Ch64::new(1.0));
+        assert_eq!(Ch64::new(-1.0), Ch64::new(1.0) * Ch64::new(-1.0));
+        assert_eq!(Ch64::new(1.0), Ch64::new(-1.0) * Ch64::new(-1.0));
+        assert_eq!(Ch64::new(-0.5), Ch64::new(1.0) * Ch64::new(-0.5));
+        // Test negation
+        assert_eq!(Ch64::MIN, -Ch64::MAX);
+        assert_eq!(Ch64::MAX, -Ch64::MIN);
+        assert_eq!(Ch64::new(0.0), -Ch64::new(0.0));
+    }
+
+    #[test]
     fn ch16_saturation() {
         assert_eq!(Ch16::MAX, Ch16::new(24576) + Ch16::new(16384));
         assert_eq!(Ch16::MIN, Ch16::new(-16384) + Ch16::new(-24576));
@@ -498,5 +651,12 @@ mod tests {
         assert_eq!(Ch32::new(1.25), Ch32::new(0.75) + Ch32::new(0.5));
         assert_eq!(Ch32::new(-1.25), Ch32::new(-0.5) + Ch32::new(-0.75));
         assert_eq!(Ch32::new(-1.25), Ch32::new(-0.5) - Ch32::new(0.75));
+    }
+
+    #[test]
+    fn ch64_unsaturation() {
+        assert_eq!(Ch64::new(1.25), Ch64::new(0.75) + Ch64::new(0.5));
+        assert_eq!(Ch64::new(-1.25), Ch64::new(-0.5) + Ch64::new(-0.75));
+        assert_eq!(Ch64::new(-1.25), Ch64::new(-0.5) - Ch64::new(0.75));
     }
 }

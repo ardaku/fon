@@ -10,11 +10,9 @@
 
 //! Sample types
 
-use crate::{chan::Channel, mono::Mono, stereo::Stereo, surround51::Surround};
+use crate::{chan::Channel};
 use core::{
-    any::TypeId,
     fmt::Debug,
-    mem::size_of,
     ops::{
         Add, Mul, Neg, Sub,
     },
@@ -23,67 +21,96 @@ use core::{
 /// Frame - A number of interleaved sample [channel]s.
 ///
 /// [channel]: crate::chan::Channel
-pub trait Frame:
-    Clone
-    + Copy
-    + Debug
-    + Default
-    + PartialEq
-    + Unpin
-    + Add<Output = Self>
-    + Mul<Output = Self>
-    + Sub<Output = Self>
-    + Neg<Output = Self>
-    + Iterator<Item = Self>
-    + 'static
-{
-    /// Channel type
-    type Chan: Channel;
+#[repr(transparent)]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Frame<Chan: Channel, const CH: usize>([Chan; CH]);
 
-    /// Number of channels
-    const CHAN_COUNT: usize = size_of::<Self>() / size_of::<Self::Chan>();
+impl<Chan: Channel, const CH: usize> Default for Frame<Chan, CH> {
+    fn default() -> Self {
+        Frame([Chan::default(); CH])
+    }
+}
 
-    /// Speaker configuration (Stored as a list of locations, -1.0 refers to
-    /// the back going left, 1.0 also refers to the back - but going right, and
-    /// 0.0 refers to center (straight ahead).  These should be listed from
-    /// left to right, does not include LFE.
-    const CONFIG: &'static [f64];
+impl<Chan: Channel> Frame<Chan, 1> {
+    /// Create a new mono interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(mono: Chan) -> Self {
+        Self([mono])
+    }
+}
 
-    /// Get the channels.
-    fn channels(&self) -> &[Self::Chan];
+impl<Chan: Channel> Frame<Chan, 2> {
+    /// Create a new stereo interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan) -> Self {
+        Self([left, right])
+    }
+}
 
-    /// Get the channels mutably.
-    fn channels_mut(&mut self) -> &mut [Self::Chan];
+impl<Chan: Channel> Frame<Chan, 3> {
+    /// Create a new surround 3.0 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, center: Chan) -> Self {
+        Self([left, right, center])
+    }
+}
 
-    /// Make an audio frame with all channels set from a floating point value.
-    fn from(value: f32) -> Self {
-        let mut ret = Self::default();
-        for chan in ret.channels_mut() {
-            *chan = Self::Chan::from(value);
-        }
-        ret
+impl<Chan: Channel> Frame<Chan, 4> {
+    /// Create a new surround 4.0 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, back_left: Chan, back_right: Chan) -> Self {
+        Self([left, right, back_left, back_right])
+    }
+}
+
+impl<Chan: Channel> Frame<Chan, 5> {
+    /// Create a new surround 5.0 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, center: Chan, back_left: Chan, back_right: Chan) -> Self {
+        Self([left, right, center, back_left, back_right])
+    }
+}
+
+impl<Chan: Channel> Frame<Chan, 6> {
+    /// Create a new surround 5.1 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan) -> Self {
+        Self([left, right, center, lfe, back_left, back_right])
+    }
+}
+
+impl<Chan: Channel> Frame<Chan, 7> {
+    /// Create a new surround 6.1 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back: Chan, side_left: Chan, side_right: Chan) -> Self {
+        Self([left, right, center, lfe, back, side_left, side_right])
+    }
+}
+
+impl<Chan: Channel> Frame<Chan, 8> {
+    /// Create a new surround 7.1 interleaved audio frame from channel(s).
+    #[inline(always)]
+    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan, side_left: Chan, side_right: Chan) -> Self {
+        Self([left, right, center, lfe, back_left, back_right, side_left, side_right])
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
+    /// Get the channels contained by this frame.
+    #[inline(always)]
+    pub fn channels(&self) -> &[Chan; CH] {
+        &self.0
     }
 
-    /// Make an audio frame from a singular channel.
-    fn from_channel(ch: Self::Chan) -> Self {
-        let mut ret = Self::default();
-        for chan in ret.channels_mut() {
-            *chan = ch;
-        }
-        ret
-    }
-
-    /// Make an audio frame from a slice of channels.
-    fn from_channels(ch: &[Self::Chan]) -> Self;
-
-    /// Make an audio frame from a mono frame.
-    fn from_mono(frame: Mono<Self::Chan>) -> Self {
-        Self::from_channel(frame.channels()[0])
+    /// Get a mutable reference to the channels contained by this frame.
+    #[inline(always)]
+    pub fn channels_mut(&mut self) -> &mut [Chan; CH] {
+        &mut self.0
     }
 
     /// Linear interpolation.
     #[inline(always)]
-    fn lerp(&self, rhs: Self, t: Self) -> Self {
+    pub fn lerp(&self, rhs: Self, t: Self) -> Self {
         let mut out = Self::default();
         let main = out.channels_mut().iter_mut().zip(self.channels().iter());
         let other = rhs.channels().iter().zip(t.channels().iter());
@@ -93,105 +120,499 @@ pub trait Frame:
         out
     }
 
-    /// Convert a sample to another format.
+    /// Convert an audio frame to another format.
     #[inline(always)]
-    fn convert<D: Frame>(self) -> D {
-        match (TypeId::of::<Self>(), TypeId::of::<D>()) {
-            (a, b)
-                if (a == TypeId::of::<Mono<Self::Chan>>()
-                    && b == TypeId::of::<Mono<D::Chan>>())
-                    || (a == TypeId::of::<Stereo<Self::Chan>>()
-                        && b == TypeId::of::<Stereo<D::Chan>>())
-                    || (a == TypeId::of::<Surround<Self::Chan>>()
-                        && b == TypeId::of::<Surround<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 6];
-                // Same type, 1:1
-                for (src, dst) in self.channels().iter().zip(out.iter_mut()) {
-                    *dst = D::Chan::from(src.to_f32());
+    pub fn convert<C: Channel, const N: usize>(self) -> Frame<C, N>
+        where C: From<Chan>
+    {
+        let mut out = Frame::<C, N>::default();
+
+        match (CH, N) {
+            (x, y) if x == y => {
+                for (o, i) in out.channels_mut().iter_mut().zip(self.channels().iter()) {
+                    *o = C::from(*i);
                 }
-                //
-                D::from_channels(&out)
             }
-            (a, b)
-                if (a == TypeId::of::<Mono<Self::Chan>>()
-                    && b == TypeId::of::<Stereo<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 2];
-                // Mono -> Stereo, Duplicate The Channel
-                out[0] = D::Chan::from(self.channels()[0].to_f32());
-                out[1] = D::Chan::from(self.channels()[0].to_f32());
-                //
-                D::from_channels(&out)
+            // FIXME: Higher quality surround conversions for rest of match
+            // statement.  What are better algorithms that people use?
+            (1, _) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[0]);
             }
-            (a, b)
-                if (a == TypeId::of::<Mono<Self::Chan>>()
-                    && b == TypeId::of::<Surround<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 6];
-                // Mono -> Surround (Mono -> Stereo -> Surround)
-                out[1] = D::Chan::from(self.channels()[0].to_f32());
-                out[3] = D::Chan::from(self.channels()[0].to_f32());
-                //
-                D::from_channels(&out)
+            (2, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.5)
+                    + C::from(self.channels()[1]) * C::from(0.5);
             }
-            (a, b)
-                if (a == TypeId::of::<Stereo<Self::Chan>>()
-                    && b == TypeId::of::<Surround<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 6];
-                // Stereo -> Surround
-                out[1] = D::Chan::from(self.channels()[0].to_f32());
-                out[3] = D::Chan::from(self.channels()[1].to_f32());
-                //
-                D::from_channels(&out)
+            (2, _) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
             }
-            (a, b)
-                if (a == TypeId::of::<Surround<Self::Chan>>()
-                    && b == TypeId::of::<Stereo<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 2];
-                // Surround -> Stereo
-                out[0] = D::Chan::from(self.channels()[1].to_f32());
-                out[1] = D::Chan::from(self.channels()[3].to_f32());
-                //
-                D::from_channels(&out)
+            (3, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[1]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
             }
-            (a, b)
-                if (a == TypeId::of::<Surround<Self::Chan>>()
-                    && b == TypeId::of::<Mono<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 1];
-                // Surround -> Stereo -> Mono
-                out[0] = D::Chan::from(
-                    (self.channels()[1].to_f32() + self.channels()[3].to_f32())
-                        * 0.5,
-                );
-                //
-                D::from_channels(&out)
+            (3, 2) | (3, 4) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
             }
-            (a, b)
-                if (a == TypeId::of::<Stereo<Self::Chan>>()
-                    && b == TypeId::of::<Mono<D::Chan>>()) =>
-            {
-                let mut out = [D::Chan::MID; 1];
-                // Stereo -> Mono
-                out[0] = D::Chan::from(
-                    (self.channels()[0].to_f32() + self.channels()[1].to_f32())
-                        * 0.5,
-                );
-                //
-                D::from_channels(&out)
+            (3, _) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
             }
-            _ => panic!(
-                "Cannot convert custom speaker configurations, \
-                implement custom Frame::convert() method to override."
-            ),
+            (4, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.25)
+                    + C::from(self.channels()[1]) * C::from(0.25)
+                    + C::from(self.channels()[2]) * C::from(0.25)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+            }
+            (4, 2) | (4, 3) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.5)
+                    + C::from(self.channels()[2]) * C::from(0.5);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.5);
+            }
+            (4, 5) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[3] = C::from(self.channels()[2]);
+                out.channels_mut()[4] = C::from(self.channels()[3]);
+            }
+            (4, 6) | (4, 8) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[4] = C::from(self.channels()[2]);
+                out.channels_mut()[5] = C::from(self.channels()[3]);
+            }
+            (4, 7) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[2]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.5);
+                out.channels_mut()[5] = 
+                    C::from(self.channels()[0]) * C::from(0.5)
+                    + C::from(self.channels()[2]) * C::from(0.5);
+                out.channels_mut()[6] = 
+                    C::from(self.channels()[1]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.5);
+            }
+            (5, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.2)
+                    + C::from(self.channels()[1]) * C::from(0.2)
+                    + C::from(self.channels()[2]) * C::from(0.2)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(0.2);
+            }
+            (5, 2) | (5, 3) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.4)
+                    + C::from(self.channels()[3]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.2);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.4)
+                    + C::from(self.channels()[4]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.2);
+            }
+            (5, 4) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
+                out.channels_mut()[2] = C::from(self.channels()[3]);
+                out.channels_mut()[3] = C::from(self.channels()[4]);
+            }
+            (5, 6) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[4] = C::from(self.channels()[3]);
+                out.channels_mut()[5] = C::from(self.channels()[4]);
+            }
+            (5, 7) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[3]) * C::from(0.5)
+                    + C::from(self.channels()[4]) * C::from(0.5);
+                out.channels_mut()[5] = C::from(self.channels()[3]);
+                out.channels_mut()[6] = C::from(self.channels()[4]);
+            }
+            (5, 8) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[4] = C::from(self.channels()[3]);
+                out.channels_mut()[5] = C::from(self.channels()[4]);
+            }
+            (6, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.2)
+                    + C::from(self.channels()[1]) * C::from(0.2)
+                    + C::from(self.channels()[2]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(0.2)
+                    + C::from(self.channels()[5]) * C::from(0.2);
+            }
+            (6, 2) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.4)
+                    + C::from(self.channels()[4]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.2)
+                    + C::from(self.channels()[3]) * C::from(0.4);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.4)
+                    + C::from(self.channels()[5]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.2)
+                    + C::from(self.channels()[3]) * C::from(0.4);
+            }
+            (6, 3) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.5)
+                    + C::from(self.channels()[4]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.5)
+                    + C::from(self.channels()[5]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
+                out.channels_mut()[2] = C::from(self.channels()[2])
+                    + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
+            }
+            (6, 4) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[2] = C::from(self.channels()[4])
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[3] = C::from(self.channels()[5])
+                    + C::from(self.channels()[3]) * C::from(0.25);
+            }
+            (6, 5) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) 
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[2] = C::from(self.channels()[2])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[3] = C::from(self.channels()[4])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[4] = C::from(self.channels()[5])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+            }
+            (6, 7) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] = C::from(self.channels()[3]);
+                out.channels_mut()[5] = C::from(self.channels()[4]);
+                out.channels_mut()[6] = C::from(self.channels()[5]);
+            }
+            (6, 8) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] = C::from(self.channels()[3]);
+                out.channels_mut()[4] = C::from(self.channels()[4]);
+                out.channels_mut()[5] = C::from(self.channels()[5]);
+            }
+            (7, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[1]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 6.0);
+            }
+            (7, 2) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
+            }
+            (7, 3) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[5]) * C::from(0.5);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[6]) * C::from(0.5);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[2]) * C::from(0.5)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(0.5);
+            }
+            (7, 4) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+                out.channels_mut()[3] =
+                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.25);
+            }
+            (7, 5) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[2])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[3] =
+                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.2);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.2);
+            }
+            (7, 6) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] = C::from(self.channels()[3]);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0);
+                out.channels_mut()[5] =
+                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0);
+            }
+            (7, 8) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] = C::from(self.channels()[3]);
+                out.channels_mut()[4] = C::from(self.channels()[5]);
+                out.channels_mut()[5] = C::from(self.channels()[6]);
+                out.channels_mut()[6] =
+                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
+                out.channels_mut()[7] =
+                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
+            }
+            (8, 1) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[1]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[7]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[3]) * C::from(1.0 / 7.0);
+            }
+            (8, 2) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(2.0 / 7.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(2.0 / 7.0)
+                    + C::from(self.channels()[6]) * C::from(2.0 / 7.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(2.0 / 7.0)
+                    + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[5]) * C::from(2.0 / 7.0)
+                    + C::from(self.channels()[7]) * C::from(2.0 / 7.0);
+            }
+            (8, 3) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[5]) * C::from(1.0 / 3.0)
+                    + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[2])
+                    + C::from(self.channels()[3]) * C::from(0.2);
+            }
+            (8, 4) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.4)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[6]) * C::from(0.2);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.4)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[7]) * C::from(0.2);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[4]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.4)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[6]) * C::from(0.2);
+                out.channels_mut()[3] =
+                    C::from(self.channels()[5]) * C::from(0.4)
+                    + C::from(self.channels()[2]) * C::from(0.4)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[7]) * C::from(0.2);
+            }
+            (8, 5) => {
+                out.channels_mut()[0] =
+                    C::from(self.channels()[0]) * C::from(0.8)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[6]) * C::from(0.2);
+                out.channels_mut()[1] =
+                    C::from(self.channels()[1]) * C::from(0.8)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[7]) * C::from(0.2);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] =
+                    C::from(self.channels()[4]) * C::from(0.8)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[6]) * C::from(0.2);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[5]) * C::from(0.8)
+                    + C::from(self.channels()[3]) * C::from(0.2)
+                    + C::from(self.channels()[7]) * C::from(0.2);
+            }
+            (8, 6) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] =
+                    C::from(self.channels()[2]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
+                out.channels_mut()[3] =
+                    C::from(self.channels()[3]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
+                out.channels_mut()[5] =
+                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                    + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
+            }
+            (8, 7) => {
+                out.channels_mut()[0] = C::from(self.channels()[0]);
+                out.channels_mut()[1] = C::from(self.channels()[1]);
+                out.channels_mut()[2] = C::from(self.channels()[2]);
+                out.channels_mut()[3] = C::from(self.channels()[3]);
+                out.channels_mut()[4] =
+                    C::from(self.channels()[4]) * C::from(0.5)
+                    + C::from(self.channels()[5]) * C::from(0.5);
+                out.channels_mut()[5] = C::from(self.channels()[6]);
+                out.channels_mut()[6] = C::from(self.channels()[7]);
+            }
+            _ => unreachable!(),
         }
+        out
     }
 }
 
-impl<T: Frame> crate::Stream<T> for T {
+impl<Chan: Channel, const CH: usize> From<f32> for Frame<Chan, CH> {
+    fn from(rhs: f32) -> Self {
+        Frame([Chan::from(rhs); CH])
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(mut self, other: Self) -> Self {
+        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+            *a = *a + *b;
+        }
+        self
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(mut self, other: Self) -> Self {
+        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+            *a = *a - *b;
+        }
+        self
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(mut self, other: Self) -> Self {
+        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+            *a = *a * *b;
+        }
+        self
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Neg for Frame<Chan, CH> {
+    type Output = Self;
+
+    #[inline(always)]
+    fn neg(mut self) -> Self {
+        for chan in self.channels_mut().iter_mut() {
+            *chan = -*chan;
+        }
+        self
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
+    type Item = Self;
+
+    #[inline(always)]
+    fn next(&mut self) -> Option<Self> {
+        Some(*self)
+    }
+}
+
+impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH> for Frame<Chan, CH> {
     #[inline(always)]
     fn sample_rate(&self) -> Option<u32> {
         None

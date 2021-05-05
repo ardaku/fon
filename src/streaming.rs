@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{ops::Blend, Frame};
+use crate::{ops::Blend, Frame, chan::Channel};
 use core::{
     iter::{Map, Take, Zip},
     marker::PhantomData,
@@ -16,16 +16,16 @@ use core::{
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
-pub struct Resampler<F: Frame> {
+pub struct Resampler<Chan: Channel, const CH: usize> {
     /// Left over partial frame.
-    partial: F,
+    partial: Frame<Chan, CH>,
     /// Left over partial index.
     offseti: f32,
 }
 
-impl<F: Frame> Resampler<F> {
+impl<Chan: Channel, const CH: usize> Resampler<Chan, CH> {
     /// Create a new resampler context.
-    pub fn new(frame: F, index: f32) -> Self {
+    pub fn new(frame: Frame<Chan, CH>, index: f32) -> Self {
         Self {
             partial: frame,
             offseti: index,
@@ -33,7 +33,7 @@ impl<F: Frame> Resampler<F> {
     }
 
     /// Get the left over partial frame.
-    pub fn frame(&self) -> F {
+    pub fn frame(&self) -> Frame<Chan, CH> {
         self.partial
     }
 
@@ -44,17 +44,17 @@ impl<F: Frame> Resampler<F> {
 }
 
 /// Audio sink - a type that consumes audio samples.
-pub trait Sink<F: Frame>: Sized {
+pub trait Sink<Chan: Channel, const CH: usize>: Sized {
     /// Get the (target) sample rate of the [`Sink`](crate::Sink).
     fn sample_rate(&self) -> u32;
 
     /// Get the [`Resampler`](crate::Resampler) context for this
     /// [`Sink`](crate::Sink).
-    fn resampler(&mut self) -> &mut Resampler<F>;
+    fn resampler(&mut self) -> &mut Resampler<Chan, CH>;
 
     /// Get the (target) audio [Frame](crate::Frame) buffer of the
     /// [`Sink`](crate::Sink).
-    fn buffer(&mut self) -> &mut [F];
+    fn buffer(&mut self) -> &mut [Frame<Chan, CH>];
 
     /// Flush the partial sample from the resampler into the audio buffer if
     /// there is one.
@@ -69,7 +69,9 @@ pub trait Sink<F: Frame>: Sized {
 
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
     #[inline(always)]
-    fn stream<S: Frame, M: Stream<S>>(&mut self, mut stream: M) {
+    fn stream<C, M: Stream<C, N>, const N: usize>(&mut self, mut stream: M)
+        where C: Channel, Chan: From<C>
+    {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
             self.sample_rate() as f32 / stream_sr as f32
@@ -91,7 +93,7 @@ pub trait Sink<F: Frame>: Sized {
         };
         // Clear destination range.
         for f in self.buffer()[dst_range].iter_mut() {
-            *f = F::default();
+            *f = Frame::<Chan, CH>::default();
         }
         // Go through each source sample and add to destination.
         let mut stream_iter = stream.into_iter();
@@ -105,14 +107,14 @@ pub trait Sink<F: Frame>: Sized {
                 break;
             }
             let ceil_f64 = (j % 1.0).min(ratio);
-            let ceil_a = F::from(ceil_f64);
-            let floor_a = F::from(ratio - ceil_f64);
+            let ceil_a: Frame::<Chan, CH> = ceil_f64.into();
+            let floor_a: Frame::<Chan, CH> = (ratio - ceil_f64).into();
             let src = if let Some(src) = stream_iter.next() {
                 src
             } else {
                 break;
             };
-            let src: F = src.convert();
+            let src: Frame<Chan, CH> = src.convert();
             self.buffer()[dst_range][floor] = self.buffer()[dst_range][floor] + src * floor_a;
             if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
                 *buf = *buf + src * ceil_a;
@@ -126,7 +128,8 @@ pub trait Sink<F: Frame>: Sized {
 }
 
 /// Audio stream - a type that generates audio samples.
-pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
+pub trait Stream<Chan: Channel, const CH: usize>: Sized + IntoIterator<Item = Frame<Chan, CH>>
+{
     /// Get the (source) sample rate of the stream.
     fn sample_rate(&self) -> Option<u32>;
 
@@ -150,11 +153,11 @@ pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
     }
 
     /// Take at most `samples` samples as a stream.
-    fn take(self, samples: usize) -> TakeStream<F, Self> {
+    fn take(self, samples: usize) -> TakeStream<Chan, Self, CH> {
         TakeStream(self, samples, PhantomData)
     }
 
-    /// Blend this stream with another.
+/*    /// Blend this stream with another.
     ///
     /// # Panics
     /// If the sample rates are not compatible.
@@ -178,15 +181,15 @@ pub trait Stream<F: Frame>: Sized + IntoIterator<Item = F> {
             }
         }
         BlendStream(first, second, PhantomData)
-    }
+    }*/
 }
 
 /// Take stream.
 #[derive(Debug)]
-pub struct TakeStream<F: Frame, S: Stream<F>>(S, usize, PhantomData<F>);
+pub struct TakeStream<Chan: Channel, S: Stream<Chan, CH>, const CH: usize>(S, usize, PhantomData<Frame<Chan, CH>>);
 
-impl<F: Frame, S: Stream<F>> IntoIterator for TakeStream<F, S> {
-    type Item = F;
+impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> IntoIterator for TakeStream<Chan, S, CH> {
+    type Item = Frame<Chan, CH>;
     type IntoIter = Take<S::IntoIter>;
 
     #[inline(always)]
@@ -195,7 +198,7 @@ impl<F: Frame, S: Stream<F>> IntoIterator for TakeStream<F, S> {
     }
 }
 
-impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
+impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> Stream<Chan, CH> for TakeStream<Chan, S, CH> {
     #[inline(always)]
     fn sample_rate(&self) -> Option<u32> {
         self.0.sample_rate()
@@ -212,7 +215,8 @@ impl<F: Frame, S: Stream<F>> Stream<F> for TakeStream<F, S> {
     }
 }
 
-/// Blended stream.
+// FIXME
+/*/// Blended stream.
 #[derive(Debug)]
 pub struct BlendStream<F, G, A, B, O>(A, B, PhantomData<(F, G, O)>)
 where
@@ -272,4 +276,4 @@ where
         self.0.set_sample_rate(sr);
         self.1.set_sample_rate(sr);
     }
-}
+}*/

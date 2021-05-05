@@ -20,7 +20,7 @@ pub trait Blend: Any + Copy + Clone {
 
     /// Compose frames.
     #[inline(always)]
-    fn mix_frames<F: Frame>(dst: F, src: F) -> F {
+    fn mix_frames<Chan: Channel, const CH: usize>(dst: Frame<Chan, CH>, src: Frame<Chan, CH>) -> Frame<Chan, CH> {
         let mut dst = dst;
         for (dst, src) in
             dst.channels_mut().iter_mut().zip(src.channels().iter())

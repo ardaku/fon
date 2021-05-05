@@ -9,7 +9,7 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use crate::{
-    chan::{Ch16, Ch24, Ch32},
+    chan::{Ch16, Ch24, Ch32, Ch64, Channel},
     Frame, Resampler, Sink, Stream,
 };
 use alloc::{
@@ -44,48 +44,48 @@ use core::{
 ///
 /// `Audio` implements the [`Stream`](crate::Stream) trait.
 #[derive(Debug)]
-pub struct Audio<F: Frame> {
+pub struct Audio<Chan: Channel, const CH: usize> {
     s_rate: u32,
-    frames: VecDeque<F>,
+    frames: VecDeque<Frame<Chan, CH>>,
 }
 
-impl<F: Frame> Audio<F> {
+impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     /// Get an audio frame.
-    pub fn get(&self, index: usize) -> Option<F> {
+    pub fn get(&self, index: usize) -> Option<Frame<Chan, CH>> {
         self.frames.get(index).cloned()
     }
 
     /// Get a mutable reference to an audio frame.
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut F> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Frame<Chan, CH>> {
         self.frames.get_mut(index)
     }
 
     /// Get a contiguous slice of all audio frames.  This may have to re-arrange
     /// memory if `drain()` was used, and could be slow.  If `drain()` was not
     /// called, this method should run in constant time.
-    pub fn as_slice(&mut self) -> &mut [F] {
+    pub fn as_slice(&mut self) -> &mut [Frame<Chan, CH>] {
         self.frames.make_contiguous()
     }
 
     /// Returns an iterator over the audio frames.
-    pub fn iter(&self) -> Iter<'_, F> {
+    pub fn iter(&self) -> Iter<'_, Frame<Chan, CH>> {
         self.frames.iter()
     }
 
     /// Returns an iterator that allows modifying each audio frame.
-    pub fn iter_mut(&mut self) -> IterMut<'_, F> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, Frame<Chan, CH>> {
         self.frames.iter_mut()
     }
 
     /// Construct an `Audio` buffer with all audio frames set to one value.
-    pub fn with_frame(s_rate: u32, len: usize, frame: F) -> Self {
+    pub fn with_frame(s_rate: u32, len: usize, frame: Frame<Chan, CH>) -> Self {
         let frames = vec![frame; len].into();
         Audio { s_rate, frames }
     }
 
     /// Construct an `Audio` buffer with all all samples set to zero.
     pub fn with_silence(s_rate: u32, len: usize) -> Self {
-        Self::with_frame(s_rate, len, F::default())
+        Self::with_frame(s_rate, len, Frame::<Chan, CH>::default())
     }
 
     /// Construct an [`Audio`](crate::Audio) buffer from the contents of a
@@ -95,13 +95,13 @@ impl<F: Frame> Audio<F> {
     ///
     /// # Panics
     /// When an infinite stream is passed in.
-    pub fn with_stream<S, M>(s_rate: u32, src: M) -> Self
+    pub fn with_stream<C, M, const N: usize>(s_rate: u32, src: M) -> Self
     where
-        F::Chan: From<S::Chan>,
-        M: Stream<S>,
-        S: Frame,
+        Chan: From<C>,
+        M: Stream<C, N>,
+        C: Channel,
     {
-        let mut audio = Self::with_frames::<[F; 0]>(s_rate, []);
+        let mut audio = Self::with_frames::<[Frame<Chan, CH>; 0]>(s_rate, []);
         audio.extend(src);
         audio
     }
@@ -109,57 +109,11 @@ impl<F: Frame> Audio<F> {
     /// Construct an `Audio` buffer with owned sample data.   You can get
     /// ownership of the sample data back from the `Audio` buffer as either a
     /// `Vec<S>` or a `Box<[S]>` by calling into().
-    pub fn with_frames<B: Into<Box<[F]>>>(
+    pub fn with_frames<B: Into<Box<[Frame<Chan, CH>]>>>(
         s_rate: u32,
         frames: B,
     ) -> Self {
-        let frames: Vec<F> = frames.into().into();
-        Audio {
-            s_rate,
-            frames: frames.into(),
-        }
-    }
-
-    /// Construct an `Audio` buffer from an `i16` buffer.
-    #[allow(unsafe_code)]
-    pub fn with_i16_buffer<B>(s_rate: u32, buffer: B) -> Self
-    where
-        B: Into<Box<[i16]>>,
-        F: Frame<Chan = Ch16>,
-    {
-        let buffer: Box<[i16]> = buffer.into();
-        let bytes = buffer.len() * size_of::<i16>();
-        let len = bytes / size_of::<F>();
-        assert_eq!(0, bytes % size_of::<F>());
-        let slice = Box::<[i16]>::into_raw(buffer);
-        let frames: Box<[F]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut F;
-            Box::from_raw(from_raw_parts_mut(ptr, len))
-        };
-        let frames: Vec<F> = frames.into();
-        Audio {
-            s_rate,
-            frames: frames.into(),
-        }
-    }
-
-    /// Construct an `Audio` buffer from an `f32` buffer.
-    #[allow(unsafe_code)]
-    pub fn with_f32_buffer<B>(s_rate: u32, buffer: B) -> Self
-    where
-        B: Into<Box<[f32]>>,
-        F: Frame<Chan = Ch32>,
-    {
-        let buffer: Box<[f32]> = buffer.into();
-        let bytes = buffer.len() * size_of::<f32>();
-        let len = bytes / size_of::<F>();
-        assert_eq!(0, bytes % size_of::<F>());
-        let slice = Box::<[f32]>::into_raw(buffer);
-        let frames: Box<[F]> = unsafe {
-            let ptr = (*slice).as_mut_ptr() as *mut F;
-            Box::from_raw(from_raw_parts_mut(ptr, len))
-        };
-        let frames: Vec<F> = frames.into();
+        let frames: Vec<Frame<Chan, CH>> = frames.into().into();
         Audio {
             s_rate,
             frames: frames.into(),
@@ -187,11 +141,11 @@ impl<F: Frame> Audio<F> {
     /// If range is out of bounds
     pub fn sink<
         'a,
-        R: 'a + RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
+        R: 'a + RangeBounds<usize> + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
     >(
         &'a mut self,
         reg: R,
-    ) -> impl Sink<F> + '_ {
+    ) -> impl Sink<Chan, CH> + '_ {
         AudioSink {
             s_rate: self.sample_rate(),
             frames: &mut self.as_slice()[reg],
@@ -201,7 +155,7 @@ impl<F: Frame> Audio<F> {
 
     /// Create a draining audio stream from this `Audio` buffer.  When the
     /// stream is dropped, only sinked audio samples will be removed.
-    pub fn drain(&mut self) -> impl Stream<F> + '_ {
+    pub fn drain(&mut self) -> impl Stream<Chan, CH> + '_ {
         AudioDrain {
             cursor: 0,
             buffer: self,
@@ -216,18 +170,18 @@ impl<F: Frame> Audio<F> {
     ///
     /// # Panics
     /// When an infinite stream is passed in.
-    pub fn extend<G: Frame, M: Stream<G>>(&mut self, stream: M)
+    pub fn extend<C: Channel, M: Stream<C, N>, const N: usize>(&mut self, stream: M)
     where
-        F::Chan: From<G::Chan>,
+        Chan: From<C>,
     {
-        let mut temp_move = Self::with_frames::<[F; 0]>(0, []);
+        let mut temp_move = Self::with_frames::<[Frame<Chan, CH>; 0]>(0, []);
         swap(self, &mut temp_move);
         *self = temp_move.extend_internal(stream);
     }
 
-    fn extend_internal<G: Frame, M: Stream<G>>(self, stream: M) -> Self
+    fn extend_internal<C: Channel, M: Stream<C, N>, const N: usize>(self, stream: M) -> Self
     where
-        F::Chan: From<G::Chan>,
+        Chan: From<C>,
     {
         let s_rate = self.s_rate;
 
@@ -244,8 +198,8 @@ impl<F: Frame> Audio<F> {
         };
 
         // Resize the audio buffer.
-        let audio: Box<[F]> = self.into();
-        let mut audio: Vec<F> = audio.into();
+        let audio: Box<[Frame<Chan, CH>]> = self.into();
+        let mut audio: Vec<Frame<Chan, CH>> = audio.into();
         let orig_len = audio.len();
         audio.resize_with(orig_len + dstlen, Default::default);
         let mut audio = Self::with_frames(s_rate, audio);
@@ -260,7 +214,56 @@ impl<F: Frame> Audio<F> {
     }
 }
 
-impl<F: Frame<Chan = Ch16>> Audio<F> {
+
+impl<const CH: usize> Audio<Ch16, CH> {
+    /// Construct an `Audio` buffer from an `i16` buffer.
+    #[allow(unsafe_code)]
+    pub fn with_i16_buffer<B>(s_rate: u32, buffer: B) -> Self
+    where
+        B: Into<Box<[i16]>>,
+    {
+        let buffer: Box<[i16]> = buffer.into();
+        let bytes = buffer.len() * size_of::<i16>();
+        let len = bytes / size_of::<Frame<Ch16, CH>>();
+        assert_eq!(0, bytes % size_of::<Frame<Ch16, CH>>());
+        let slice = Box::<[i16]>::into_raw(buffer);
+        let frames: Box<[Frame<Ch16, CH>]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut Frame<Ch16, CH>;
+            Box::from_raw(from_raw_parts_mut(ptr, len))
+        };
+        let frames: Vec<Frame<Ch16, CH>> = frames.into();
+        Audio {
+            s_rate,
+            frames: frames.into(),
+        }
+    }
+}
+
+impl<const CH: usize> Audio<Ch32, CH> {
+    /// Construct an `Audio` buffer from an `f32` buffer.
+    #[allow(unsafe_code)]
+    pub fn with_f32_buffer<B>(s_rate: u32, buffer: B) -> Self
+    where
+        B: Into<Box<[f32]>>,
+    {
+        let buffer: Box<[f32]> = buffer.into();
+        let bytes = buffer.len() * size_of::<f32>();
+        let len = bytes / size_of::<Frame<Ch32, CH>>();
+        assert_eq!(0, bytes % size_of::<Frame<Ch32, CH>>());
+        let slice = Box::<[f32]>::into_raw(buffer);
+        let frames: Box<[Frame<Ch32, CH>]> = unsafe {
+            let ptr = (*slice).as_mut_ptr() as *mut Frame<Ch32, CH>;
+            Box::from_raw(from_raw_parts_mut(ptr, len))
+        };
+        let frames: Vec<Frame<Ch32, CH>> = frames.into();
+        Audio {
+            s_rate,
+            frames: frames.into(),
+        }
+    }
+}
+
+impl<const CH: usize> Audio<Ch16, CH> {
     /// Get view of samples as an `i16` slice.
     pub fn as_i16_slice(&mut self) -> &mut [i16] {
         let frames = self.frames.make_contiguous();
@@ -273,7 +276,7 @@ impl<F: Frame<Chan = Ch16>> Audio<F> {
     }
 }
 
-impl<S: Frame<Chan = Ch32>> Audio<S> {
+impl<const CH: usize> Audio<Ch32, CH> {
     /// Get view of samples as an `f32` slice.
     pub fn as_f32_slice(&mut self) -> &mut [f32] {
         let frames = self.frames.make_contiguous();
@@ -286,16 +289,16 @@ impl<S: Frame<Chan = Ch32>> Audio<S> {
     }
 }
 
-impl<'a, F: Frame> IntoIterator for &'a Audio<F> {
-    type IntoIter = Cloned<Iter<'a, F>>;
-    type Item = F;
+impl<'a, Chan: Channel, const CH: usize> IntoIterator for &'a Audio<Chan, CH> {
+    type IntoIter = Cloned<Iter<'a, Frame<Chan, CH>>>;
+    type Item = Frame<Chan, CH>;
 
-    fn into_iter(self) -> Cloned<Iter<'a, F>> {
+    fn into_iter(self) -> Self::IntoIter {
         self.frames.iter().cloned()
     }
 }
 
-impl<F: Frame> Stream<F> for &Audio<F> {
+impl<Chan: Channel, const CH: usize> Stream<Chan, CH> for &Audio<Chan, CH> {
     fn sample_rate(&self) -> Option<u32> {
         Some(self.s_rate)
     }
@@ -306,22 +309,22 @@ impl<F: Frame> Stream<F> for &Audio<F> {
 }
 
 /// A `Sink` created with `Audio.sink()`
-struct AudioSink<'a, F: Frame> {
+struct AudioSink<'a, Chan: Channel, const CH: usize> {
     s_rate: u32,
-    frames: &'a mut [F],
-    resampler: Resampler<F>,
+    frames: &'a mut [Frame<Chan, CH>],
+    resampler: Resampler<Chan, CH>,
 }
 
-impl<F: Frame> Sink<F> for AudioSink<'_, F> {
+impl<Chan: Channel, const CH: usize> Sink<Chan, CH> for AudioSink<'_, Chan, CH> {
     fn sample_rate(&self) -> u32 {
         self.s_rate
     }
 
-    fn resampler(&mut self) -> &mut Resampler<F> {
+    fn resampler(&mut self) -> &mut Resampler<Chan, CH> {
         &mut self.resampler
     }
 
-    fn buffer(&mut self) -> &mut [F] {
+    fn buffer(&mut self) -> &mut [Frame<Chan, CH>] {
         self.frames
     }
 }
@@ -330,21 +333,22 @@ impl<F: Frame> Sink<F> for AudioSink<'_, F> {
 // FIXME
 struct AudioStream<
     'a,
-    F: Frame,
-    R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>,
+    Chan: Channel,
+    R: RangeBounds<usize> + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
+    const CH: usize
 > {
-    audio: &'a Audio<F>,
+    audio: &'a Audio<Chan, CH>,
     cursor: usize,
     range: R,
     size: usize,
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Iterator
-    for AudioStream<'_, F, R>
+impl<Chan: Channel, R: RangeBounds<usize> + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>, const CH: usize> Iterator
+    for AudioStream<'_, Chan, R, CH>
 {
-    type Item = F;
+    type Item = Frame<Chan, CH>;
 
-    fn next(&mut self) -> Option<F> {
+    fn next(&mut self) -> Option<Self::Item> {
         if !self.range.contains(&self.cursor) {
             return None;
         }
@@ -354,8 +358,8 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Iterator
     }
 }
 
-impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
-    for AudioStream<'_, F, R>
+impl<Chan: Channel, R: RangeBounds<usize> + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>, const CH: usize> Stream<Chan, CH>
+    for AudioStream<'_, Chan, R, CH>
 {
     fn sample_rate(&self) -> Option<u32> {
         Some(self.audio.sample_rate())
@@ -367,22 +371,22 @@ impl<F: Frame, R: RangeBounds<usize> + SliceIndex<[F], Output = [F]>> Stream<F>
 }
 
 /// A `Stream` created with `Audio.drain()`
-struct AudioDrain<'a, F: Frame> {
+struct AudioDrain<'a, Chan: Channel, const CH: usize> {
     cursor: usize,
-    buffer: &'a mut Audio<F>,
+    buffer: &'a mut Audio<Chan, CH>,
 }
 
-impl<F: Frame> Iterator for AudioDrain<'_, F> {
-    type Item = F;
+impl<Chan: Channel, const CH: usize> Iterator for AudioDrain<'_, Chan, CH> {
+    type Item = Frame<Chan, CH>;
 
-    fn next(&mut self) -> Option<F> {
+    fn next(&mut self) -> Option<Self::Item> {
         let sample = self.buffer.get(self.cursor)?;
         self.cursor += 1;
         Some(sample)
     }
 }
 
-impl<'a, F: Frame> Stream<F> for AudioDrain<'_, F> {
+impl<'a, Chan: Channel, const CH: usize> Stream<Chan, CH> for AudioDrain<'_, Chan, CH> {
     fn sample_rate(&self) -> Option<u32> {
         Some(self.buffer.s_rate)
     }
@@ -392,33 +396,35 @@ impl<'a, F: Frame> Stream<F> for AudioDrain<'_, F> {
     }
 }
 
-impl<'a, F: Frame> Drop for AudioDrain<'_, F> {
+impl<'a, Chan: Channel, const CH: usize> Drop for AudioDrain<'_, Chan, CH> {
     fn drop(&mut self) {
         self.buffer.frames.drain(..self.cursor);
     }
 }
 
-impl<F: Frame> From<Audio<F>> for Vec<F> {
+impl<Chan, const CH: usize> From<Audio<Chan, CH>> for Vec<Frame<Chan, CH>>
+    where Chan: Channel
+{
     /// Get internal sample data as `Vec` of audio frames.
-    fn from(audio: Audio<F>) -> Self {
+    fn from(audio: Audio<Chan, CH>) -> Self {
         audio.frames.into()
     }
 }
 
-impl<F: Frame> From<Audio<F>> for Box<[F]> {
+impl<Chan: Channel, const CH: usize> From<Audio<Chan, CH>> for Box<[Frame<Chan, CH>]> {
     /// Get internal sample data as `Vec` of audio frames.
-    fn from(audio: Audio<F>) -> Self {
-        let audio: Vec<F> = audio.frames.into();
+    fn from(audio: Audio<Chan, CH>) -> Self {
+        let audio: Vec<Frame<Chan, CH>> = audio.frames.into();
         audio.into()
     }
 }
 
-impl<F: Frame<Chan = Ch16>> From<Audio<F>> for Box<[i16]> {
+impl<const CH: usize> From<Audio<Ch16, CH>> for Box<[i16]> {
     /// Get internal sample data as boxed slice of *u16*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<F>) -> Self {
-        let mut frames: Vec<F> = audio.frames.into();
-        let capacity = frames.len() * size_of::<F>() / 2;
+    fn from(audio: Audio<Ch16, CH>) -> Self {
+        let mut frames: Vec<Frame<Ch16, CH>> = audio.frames.into();
+        let capacity = frames.len() * size_of::<Frame<Ch16, CH>>() / 2;
         let buffer: Box<[i16]> = unsafe {
             let ptr = frames.as_mut_ptr() as *mut i16;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))
@@ -427,12 +433,12 @@ impl<F: Frame<Chan = Ch16>> From<Audio<F>> for Box<[i16]> {
     }
 }
 
-impl<F: Frame<Chan = Ch32>> From<Audio<F>> for Box<[f32]> {
+impl<const CH: usize> From<Audio<Ch32, CH>> for Box<[f32]> {
     /// Get internal sample data as boxed slice of *u16*.
     #[allow(unsafe_code)]
-    fn from(audio: Audio<F>) -> Self {
-        let mut frames: Vec<F> = audio.frames.into();
-        let capacity = frames.len() * size_of::<F>() / 4;
+    fn from(audio: Audio<Ch32, CH>) -> Self {
+        let mut frames: Vec<Frame<Ch32, CH>> = audio.frames.into();
+        let capacity = frames.len() * size_of::<Frame<Ch32, CH>>() / 4;
         let buffer: Box<[f32]> = unsafe {
             let ptr = frames.as_mut_ptr() as *mut f32;
             Box::from_raw(from_raw_parts_mut(ptr, capacity))

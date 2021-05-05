@@ -11,110 +11,13 @@
 //! Mono speaker configuration and types.
 
 use crate::{
-    chan::{Ch16, Ch24, Ch32, Channel},
+    chan::{Ch16, Ch24, Ch32},
     Frame,
-};
-use core::ops::{
-    Add, Mul, Neg, Sub,
 };
 
 /// Mono audio format (Audio [`Frame`](crate::frame::Frame) containing one
 /// [`Channel`](crate::chan::Channel)).
-#[derive(Default, PartialEq, Copy, Clone, Debug)]
-#[repr(transparent)]
-pub struct Mono<C: Channel> {
-    channels: [C; 1],
-}
-
-impl<C: Channel> Mono<C> {
-    /// Create a one-channel audio [`Frame`](crate::frame::Frame).
-    #[inline(always)]
-    pub fn new<H>(one: H) -> Self
-    where
-        C: From<H>,
-    {
-        let channels = [C::from(one)];
-        Self { channels }
-    }
-}
-
-impl<C: Channel> Frame for Mono<C> {
-    const CONFIG: &'static [f64] = &[0.0 /* one centered speaker */];
-
-    type Chan = C;
-
-    #[inline(always)]
-    fn channels(&self) -> &[Self::Chan] {
-        &self.channels
-    }
-
-    #[inline(always)]
-    fn channels_mut(&mut self) -> &mut [Self::Chan] {
-        &mut self.channels
-    }
-
-    #[inline(always)]
-    fn from_channels(ch: &[Self::Chan]) -> Self {
-        Self::new::<C>(ch[0])
-    }
-}
-
-impl<C: Channel> Add for Mono<C> {
-    type Output = Mono<C>;
-
-    #[inline(always)]
-    fn add(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a + *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Sub for Mono<C> {
-    type Output = Mono<C>;
-
-    #[inline(always)]
-    fn sub(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a - *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Mul for Mono<C> {
-    type Output = Mono<C>;
-
-    #[inline(always)]
-    fn mul(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a * *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Neg for Mono<C> {
-    type Output = Mono<C>;
-
-    #[inline(always)]
-    fn neg(mut self) -> Self {
-        for chan in self.channels.iter_mut() {
-            *chan = -*chan;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Iterator for Mono<C> {
-    type Item = Self;
-
-    #[inline(always)]
-    fn next(&mut self) -> Option<Self> {
-        Some(*self)
-    }
-}
+pub type Mono<Chan> = Frame<Chan, 1>;
 
 /// Mono [16-bit PCM](crate::chan::Ch16) format.
 pub type Mono16 = Mono<Ch16>;

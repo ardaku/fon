@@ -11,124 +11,14 @@
 //! Surround Sound 5.1 speaker configuration and types.
 
 use crate::{
-    chan::{Ch16, Ch24, Ch32, Channel},
+    chan::{Ch16, Ch24, Ch32},
     Frame,
-};
-use core::ops::{
-    Add, Mul, Neg, Sub,
 };
 
 /// Surround Sound 5.1 audio format (Audio [`Frame`](crate::frame::Frame)
-/// containing a front left, rear left, rear right, front right, center, and lfe
+/// containing a front left, rear left, center, lfe, rear right, and front right
 /// [`Channel`](crate::chan::Channel)).
-#[derive(Default, PartialEq, Copy, Clone, Debug)]
-#[repr(transparent)]
-pub struct Surround<C: Channel> {
-    channels: [C; 6],
-}
-
-impl<C: Channel> Surround<C> {
-    /// Create a one-channel Sample.
-    #[inline(always)]
-    pub fn new<H>(one: H, two: H, three: H, four: H, five: H, six: H) -> Self
-    where
-        C: From<H>,
-    {
-        let channels = [
-            C::from(one),
-            C::from(two),
-            C::from(three),
-            C::from(four),
-            C::from(five),
-            C::from(six),
-        ];
-        Self { channels }
-    }
-}
-
-impl<C: Channel> Frame for Surround<C> {
-    const CONFIG: &'static [f64] = &[
-        -2.0 / 3.0, // Rear Left
-        -1.0 / 3.0, // Front Left
-        0.0 / 3.0,  // Center
-        1.0 / 3.0,  // Front Right
-        2.0 / 3.0,  // Rear Right
-    ];
-
-    type Chan = C;
-
-    #[inline(always)]
-    fn channels(&self) -> &[Self::Chan] {
-        &self.channels
-    }
-
-    #[inline(always)]
-    fn channels_mut(&mut self) -> &mut [Self::Chan] {
-        &mut self.channels
-    }
-
-    #[inline(always)]
-    fn from_channels(ch: &[Self::Chan]) -> Self {
-        Self::new::<C>(ch[0], ch[1], ch[2], ch[3], ch[4], ch[5])
-    }
-}
-
-impl<C: Channel> Add for Surround<C> {
-    type Output = Surround<C>;
-
-    #[inline(always)]
-    fn add(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a + *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Sub for Surround<C> {
-    type Output = Surround<C>;
-
-    #[inline(always)]
-    fn sub(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a - *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Mul for Surround<C> {
-    type Output = Surround<C>;
-
-    #[inline(always)]
-    fn mul(mut self, other: Self) -> Self {
-        for (a, b) in self.channels.iter_mut().zip(other.channels.iter()) {
-            *a = *a * *b;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Neg for Surround<C> {
-    type Output = Surround<C>;
-
-    #[inline(always)]
-    fn neg(mut self) -> Self {
-        for chan in self.channels.iter_mut() {
-            *chan = -*chan;
-        }
-        self
-    }
-}
-
-impl<C: Channel> Iterator for Surround<C> {
-    type Item = Self;
-
-    #[inline(always)]
-    fn next(&mut self) -> Option<Self> {
-        Some(*self)
-    }
-}
+pub type Surround<Chan> = Frame<Chan, 6>;
 
 /// 5.1 Surround [16-bit PCM](crate::chan::Ch16) format.
 pub type Surround16 = Surround<Ch16>;
