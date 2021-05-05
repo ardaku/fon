@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{ops::Blend, Frame, chan::Channel};
+use crate::{ops::Blend, frame::Frame, chan::Channel};
 use core::{
     iter::{Map, Take, Zip},
     marker::PhantomData,
@@ -52,7 +52,7 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
     /// [`Sink`](crate::Sink).
     fn resampler(&mut self) -> &mut Resampler<Chan, CH>;
 
-    /// Get the (target) audio [Frame](crate::Frame) buffer of the
+    /// Get the (target) audio [Frame](crate::frame::Frame) buffer of the
     /// [`Sink`](crate::Sink).
     fn buffer(&mut self) -> &mut [Frame<Chan, CH>];
 

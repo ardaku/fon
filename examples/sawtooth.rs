@@ -1,7 +1,6 @@
 use fon::chan::{Ch16, Ch32};
-use fon::mono::Mono32;
-use fon::stereo::Stereo16;
-use fon::{Audio, Frame};
+use fon::Audio;
+use fon::frame::Frame;
 
 fn main() {
     let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);

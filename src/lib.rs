@@ -45,7 +45,8 @@
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::{Ch16, Ch32};
-//! use fon::{Audio, Frame};
+//! use fon::Audio;
+//! use fon::frame::Frame;
 //! 
 //! let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);
 //! let mut counter = 0.0;
@@ -63,14 +64,14 @@
 //! [24-bit Signed Integer PCM]: crate::chan::Ch24
 //! [32-bit Float PCM]: crate::chan::Ch32
 //! [64-bit Float PCM]: crate::chan::Ch64
-//! [Mono]: crate::mono::Mono
-//! [Stereo]: crate::stereo::Stereo
-//! [Surround 3.0]: crate::surround30::Surround
-//! [Surround 4.0]: crate::surround40::Surround
-//! [Surround 5.0]: crate::surround50::Surround
-//! [Surround 5.1]: crate::surround51::Surround
-//! [Surround 6.1]: crate::surround61::Surround
-//! [Surround 7.1]: crate::surround71::Surround
+//! [Mono]: crate::frame::Mono
+//! [Stereo]: crate::frame::Stereo
+//! [Surround 3.0]: crate::frame::Surround30
+//! [Surround 4.0]: crate::frame::Surround40
+//! [Surround 5.0]: crate::frame::Surround50
+//! [Surround 5.1]: crate::frame::Surround51
+//! [Surround 6.1]: crate::frame::Surround61
+//! [Surround 7.1]: crate::frame::Surround71
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
 
@@ -99,18 +100,14 @@
 extern crate alloc;
 
 mod audio;
-mod frame;
 mod private;
 mod streaming;
 
 // mod resampler;
 
 pub mod chan;
-pub mod mono;
 pub mod ops;
-pub mod stereo;
-pub mod surround51;
+pub mod frame;
 
 pub use audio::Audio;
-pub use frame::Frame;
 pub use streaming::{Resampler, Sink, Stream};

@@ -10,7 +10,7 @@
 
 use crate::{
     chan::{Ch16, Ch24, Ch32, Ch64, Channel},
-    Frame, Resampler, Sink, Stream,
+    frame::Frame, Resampler, Sink, Stream,
 };
 use alloc::{
     boxed::Box,
@@ -39,7 +39,7 @@ use core::{
 // 6. Side Left
 // 7. Side Right
 
-/// Audio buffer (array of audio [`Frame`](crate::Frame)s at sample rate
+/// Audio buffer (array of audio [`Frame`](crate::frame::Frame)s at sample rate
 /// specified in hertz).
 ///
 /// `Audio` implements the [`Stream`](crate::Stream) trait.

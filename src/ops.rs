@@ -10,7 +10,7 @@
 
 //! Audio mixing operations.
 
-use crate::{chan::Channel, Frame};
+use crate::{chan::Channel, frame::Frame};
 use core::any::Any;
 
 /// Blending operation for mixing

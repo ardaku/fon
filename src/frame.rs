@@ -8,9 +8,9 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-//! Sample types
+//! Frame (interleaved sample) types
 
-use crate::{chan::Channel};
+use crate::{chan::{Channel, Ch32, Ch16, Ch24, Ch64}};
 use core::{
     fmt::Debug,
     ops::{
@@ -626,3 +626,113 @@ impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH> for Frame<Chan, CH>
     #[inline(always)]
     fn set_sample_rate<R: Into<f64>>(&mut self, _: R) {}
 }
+
+/// Mono audio format (Audio [`Frame`](crate::frame::Frame) containing a single
+/// [`Channel`](crate::chan::Channel)).
+pub type Mono<Chan> = Frame<Chan, 1>;
+
+/// Mono [16-bit PCM](crate::chan::Ch16) format.
+pub type Mono16 = Mono<Ch16>;
+/// Mono [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Mono24 = Mono<Ch24>;
+/// Mono [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Mono32 = Mono<Ch32>;
+/// Mono [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Mono64 = Mono<Ch64>;
+
+/// Stereo audio format (Audio [`Frame`](crate::frame::Frame) containing a left
+/// and right [`Channel`](crate::chan::Channel)).
+pub type Stereo<Chan> = Frame<Chan, 2>;
+
+/// Stereo [16-bit PCM](crate::chan::Ch16) format.
+pub type Stereo16 = Stereo<Ch16>;
+/// Stereo [24-bit PCM](crate::chan::Ch24) format.
+pub type Stereo24 = Stereo<Ch24>;
+/// Stereo [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Stereo32 = Stereo<Ch32>;
+/// Stereo [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Stereo64 = Stereo<Ch64>;
+
+/// Surround Sound 3.0 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front right, and center
+/// [`Channel`](crate::chan::Channel)).
+pub type Surround30<Chan> = Frame<Chan, 3>;
+
+/// 3.0 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround30_16 = Surround30<Ch16>;
+/// 3.0 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround30_24 = Surround30<Ch24>;
+/// 3.0 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround30_32 = Surround30<Ch32>;
+/// 3.0 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround30_64 = Surround30<Ch64>;
+
+/// Surround Sound 4.0 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front right, and back left, back right
+/// [`Channel`](crate::chan::Channel)).
+pub type Surround40<Chan> = Frame<Chan, 4>;
+
+/// 4.0 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround40_16 = Surround40<Ch16>;
+/// 4.0 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround40_24 = Surround40<Ch24>;
+/// 4.0 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround40_32 = Surround40<Ch32>;
+/// 4.0 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround40_64 = Surround40<Ch64>;
+
+/// Surround Sound 5.0 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front left, and center
+/// [`Channel`](crate::chan::Channel)).
+pub type Surround50<Chan> = Frame<Chan, 5>;
+
+/// 5.0 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround50_16 = Surround40<Ch16>;
+/// 5.0 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround50_24 = Surround40<Ch24>;
+/// 5.0 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround50_32 = Surround40<Ch32>;
+/// 5.0 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround50_64 = Surround40<Ch64>;
+
+/// Surround Sound 5.1 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front right, center, lfe, back left, and back right
+/// [`Channel`](crate::chan::Channel)).
+pub type Surround51<Chan> = Frame<Chan, 6>;
+
+/// 5.1 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround51_16 = Surround51<Ch16>;
+/// 5.1 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround51_24 = Surround51<Ch24>;
+/// 5.1 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround51_32 = Surround51<Ch32>;
+/// 5.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround51_64 = Surround51<Ch64>;
+
+/// Surround Sound 6.1 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front right, center, lfe, back, side left, and side
+/// right [`Channel`](crate::chan::Channel)).
+pub type Surround61<Chan> = Frame<Chan, 7>;
+
+/// 6.1 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround61_16 = Surround61<Ch16>;
+/// 6.1 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround61_24 = Surround61<Ch24>;
+/// 6.1 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround61_32 = Surround61<Ch32>;
+/// 6.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround61_64 = Surround61<Ch64>;
+
+/// Surround Sound 7.1 audio format (Audio [`Frame`](crate::frame::Frame)
+/// containing a front left, front right, center, lfe, back left, and back right
+/// [`Channel`](crate::chan::Channel)).
+pub type Surround71<Chan> = Frame<Chan, 8>;
+
+/// 7.1 Surround [16-bit PCM](crate::chan::Ch16) format.
+pub type Surround71_16 = Surround71<Ch16>;
+/// 7.1 Surround [24-bit Floating Point](crate::chan::Ch24) format.
+pub type Surround71_24 = Surround71<Ch24>;
+/// 7.1 Surround [32-bit Floating Point](crate::chan::Ch32) format.
+pub type Surround71_32 = Surround71<Ch32>;
+/// 7.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
+pub type Surround71_64 = Surround71<Ch64>;

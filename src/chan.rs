@@ -9,7 +9,7 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 //! Audio channels (left, right, etc. samples that make up each audio
-//! [`Frame`](crate::Frame))
+//! [`Frame`](crate::frame::Frame))
 
 use crate::private::Sealed;
 use core::fmt::Debug;
