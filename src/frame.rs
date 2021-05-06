@@ -43,8 +43,8 @@ where
         Pan::pan(self, channel.into(), angle)
     }
 
-    /// Apply gain to the channel.  This function may introduce clipping
-    /// distortion.
+    /// Apply gain to the channel.  This function may introduce hard clipping
+    /// distortion if `gain` is greater than 1.
     #[inline(always)]
     pub fn gain(&mut self, gain: f32) {
         for x in self.0.iter_mut() {
