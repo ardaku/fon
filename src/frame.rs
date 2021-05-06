@@ -13,7 +13,7 @@
 use crate::chan::{Ch16, Ch24, Ch32, Ch64, Channel};
 use core::{
     fmt::Debug,
-    ops::{Add, Mul, Neg, Sub},
+    ops::{Add, Mul, Neg, Sub, Index, IndexMut},
 };
 
 /// Frame - A number of interleaved sample [channel]s.
@@ -1084,3 +1084,300 @@ pub type Surround71_24 = Surround71<Ch24>;
 pub type Surround71_32 = Surround71<Ch32>;
 /// 7.1 Surround [64-bit Floating Point](crate::chan::Ch64) format.
 pub type Surround71_64 = Surround71<Ch64>;
+
+/// Speaker position.
+#[derive(Copy, Clone, Debug)]
+pub enum Position {
+    /// All directions
+    ///  - Mono
+    Mono,
+
+    /// Side Left (90 degrees left)
+    ///  - Stereo
+    ///  - 3.0
+    ///  - 6.1
+    ///  - 7.1
+    Left,
+
+    /// Side Right (90 degrees right)
+    ///  - Stereo
+    ///  - 3.0
+    ///  - 6.1
+    ///  - 7.1
+    Right,
+
+    /// Center (0/180 degrees left/right)
+    ///  - 3.0
+    Center,
+
+    /// Front Center (0 degrees left/right)
+    ///  - 5.0
+    ///  - 5.1
+    ///  - 6.1
+    ///  - 7.1
+    Front,
+
+    /// Front Left (30 degrees left)
+    ///  - 3.0
+    ///  - 4.0
+    ///  - 5.0
+    ///  - 5.1
+    ///  - 6.1
+    ///  - 7.1
+    FrontL,
+
+    /// Front Right (30 degrees right)
+    ///  - 3.0
+    ///  - 4.0
+    ///  - 5.0
+    ///  - 5.1
+    ///  - 6.1
+    ///  - 7.1
+    FrontR,
+
+    /// Left Surround (110 degrees left)
+    ///  - 4.0
+    ///  - 5.0
+    ///  - 5.1
+    SurroundL,
+
+    /// Right Surround (110 degrees right)
+    ///  - 4.0
+    ///  - 5.0
+    ///  - 5.1
+    SurroundR,
+
+    /// Low frequency effects (unimportant direction)
+    ///  - 5.1
+    ///  - 6.1
+    ///  - 7.1
+    Lfe,
+
+    /// Back (180 degrees left/right)
+    ///  - 6.1
+    Back,
+
+    /// Back Left (150 degrees left)
+    ///  - 7.1
+    BackL,
+
+    /// Back Right (150 degrees right)
+    ///  - 7.1
+    BackR,
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 1> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::Mono => &self.0[0],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 1> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::Mono => &mut self.0[0],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 2> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::Left => &self.0[0],
+            Position::Right => &self.0[1],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 2> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::Left => &mut self.0[0],
+            Position::Right => &mut self.0[1],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 3> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::Left => &self.0[0],
+            Position::Right => &self.0[1],
+            Position::Center => &self.0[2],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 3> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::Left => &mut self.0[0],
+            Position::Right => &mut self.0[1],
+            Position::Center => &mut self.0[2],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 4> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::FrontL => &self.0[0],
+            Position::FrontR => &self.0[1],
+            Position::SurroundL => &self.0[2],
+            Position::SurroundR => &self.0[3],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 4> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::FrontL => &mut self.0[0],
+            Position::FrontR => &mut self.0[1],
+            Position::SurroundL => &mut self.0[2],
+            Position::SurroundR => &mut self.0[3],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 5> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::FrontL => &self.0[0],
+            Position::FrontR => &self.0[1],
+            Position::Front => &self.0[2],
+            Position::SurroundL => &self.0[3],
+            Position::SurroundR => &self.0[4],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 5> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::FrontL => &mut self.0[0],
+            Position::FrontR => &mut self.0[1],
+            Position::Front => &mut self.0[2],
+            Position::SurroundL => &mut self.0[3],
+            Position::SurroundR => &mut self.0[4],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 6> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::FrontL => &self.0[0],
+            Position::FrontR => &self.0[1],
+            Position::Front => &self.0[2],
+            Position::Lfe => &self.0[3],
+            Position::SurroundL => &self.0[4],
+            Position::SurroundR => &self.0[5],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 6> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::FrontL => &mut self.0[0],
+            Position::FrontR => &mut self.0[1],
+            Position::Front => &mut self.0[2],
+            Position::Lfe => &mut self.0[3],
+            Position::SurroundL => &mut self.0[4],
+            Position::SurroundR => &mut self.0[5],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 7> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::FrontL => &self.0[0],
+            Position::FrontR => &self.0[1],
+            Position::Front => &self.0[2],
+            Position::Lfe => &self.0[3],
+            Position::Back => &self.0[4],
+            Position::Left => &self.0[5],
+            Position::Right => &self.0[6],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 7> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::FrontL => &mut self.0[0],
+            Position::FrontR => &mut self.0[1],
+            Position::Front => &mut self.0[2],
+            Position::Lfe => &mut self.0[3],
+            Position::Back => &mut self.0[4],
+            Position::Left => &mut self.0[5],
+            Position::Right => &mut self.0[6],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> Index<Position> for Frame<Chan, 8> {
+    type Output = Chan;
+
+    fn index(&self, index: Position) -> &Self::Output {
+        match index {
+            Position::FrontL => &self.0[0],
+            Position::FrontR => &self.0[1],
+            Position::Front => &self.0[2],
+            Position::Lfe => &self.0[3],
+            Position::BackL => &self.0[4],
+            Position::BackR => &self.0[5],
+            Position::Left => &self.0[6],
+            Position::Right => &self.0[7],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}
+
+impl<Chan: Channel> IndexMut<Position> for Frame<Chan, 8> {
+    fn index_mut(&mut self, index: Position) -> &mut Self::Output {
+        match index {
+            Position::FrontL => &mut self.0[0],
+            Position::FrontR => &mut self.0[1],
+            Position::Front => &mut self.0[2],
+            Position::Lfe => &mut self.0[3],
+            Position::BackL => &mut self.0[4],
+            Position::BackR => &mut self.0[5],
+            Position::Left => &mut self.0[6],
+            Position::Right => &mut self.0[7],
+            _ => panic!("Index out of bounds!"),
+        }
+    }
+}

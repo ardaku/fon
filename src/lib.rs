@@ -22,7 +22,7 @@
 //!    - [32-bit Float PCM] (Newer recording/processing standard)
 //!    - [64-bit Float PCM] (Ultra high-quality audio standard)
 //!  - Up to 8 channels (following FLAC/SMPTE/ITU-R recommendations):
-//!    - 1 Channel: [Mono] ([Mono](crate::Position::Mono))
+//!    - 1 Channel: [Mono] ([Mono](crate::frame::Position::Mono))
 //!    - 2 Channels: [Stereo] ([Left], [Right])
 //!    - 3 Channels: [Surround 3.0] ([Left], [Right], [Center])
 //!    - 4 Channels: [Surround 4.0] (F.Left, F.Right, B.Left, B.Right)
@@ -34,8 +34,6 @@
 //!    - 8 Channels: [Surround 7.1] (F.Left, F.Right, F.Center, LFE, B.Left,
 //!      B.Right, S.Left, S.Right)
 //!
-//! Blending [operations] are supported for all formats.
-//!
 //! # Getting Started
 //! To understand some of the concepts used in this library,
 //! [this MDN article] is a good read (although the stuff about compression
@@ -45,12 +43,13 @@
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::{Ch16, Ch32};
+//! use fon::frame::Position::Mono;
 //! use fon::Audio;
 //!
 //! let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);
 //! let mut counter = 0.0;
 //! for s in a.iter_mut() {
-//!     s.channels_mut()[0] = Ch32::new(counter);
+//!     s[Mono] = Ch32::new(counter);
 //!     counter += 0.05;
 //! }
 //!
@@ -73,9 +72,9 @@
 //! [Surround 7.1]: crate::frame::Surround71
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
-//! [Left]: crate::Position::Left
-//! [Right]: crate::Position::Right
-//! [Center]: crate::Position::Center
+//! [Left]: crate::frame::Position::Left
+//! [Right]: crate::frame::Position::Right
+//! [Center]: crate::frame::Position::Center
 
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
@@ -102,7 +101,6 @@
 extern crate alloc;
 
 mod audio;
-mod pos;
 mod private;
 mod streaming;
 
@@ -112,5 +110,4 @@ pub mod chan;
 pub mod frame;
 
 pub use audio::Audio;
-pub use pos::Position;
 pub use streaming::{Resampler, Sink, Stream};
