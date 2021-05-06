@@ -11,6 +11,7 @@
 //! Frame (interleaved sample) types
 
 use crate::chan::Channel;
+use crate::sample::{Mono, Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Lfe, Right, SurroundL, SurroundR};
 use core::{
     fmt::Debug,
     ops::{Add, Mul, Neg, Sub},
@@ -41,8 +42,7 @@ impl<Chan: Channel> Frame<Chan, 1> {
     #[inline(always)]
     pub fn pan(chan: Chan, _x: f32) -> Self {
         let mut out = Self::default();
-        // Do constant power panning.
-        out.channels_mut()[0] = chan;
+        out[Mono] = chan;
         out
     }
 }
@@ -66,8 +66,8 @@ impl<Chan: Channel> Frame<Chan, 2> {
         // Convert to radians, left is now at 0.
         let x = (x + 0.25) * FRAC_PI_2;
         // Pan distance
-        out.channels_mut()[0] = chan * x.cos().into();
-        out.channels_mut()[1] = chan * x.sin().into();
+        out[Left] = chan * x.cos().into();
+        out[Right] = chan * x.sin().into();
 
         out
     }
@@ -94,26 +94,26 @@ impl<Chan: Channel> Frame<Chan, 3> {
             // Center-Right Speakers
             x if x < 0.25 => {
                 let x = 4.0 * x * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[Center] = chan * x.cos().into();
+                out[Right] = chan * x.sin().into();
             }
             // Right-Center Speakers
             x if x < 0.5 => {
                 let x = 4.0 * (x - 0.25) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[Right] = chan * x.cos().into();
+                out[Center] = chan * x.sin().into();
             }
             // Center-Left Speakers
             x if x < 0.75 => {
                 let x = 4.0 * (x - 0.50) * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[Center] = chan * x.cos().into();
+                out[Left] = chan * x.sin().into();
             }
             // Left-Center Speakers
             x => {
                 let x = 4.0 * (x - 0.75) * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[Left] = chan * x.cos().into();
+                out[Center] = chan * x.sin().into();
             }
         }
 
@@ -147,26 +147,26 @@ impl<Chan: Channel> Frame<Chan, 4> {
             // Front Left - Front Right Speakers (60° slice)
             x if x < 60.0 / 360.0 => {
                 let x = (360.0 / 60.0) * x * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[FrontL] = chan * x.cos().into();
+                out[FrontR] = chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 140.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 60.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[3] = chan * x.sin().into();
+                out[FrontR] = chan * x.cos().into();
+                out[SurroundR] = chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 280.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 140.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[3] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[SurroundR] = chan * x.cos().into();
+                out[SurroundL] = chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x => {
                 let x = (360.0 / 80.0) * (x - 280.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[SurroundL] = chan * x.cos().into();
+                out[FrontL] = chan * x.sin().into();
             }
         }
 
@@ -200,32 +200,32 @@ impl<Chan: Channel> Frame<Chan, 5> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[Front] = chan * x.cos().into();
+                out[FrontR] = chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 110.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[4] = chan * x.sin().into();
+                out[FrontR] = chan * x.cos().into();
+                out[SurroundR] = chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 250.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[4] = chan * x.cos().into();
-                out.channels_mut()[3] = chan * x.sin().into();
+                out[SurroundR] = chan * x.cos().into();
+                out[SurroundL] = chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[3] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[SurroundL] = chan * x.cos().into();
+                out[FrontL] = chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[FrontL] = chan * x.cos().into();
+                out[Front] = chan * x.sin().into();
             }
         }
 
@@ -260,32 +260,32 @@ impl<Chan: Channel> Frame<Chan, 6> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[Front] = chan * x.cos().into();
+                out[FrontR] = chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 110.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[5] = chan * x.sin().into();
+                out[FrontR] = chan * x.cos().into();
+                out[SurroundR] = chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 250.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[5] = chan * x.cos().into();
-                out.channels_mut()[4] = chan * x.sin().into();
+                out[SurroundR] = chan * x.cos().into();
+                out[SurroundL] = chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[4] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[SurroundL] = chan * x.cos().into();
+                out[FrontL] = chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[FrontL] = chan * x.cos().into();
+                out[Front] = chan * x.sin().into();
             }
         }
 
@@ -321,38 +321,38 @@ impl<Chan: Channel> Frame<Chan, 7> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[Front] = chan * x.cos().into();
+                out[FrontR] = chan * x.sin().into();
             }
             // Front Right - Side Right Speakers (60° slice)
             x if x < 90.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[6] = chan * x.sin().into();
+                out[FrontR] = chan * x.cos().into();
+                out[Right] = chan * x.sin().into();
             }
             // Side Right - Back Speakers (90° slice)
             x if x < 180.0 / 360.0 => {
                 let x = (360.0 / 90.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[6] = chan * x.cos().into();
-                out.channels_mut()[4] = chan * x.sin().into();
+                out[Right] = chan * x.cos().into();
+                out[Back] = chan * x.sin().into();
             }
             // Back - Side Left Speakers (90° slice)
             x if x < 270.0 / 360.0 => {
                 let x = (360.0 / 90.0) * (x - 180.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[4] = chan * x.cos().into();
-                out.channels_mut()[5] = chan * x.sin().into();
+                out[Back] = chan * x.cos().into();
+                out[Left] = chan * x.sin().into();
             }
             // Side Left - Front Left Speakers (60° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[5] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[Left] = chan * x.cos().into();
+                out[FrontL] = chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[FrontL] = chan * x.cos().into();
+                out[Front] = chan * x.sin().into();
             }
         }
 
@@ -393,44 +393,44 @@ impl<Chan: Channel> Frame<Chan, 8> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                out.channels_mut()[2] = chan * x.cos().into();
-                out.channels_mut()[1] = chan * x.sin().into();
+                out[Front] = chan * x.cos().into();
+                out[FrontR] = chan * x.sin().into();
             }
             // Front Right - Side Right Speakers (60° slice)
             x if x < 90.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[1] = chan * x.cos().into();
-                out.channels_mut()[7] = chan * x.sin().into();
+                out[FrontR] = chan * x.cos().into();
+                out[Right] = chan * x.sin().into();
             }
             // Side Right - Back Right Speakers (60° slice)
             x if x < 150.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[7] = chan * x.cos().into();
-                out.channels_mut()[5] = chan * x.sin().into();
+                out[Right] = chan * x.cos().into();
+                out[BackR] = chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (60° slice)
             x if x < 210.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 150.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[5] = chan * x.cos().into();
-                out.channels_mut()[4] = chan * x.sin().into();
+                out[BackR] = chan * x.cos().into();
+                out[BackL] = chan * x.sin().into();
             }
             // Back Left - Side Left Speakers (60° slice)
             x if x < 270.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 210.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[4] = chan * x.cos().into();
-                out.channels_mut()[5] = chan * x.sin().into();
+                out[BackL] = chan * x.cos().into();
+                out[Left] = chan * x.sin().into();
             }
             // Side Left - Front Left Speakers (60° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[5] = chan * x.cos().into();
-                out.channels_mut()[0] = chan * x.sin().into();
+                out[Left] = chan * x.cos().into();
+                out[FrontL] = chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                out.channels_mut()[0] = chan * x.cos().into();
-                out.channels_mut()[2] = chan * x.sin().into();
+                out[FrontL] = chan * x.cos().into();
+                out[Front] = chan * x.sin().into();
             }
         }
 
@@ -455,7 +455,7 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
     #[inline(always)]
     pub fn lerp(&self, rhs: Self, t: Self) -> Self {
         let mut out = Self::default();
-        let main = out.channels_mut().iter_mut().zip(self.channels().iter());
+        let main = out.0.iter_mut().zip(self.channels().iter());
         let other = rhs.channels().iter().zip(t.channels().iter());
         for ((out, this), (rhs, t)) in main.zip(other) {
             *out = this.lerp(*rhs, *t);
@@ -474,7 +474,7 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
         match (CH, N) {
             (x, y) if x == y => {
                 for (o, i) in
-                    out.channels_mut().iter_mut().zip(self.channels().iter())
+                    out.0.iter_mut().zip(self.channels().iter())
                 {
                     *o = C::from(*i);
                 }
@@ -901,7 +901,7 @@ impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
     #[inline(always)]
     fn add(mut self, other: Self) -> Self {
         for (a, b) in
-            self.channels_mut().iter_mut().zip(other.channels().iter())
+            self.0.iter_mut().zip(other.channels().iter())
         {
             *a = *a + *b;
         }
@@ -915,7 +915,7 @@ impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
     #[inline(always)]
     fn sub(mut self, other: Self) -> Self {
         for (a, b) in
-            self.channels_mut().iter_mut().zip(other.channels().iter())
+            self.0.iter_mut().zip(other.channels().iter())
         {
             *a = *a - *b;
         }
@@ -929,7 +929,7 @@ impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
     #[inline(always)]
     fn mul(mut self, other: Self) -> Self {
         for (a, b) in
-            self.channels_mut().iter_mut().zip(other.channels().iter())
+            self.0.iter_mut().zip(other.channels().iter())
         {
             *a = *a * *b;
         }
@@ -942,7 +942,7 @@ impl<Chan: Channel, const CH: usize> Neg for Frame<Chan, CH> {
 
     #[inline(always)]
     fn neg(mut self) -> Self {
-        for chan in self.channels_mut().iter_mut() {
+        for chan in self.0.iter_mut() {
             *chan = -*chan;
         }
         self

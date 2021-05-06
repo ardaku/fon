@@ -25,14 +25,15 @@
 //!    - 1 Channel: Mono ([Mono])
 //!    - 2 Channels: Stereo ([Left], [Right])
 //!    - 3 Channels: Surround 3.0 ([Left], [Right], [Center])
-//!    - 4 Channels: Surround 4.0 (F.Left, F.Right, B.Left, B.Right)
-//!    - 5 Channels: Surround 5.0 (F.Left, F.Right, F.Center, B.Left, B.Right)
-//!    - 6 Channels: Surround 5.1 (F.Left, F.Right, F.Center, LFE, B.Left,
-//!      B.Right)
-//!    - 7 Channels: Surround 6.1 (F.Left, F.Right, F.Center, LFE, B.Center,
-//!      S.Left, S.Right)
-//!    - 8 Channels: Surround 7.1 (F.Left, F.Right, F.Center, LFE, B.Left,
-//!      B.Right, S.Left, S.Right)
+//!    - 4 Channels: Surround 4.0 ([FrontL], [FrontR], [SurroundL], [SurroundR])
+//!    - 5 Channels: Surround 5.0 ([FrontL], [FrontR], [Front], [SurroundL],
+//!      [SurroundR])
+//!    - 6 Channels: Surround 5.1 ([FrontL], [FrontR], [Front], [Lfe],
+//!      [SurroundL], [SurroundR])
+//!    - 7 Channels: Surround 6.1 ([FrontL], [FrontR], [Front], [Lfe], [Back],
+//!      [Left], [Right])
+//!    - 8 Channels: Surround 7.1 ([FrontL], [FrontR], [Front], [Lfe], [BackL],
+//!      [BackR], [Left], [Right])
 //!
 //! # Getting Started
 //! To understand some of the concepts used in this library,
@@ -68,6 +69,15 @@
 //! [Left]: crate::sample::Left
 //! [Right]: crate::sample::Right
 //! [Center]: crate::sample::Center
+//! [FrontL]: crate::sample::FrontL
+//! [FrontR]: crate::sample::FrontR
+//! [SurroundL]: crate::sample::SurroundL
+//! [SurroundR]: crate::sample::SurroundR
+//! [Front]: crate::sample::Front
+//! [Lfe]: crate::sample::Lfe
+//! [Back]: crate::sample::Back
+//! [BackL]: crate::sample::BackL
+//! [BackR]: crate::sample::BackR
 
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
