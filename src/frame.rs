@@ -10,12 +10,10 @@
 
 //! Frame (interleaved sample) types
 
-use crate::{chan::{Channel, Ch32, Ch16, Ch24, Ch64}};
+use crate::chan::{Ch16, Ch24, Ch32, Ch64, Channel};
 use core::{
     fmt::Debug,
-    ops::{
-        Add, Mul, Neg, Sub,
-    },
+    ops::{Add, Mul, Neg, Sub},
 };
 
 /// Frame - A number of interleaved sample [channel]s.
@@ -37,7 +35,7 @@ impl<Chan: Channel> Frame<Chan, 1> {
     pub fn new(mono: Chan) -> Self {
         Self([mono])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
@@ -55,13 +53,13 @@ impl<Chan: Channel> Frame<Chan, 2> {
     pub fn new(left: Chan, right: Chan) -> Self {
         Self([left, right])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
@@ -81,43 +79,43 @@ impl<Chan: Channel> Frame<Chan, 3> {
     pub fn new(left: Chan, right: Chan, center: Chan) -> Self {
         Self([left, right, center])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-// All nearness distances are 1/4
-                match (x.fract() + 1.0).fract() {
-                    // Center-Right Speakers
-                    x if x < 0.25 => {
-                        let x = 4.0 * x * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Right-Center Speakers
-                    x if x < 0.5 => {
-                        let x = 4.0 * (x - 0.25) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                    // Center-Left Speakers
-                    x if x < 0.75 => {
-                        let x = 4.0 * (x - 0.50) * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                    // Left-Center Speakers
-                    x => {
-                        let x = 4.0 * (x - 0.75) * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                }
+        // All nearness distances are 1/4
+        match (x.fract() + 1.0).fract() {
+            // Center-Right Speakers
+            x if x < 0.25 => {
+                let x = 4.0 * x * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Right-Center Speakers
+            x if x < 0.5 => {
+                let x = 4.0 * (x - 0.25) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+            // Center-Left Speakers
+            x if x < 0.75 => {
+                let x = 4.0 * (x - 0.50) * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+            // Left-Center Speakers
+            x => {
+                let x = 4.0 * (x - 0.75) * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -126,46 +124,51 @@ impl<Chan: Channel> Frame<Chan, 3> {
 impl<Chan: Channel> Frame<Chan, 4> {
     /// Create a new surround 4.0 interleaved audio frame from channel(s).
     #[inline(always)]
-    pub fn new(left: Chan, right: Chan, back_left: Chan, back_right: Chan) -> Self {
+    pub fn new(
+        left: Chan,
+        right: Chan,
+        back_left: Chan,
+        back_right: Chan,
+    ) -> Self {
         Self([left, right, back_left, back_right])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-// Make 0 be Front Left Speaker
-                match (x.fract() + 1.0 + 1.0 / 12.0).fract() {
-                    // Front Left - Front Right Speakers (60° slice)
-                    x if x < 60.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * x * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Front Right - Back Right Speakers (80° slice)
-                    x if x < 140.0 / 360.0 => {
-                        let x = (360.0 / 80.0) * (x - 60.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[3] = chan * x.sin().into();
-                    }
-                    // Back Right - Back Left Speakers (140° slice)
-                    x if x < 280.0 / 360.0 => {
-                        let x = (360.0 / 140.0) * (x - 140.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[3] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                    // Back Left - Front Left Speakers (80° slice)
-                    x => {
-                        let x = (360.0 / 80.0) * (x - 280.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                }
+        // Make 0 be Front Left Speaker
+        match (x.fract() + 1.0 + 1.0 / 12.0).fract() {
+            // Front Left - Front Right Speakers (60° slice)
+            x if x < 60.0 / 360.0 => {
+                let x = (360.0 / 60.0) * x * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Front Right - Back Right Speakers (80° slice)
+            x if x < 140.0 / 360.0 => {
+                let x = (360.0 / 80.0) * (x - 60.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[3] = chan * x.sin().into();
+            }
+            // Back Right - Back Left Speakers (140° slice)
+            x if x < 280.0 / 360.0 => {
+                let x = (360.0 / 140.0) * (x - 140.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[3] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+            // Back Left - Front Left Speakers (80° slice)
+            x => {
+                let x = (360.0 / 80.0) * (x - 280.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -174,51 +177,57 @@ impl<Chan: Channel> Frame<Chan, 4> {
 impl<Chan: Channel> Frame<Chan, 5> {
     /// Create a new surround 5.0 interleaved audio frame from channel(s).
     #[inline(always)]
-    pub fn new(left: Chan, right: Chan, center: Chan, back_left: Chan, back_right: Chan) -> Self {
+    pub fn new(
+        left: Chan,
+        right: Chan,
+        center: Chan,
+        back_left: Chan,
+        back_right: Chan,
+    ) -> Self {
         Self([left, right, center, back_left, back_right])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-match (x.fract() + 1.0).fract() {
-                    // Front Center - Front Right Speakers (30° slice)
-                    x if x < 30.0 / 360.0 => {
-                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Front Right - Back Right Speakers (80° slice)
-                    x if x < 110.0 / 360.0 => {
-                        let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[4] = chan * x.sin().into();
-                    }
-                    // Back Right - Back Left Speakers (140° slice)
-                    x if x < 250.0 / 360.0 => {
-                        let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[4] = chan * x.cos().into();
-                        out.channels_mut()[3] = chan * x.sin().into();
-                    }
-                    // Back Left - Front Left Speakers (80° slice)
-                    x if x < 330.0 / 360.0 => {
-                        let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[3] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                    // Front Left - Center Speakers (30° slice)
-                    x => {
-                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                }
+        match (x.fract() + 1.0).fract() {
+            // Front Center - Front Right Speakers (30° slice)
+            x if x < 30.0 / 360.0 => {
+                let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Front Right - Back Right Speakers (80° slice)
+            x if x < 110.0 / 360.0 => {
+                let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[4] = chan * x.sin().into();
+            }
+            // Back Right - Back Left Speakers (140° slice)
+            x if x < 250.0 / 360.0 => {
+                let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[4] = chan * x.cos().into();
+                out.channels_mut()[3] = chan * x.sin().into();
+            }
+            // Back Left - Front Left Speakers (80° slice)
+            x if x < 330.0 / 360.0 => {
+                let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[3] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+            // Front Left - Center Speakers (30° slice)
+            x => {
+                let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -227,51 +236,58 @@ match (x.fract() + 1.0).fract() {
 impl<Chan: Channel> Frame<Chan, 6> {
     /// Create a new surround 5.1 interleaved audio frame from channel(s).
     #[inline(always)]
-    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan) -> Self {
+    pub fn new(
+        left: Chan,
+        right: Chan,
+        center: Chan,
+        lfe: Chan,
+        back_left: Chan,
+        back_right: Chan,
+    ) -> Self {
         Self([left, right, center, lfe, back_left, back_right])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-match (x.fract() + 1.0).fract() {
-                    // Front Center - Front Right Speakers (30° slice)
-                    x if x < 30.0 / 360.0 => {
-                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Front Right - Back Right Speakers (80° slice)
-                    x if x < 110.0 / 360.0 => {
-                        let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[5] = chan * x.sin().into();
-                    }
-                    // Back Right - Back Left Speakers (140° slice)
-                    x if x < 250.0 / 360.0 => {
-                        let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[5] = chan * x.cos().into();
-                        out.channels_mut()[4] = chan * x.sin().into();
-                    }
-                    // Back Left - Front Left Speakers (80° slice)
-                    x if x < 330.0 / 360.0 => {
-                        let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[4] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                    // Front Left - Center Speakers (30° slice)
-                    x => {
-                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                }
+        match (x.fract() + 1.0).fract() {
+            // Front Center - Front Right Speakers (30° slice)
+            x if x < 30.0 / 360.0 => {
+                let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Front Right - Back Right Speakers (80° slice)
+            x if x < 110.0 / 360.0 => {
+                let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[5] = chan * x.sin().into();
+            }
+            // Back Right - Back Left Speakers (140° slice)
+            x if x < 250.0 / 360.0 => {
+                let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[5] = chan * x.cos().into();
+                out.channels_mut()[4] = chan * x.sin().into();
+            }
+            // Back Left - Front Left Speakers (80° slice)
+            x if x < 330.0 / 360.0 => {
+                let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[4] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+            // Front Left - Center Speakers (30° slice)
+            x => {
+                let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -280,57 +296,65 @@ match (x.fract() + 1.0).fract() {
 impl<Chan: Channel> Frame<Chan, 7> {
     /// Create a new surround 6.1 interleaved audio frame from channel(s).
     #[inline(always)]
-    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back: Chan, side_left: Chan, side_right: Chan) -> Self {
+    pub fn new(
+        left: Chan,
+        right: Chan,
+        center: Chan,
+        lfe: Chan,
+        back: Chan,
+        side_left: Chan,
+        side_right: Chan,
+    ) -> Self {
         Self([left, right, center, lfe, back, side_left, side_right])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-match (x.fract() + 1.0).fract() {
-                    // Front Center - Front Right Speakers (30° slice)
-                    x if x < 30.0 / 360.0 => {
-                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Front Right - Side Right Speakers (60° slice)
-                    x if x < 90.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[6] = chan * x.sin().into();
-                    }
-                    // Side Right - Back Speakers (90° slice)
-                    x if x < 180.0 / 360.0 => {
-                        let x = (360.0 / 90.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[6] = chan * x.cos().into();
-                        out.channels_mut()[4] = chan * x.sin().into();
-                    }
-                    // Back - Side Left Speakers (90° slice)
-                    x if x < 270.0 / 360.0 => {
-                        let x = (360.0 / 90.0) * (x - 180.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[4] = chan * x.cos().into();
-                        out.channels_mut()[5] = chan * x.sin().into();
-                    }
-                    // Side Left - Front Left Speakers (60° slice)
-                    x if x < 330.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[5] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                    // Front Left - Center Speakers (30° slice)
-                    x => {
-                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                }
+        match (x.fract() + 1.0).fract() {
+            // Front Center - Front Right Speakers (30° slice)
+            x if x < 30.0 / 360.0 => {
+                let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Front Right - Side Right Speakers (60° slice)
+            x if x < 90.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[6] = chan * x.sin().into();
+            }
+            // Side Right - Back Speakers (90° slice)
+            x if x < 180.0 / 360.0 => {
+                let x = (360.0 / 90.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[6] = chan * x.cos().into();
+                out.channels_mut()[4] = chan * x.sin().into();
+            }
+            // Back - Side Left Speakers (90° slice)
+            x if x < 270.0 / 360.0 => {
+                let x = (360.0 / 90.0) * (x - 180.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[4] = chan * x.cos().into();
+                out.channels_mut()[5] = chan * x.sin().into();
+            }
+            // Side Left - Front Left Speakers (60° slice)
+            x if x < 330.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[5] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+            // Front Left - Center Speakers (30° slice)
+            x => {
+                let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -339,63 +363,76 @@ match (x.fract() + 1.0).fract() {
 impl<Chan: Channel> Frame<Chan, 8> {
     /// Create a new surround 7.1 interleaved audio frame from channel(s).
     #[inline(always)]
-    pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan, side_left: Chan, side_right: Chan) -> Self {
-        Self([left, right, center, lfe, back_left, back_right, side_left, side_right])
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        left: Chan,
+        right: Chan,
+        center: Chan,
+        lfe: Chan,
+        back_left: Chan,
+        back_right: Chan,
+        side_left: Chan,
+        side_right: Chan,
+    ) -> Self {
+        Self([
+            left, right, center, lfe, back_left, back_right, side_left,
+            side_right,
+        ])
     }
-    
+
     /// Create frame from a single channel panned `x` rotations from front
     /// center.
     #[inline(always)]
     pub fn pan(chan: Chan, x: f32) -> Self {
         use std::f32::consts::FRAC_PI_2;
-    
+
         let mut out = Self::default();
         // Do constant power panning.
 
-match (x.fract() + 1.0).fract() {
-                    // Front Center - Front Right Speakers (30° slice)
-                    x if x < 30.0 / 360.0 => {
-                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                        out.channels_mut()[2] = chan * x.cos().into();
-                        out.channels_mut()[1] = chan * x.sin().into();
-                    }
-                    // Front Right - Side Right Speakers (60° slice)
-                    x if x < 90.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[1] = chan * x.cos().into();
-                        out.channels_mut()[7] = chan * x.sin().into();
-                    }
-                    // Side Right - Back Right Speakers (60° slice)
-                    x if x < 150.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[7] = chan * x.cos().into();
-                        out.channels_mut()[5] = chan * x.sin().into();
-                    }
-                    // Back Right - Back Left Speakers (60° slice)
-                    x if x < 210.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 150.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[5] = chan * x.cos().into();
-                        out.channels_mut()[4] = chan * x.sin().into();
-                    }
-                    // Back Left - Side Left Speakers (60° slice)
-                    x if x < 270.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 210.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[4] = chan * x.cos().into();
-                        out.channels_mut()[5] = chan * x.sin().into();
-                    }
-                    // Side Left - Front Left Speakers (60° slice)
-                    x if x < 330.0 / 360.0 => {
-                        let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[5] = chan * x.cos().into();
-                        out.channels_mut()[0] = chan * x.sin().into();
-                    }
-                    // Front Left - Center Speakers (30° slice)
-                    x => {
-                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                        out.channels_mut()[0] = chan * x.cos().into();
-                        out.channels_mut()[2] = chan * x.sin().into();
-                    }
-                }
+        match (x.fract() + 1.0).fract() {
+            // Front Center - Front Right Speakers (30° slice)
+            x if x < 30.0 / 360.0 => {
+                let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                out.channels_mut()[2] = chan * x.cos().into();
+                out.channels_mut()[1] = chan * x.sin().into();
+            }
+            // Front Right - Side Right Speakers (60° slice)
+            x if x < 90.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[1] = chan * x.cos().into();
+                out.channels_mut()[7] = chan * x.sin().into();
+            }
+            // Side Right - Back Right Speakers (60° slice)
+            x if x < 150.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[7] = chan * x.cos().into();
+                out.channels_mut()[5] = chan * x.sin().into();
+            }
+            // Back Right - Back Left Speakers (60° slice)
+            x if x < 210.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 150.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[5] = chan * x.cos().into();
+                out.channels_mut()[4] = chan * x.sin().into();
+            }
+            // Back Left - Side Left Speakers (60° slice)
+            x if x < 270.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 210.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[4] = chan * x.cos().into();
+                out.channels_mut()[5] = chan * x.sin().into();
+            }
+            // Side Left - Front Left Speakers (60° slice)
+            x if x < 330.0 / 360.0 => {
+                let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[5] = chan * x.cos().into();
+                out.channels_mut()[0] = chan * x.sin().into();
+            }
+            // Front Left - Center Speakers (30° slice)
+            x => {
+                let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                out.channels_mut()[0] = chan * x.cos().into();
+                out.channels_mut()[2] = chan * x.sin().into();
+            }
+        }
 
         out
     }
@@ -429,13 +466,16 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
     /// Convert an audio frame to another format.
     #[inline(always)]
     pub fn convert<C: Channel, const N: usize>(self) -> Frame<C, N>
-        where C: From<Chan>
+    where
+        C: From<Chan>,
     {
         let mut out = Frame::<C, N>::default();
 
         match (CH, N) {
             (x, y) if x == y => {
-                for (o, i) in out.channels_mut().iter_mut().zip(self.channels().iter()) {
+                for (o, i) in
+                    out.channels_mut().iter_mut().zip(self.channels().iter())
+                {
                     *o = C::from(*i);
                 }
             }
@@ -446,8 +486,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[1] = C::from(self.channels()[0]);
             }
             (2, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.5)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.5)
                     + C::from(self.channels()[1]) * C::from(0.5);
             }
             (2, _) => {
@@ -455,17 +495,17 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[1] = C::from(self.channels()[1]);
             }
             (3, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(1.0 / 3.0)
                     + C::from(self.channels()[1]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
             }
             (3, 2) | (3, 4) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
             }
             (3, _) => {
@@ -474,18 +514,18 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[2] = C::from(self.channels()[2]);
             }
             (4, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.25)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.25)
                     + C::from(self.channels()[1]) * C::from(0.25)
                     + C::from(self.channels()[2]) * C::from(0.25)
                     + C::from(self.channels()[3]) * C::from(0.25);
             }
             (4, 2) | (4, 3) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.5)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.5)
                     + C::from(self.channels()[2]) * C::from(0.5);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.5)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.5);
             }
             (4, 5) => {
@@ -503,40 +543,40 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             (4, 7) => {
                 out.channels_mut()[0] = C::from(self.channels()[0]);
                 out.channels_mut()[1] = C::from(self.channels()[1]);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[2]) * C::from(0.5)
+                out.channels_mut()[4] = C::from(self.channels()[2])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.5);
-                out.channels_mut()[5] = 
-                    C::from(self.channels()[0]) * C::from(0.5)
+                out.channels_mut()[5] = C::from(self.channels()[0])
+                    * C::from(0.5)
                     + C::from(self.channels()[2]) * C::from(0.5);
-                out.channels_mut()[6] = 
-                    C::from(self.channels()[1]) * C::from(0.5)
+                out.channels_mut()[6] = C::from(self.channels()[1])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.5);
             }
             (5, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.2)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.2)
                     + C::from(self.channels()[1]) * C::from(0.2)
                     + C::from(self.channels()[2]) * C::from(0.2)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(0.2);
             }
             (5, 2) | (5, 3) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.4)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.4)
                     + C::from(self.channels()[3]) * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.2);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.4)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.4)
                     + C::from(self.channels()[4]) * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.2);
             }
             (5, 4) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0);
                 out.channels_mut()[2] = C::from(self.channels()[3]);
                 out.channels_mut()[3] = C::from(self.channels()[4]);
@@ -552,8 +592,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[0] = C::from(self.channels()[0]);
                 out.channels_mut()[1] = C::from(self.channels()[1]);
                 out.channels_mut()[2] = C::from(self.channels()[2]);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[3]) * C::from(0.5)
+                out.channels_mut()[4] = C::from(self.channels()[3])
+                    * C::from(0.5)
                     + C::from(self.channels()[4]) * C::from(0.5);
                 out.channels_mut()[5] = C::from(self.channels()[3]);
                 out.channels_mut()[6] = C::from(self.channels()[4]);
@@ -566,44 +606,44 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[5] = C::from(self.channels()[4]);
             }
             (6, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.2)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.2)
                     + C::from(self.channels()[1]) * C::from(0.2)
                     + C::from(self.channels()[2]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(0.2)
                     + C::from(self.channels()[5]) * C::from(0.2);
             }
             (6, 2) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.4)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.4)
                     + C::from(self.channels()[4]) * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.2)
                     + C::from(self.channels()[3]) * C::from(0.4);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.4)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.4)
                     + C::from(self.channels()[5]) * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.2)
                     + C::from(self.channels()[3]) * C::from(0.4);
             }
             (6, 3) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.5)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.5)
                     + C::from(self.channels()[4]) * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.5)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.5)
                     + C::from(self.channels()[5]) * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
                 out.channels_mut()[2] = C::from(self.channels()[2])
                     + C::from(self.channels()[3]) * C::from(1.0 / 3.0);
             }
             (6, 4) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
                 out.channels_mut()[2] = C::from(self.channels()[4])
@@ -612,11 +652,9 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                     + C::from(self.channels()[3]) * C::from(0.25);
             }
             (6, 5) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0])
+                out.channels_mut()[0] = C::from(self.channels()[0])
                     + C::from(self.channels()[3]) * C::from(0.2);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) 
+                out.channels_mut()[1] = C::from(self.channels()[1])
                     + C::from(self.channels()[3]) * C::from(0.2);
                 out.channels_mut()[2] = C::from(self.channels()[2])
                     + C::from(self.channels()[3]) * C::from(0.2);
@@ -642,8 +680,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[5] = C::from(self.channels()[5]);
             }
             (7, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(1.0 / 6.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(1.0 / 6.0)
                     + C::from(self.channels()[1]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
@@ -651,67 +689,64 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                     + C::from(self.channels()[6]) * C::from(1.0 / 6.0);
             }
             (7, 2) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(1.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(1.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(1.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(1.0 / 6.0)
                     + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
             }
             (7, 3) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.5)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[5]) * C::from(0.5);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.5)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[6]) * C::from(0.5);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[2]) * C::from(0.5)
+                out.channels_mut()[2] = C::from(self.channels()[2])
+                    * C::from(0.5)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(0.5);
             }
             (7, 4) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(2.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(2.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                out.channels_mut()[2] = C::from(self.channels()[5])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
-                out.channels_mut()[3] =
-                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                out.channels_mut()[3] = C::from(self.channels()[6])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.25);
             }
             (7, 5) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0])
+                out.channels_mut()[0] = C::from(self.channels()[0])
                     + C::from(self.channels()[3]) * C::from(0.2);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1])
+                out.channels_mut()[1] = C::from(self.channels()[1])
                     + C::from(self.channels()[3]) * C::from(0.2);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[2])
+                out.channels_mut()[2] = C::from(self.channels()[2])
                     + C::from(self.channels()[3]) * C::from(0.2);
-                out.channels_mut()[3] =
-                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                out.channels_mut()[3] = C::from(self.channels()[5])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.2);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                out.channels_mut()[4] = C::from(self.channels()[6])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.2);
             }
@@ -720,11 +755,11 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[1] = C::from(self.channels()[1]);
                 out.channels_mut()[2] = C::from(self.channels()[2]);
                 out.channels_mut()[3] = C::from(self.channels()[3]);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                out.channels_mut()[4] = C::from(self.channels()[6])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0);
-                out.channels_mut()[5] =
-                    C::from(self.channels()[6]) * C::from(2.0 / 3.0)
+                out.channels_mut()[5] = C::from(self.channels()[6])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0);
             }
             (7, 8) => {
@@ -734,16 +769,16 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[3] = C::from(self.channels()[3]);
                 out.channels_mut()[4] = C::from(self.channels()[5]);
                 out.channels_mut()[5] = C::from(self.channels()[6]);
-                out.channels_mut()[6] =
-                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                out.channels_mut()[6] = C::from(self.channels()[4])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
-                out.channels_mut()[7] =
-                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                out.channels_mut()[7] = C::from(self.channels()[4])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[5]) * C::from(1.0 / 3.0);
             }
             (8, 1) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(1.0 / 7.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(1.0 / 7.0)
                     + C::from(self.channels()[1]) * C::from(1.0 / 7.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
                     + C::from(self.channels()[4]) * C::from(1.0 / 7.0)
@@ -753,89 +788,88 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                     + C::from(self.channels()[3]) * C::from(1.0 / 7.0);
             }
             (8, 2) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(2.0 / 7.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(2.0 / 7.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(2.0 / 7.0)
                     + C::from(self.channels()[6]) * C::from(2.0 / 7.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(2.0 / 7.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(2.0 / 7.0)
                     + C::from(self.channels()[2]) * C::from(1.0 / 7.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[5]) * C::from(2.0 / 7.0)
                     + C::from(self.channels()[7]) * C::from(2.0 / 7.0);
             }
             (8, 3) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(1.0 / 3.0)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[4]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(1.0 / 3.0)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(1.0 / 3.0)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[5]) * C::from(1.0 / 3.0)
                     + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[2])
+                out.channels_mut()[2] = C::from(self.channels()[2])
                     + C::from(self.channels()[3]) * C::from(0.2);
             }
             (8, 4) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.4)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.4)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[6]) * C::from(0.2);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.4)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.4)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[7]) * C::from(0.2);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[4]) * C::from(0.4)
+                out.channels_mut()[2] = C::from(self.channels()[4])
+                    * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.4)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[6]) * C::from(0.2);
-                out.channels_mut()[3] =
-                    C::from(self.channels()[5]) * C::from(0.4)
+                out.channels_mut()[3] = C::from(self.channels()[5])
+                    * C::from(0.4)
                     + C::from(self.channels()[2]) * C::from(0.4)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[7]) * C::from(0.2);
             }
             (8, 5) => {
-                out.channels_mut()[0] =
-                    C::from(self.channels()[0]) * C::from(0.8)
+                out.channels_mut()[0] = C::from(self.channels()[0])
+                    * C::from(0.8)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[6]) * C::from(0.2);
-                out.channels_mut()[1] =
-                    C::from(self.channels()[1]) * C::from(0.8)
+                out.channels_mut()[1] = C::from(self.channels()[1])
+                    * C::from(0.8)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[7]) * C::from(0.2);
                 out.channels_mut()[2] = C::from(self.channels()[2]);
-                out.channels_mut()[3] =
-                    C::from(self.channels()[4]) * C::from(0.8)
+                out.channels_mut()[3] = C::from(self.channels()[4])
+                    * C::from(0.8)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[6]) * C::from(0.2);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[5]) * C::from(0.8)
+                out.channels_mut()[4] = C::from(self.channels()[5])
+                    * C::from(0.8)
                     + C::from(self.channels()[3]) * C::from(0.2)
                     + C::from(self.channels()[7]) * C::from(0.2);
             }
             (8, 6) => {
                 out.channels_mut()[0] = C::from(self.channels()[0]);
                 out.channels_mut()[1] = C::from(self.channels()[1]);
-                out.channels_mut()[2] =
-                    C::from(self.channels()[2]) * C::from(2.0 / 3.0)
+                out.channels_mut()[2] = C::from(self.channels()[2])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
-                out.channels_mut()[3] =
-                    C::from(self.channels()[3]) * C::from(2.0 / 3.0)
+                out.channels_mut()[3] = C::from(self.channels()[3])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[4]) * C::from(2.0 / 3.0)
+                out.channels_mut()[4] = C::from(self.channels()[4])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[6]) * C::from(1.0 / 3.0);
-                out.channels_mut()[5] =
-                    C::from(self.channels()[5]) * C::from(2.0 / 3.0)
+                out.channels_mut()[5] = C::from(self.channels()[5])
+                    * C::from(2.0 / 3.0)
                     + C::from(self.channels()[7]) * C::from(1.0 / 3.0);
             }
             (8, 7) => {
@@ -843,8 +877,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
                 out.channels_mut()[1] = C::from(self.channels()[1]);
                 out.channels_mut()[2] = C::from(self.channels()[2]);
                 out.channels_mut()[3] = C::from(self.channels()[3]);
-                out.channels_mut()[4] =
-                    C::from(self.channels()[4]) * C::from(0.5)
+                out.channels_mut()[4] = C::from(self.channels()[4])
+                    * C::from(0.5)
                     + C::from(self.channels()[5]) * C::from(0.5);
                 out.channels_mut()[5] = C::from(self.channels()[6]);
                 out.channels_mut()[6] = C::from(self.channels()[7]);
@@ -866,7 +900,9 @@ impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
 
     #[inline(always)]
     fn add(mut self, other: Self) -> Self {
-        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+        for (a, b) in
+            self.channels_mut().iter_mut().zip(other.channels().iter())
+        {
             *a = *a + *b;
         }
         self
@@ -878,7 +914,9 @@ impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
 
     #[inline(always)]
     fn sub(mut self, other: Self) -> Self {
-        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+        for (a, b) in
+            self.channels_mut().iter_mut().zip(other.channels().iter())
+        {
             *a = *a - *b;
         }
         self
@@ -890,7 +928,9 @@ impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
 
     #[inline(always)]
     fn mul(mut self, other: Self) -> Self {
-        for (a, b) in self.channels_mut().iter_mut().zip(other.channels().iter()) {
+        for (a, b) in
+            self.channels_mut().iter_mut().zip(other.channels().iter())
+        {
             *a = *a * *b;
         }
         self
@@ -918,7 +958,9 @@ impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
     }
 }
 
-impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH> for Frame<Chan, CH> {
+impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH>
+    for Frame<Chan, CH>
+{
     #[inline(always)]
     fn sample_rate(&self) -> Option<u32> {
         None

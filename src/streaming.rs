@@ -8,11 +8,8 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{ops::Blend, frame::Frame, chan::Channel};
-use core::{
-    iter::{Map, Take, Zip},
-    marker::PhantomData,
-};
+use crate::{chan::Channel, frame::Frame};
+use core::{iter::Take, marker::PhantomData};
 
 /// Context for an audio resampler.
 #[derive(Default, Debug, Copy, Clone)]
@@ -70,7 +67,9 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
     /// [`Stream`](crate::Stream) audio into this audio [`Sink`](crate::Sink).
     #[inline(always)]
     fn stream<C, M: Stream<C, N>, const N: usize>(&mut self, mut stream: M)
-        where C: Channel, Chan: From<C>
+    where
+        C: Channel,
+        Chan: From<C>,
     {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
@@ -107,19 +106,21 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
                 break;
             }
             let ceil_f64 = (j % 1.0).min(ratio);
-            let ceil_a: Frame::<Chan, CH> = ceil_f64.into();
-            let floor_a: Frame::<Chan, CH> = (ratio - ceil_f64).into();
+            let ceil_a: Frame<Chan, CH> = ceil_f64.into();
+            let floor_a: Frame<Chan, CH> = (ratio - ceil_f64).into();
             let src = if let Some(src) = stream_iter.next() {
                 src
             } else {
                 break;
             };
             let src: Frame<Chan, CH> = src.convert();
-            self.buffer()[dst_range][floor] = self.buffer()[dst_range][floor] + src * floor_a;
+            self.buffer()[dst_range][floor] =
+                self.buffer()[dst_range][floor] + src * floor_a;
             if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {
                 *buf = *buf + src * ceil_a;
             } else {
-                self.resampler().partial = self.resampler().partial + src * ceil_a;
+                self.resampler().partial =
+                    self.resampler().partial + src * ceil_a;
             }
         }
         // Increment offseti
@@ -128,7 +129,8 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
 }
 
 /// Audio stream - a type that generates audio samples.
-pub trait Stream<Chan: Channel, const CH: usize>: Sized + IntoIterator<Item = Frame<Chan, CH>>
+pub trait Stream<Chan: Channel, const CH: usize>:
+    Sized + IntoIterator<Item = Frame<Chan, CH>>
 {
     /// Get the (source) sample rate of the stream.
     fn sample_rate(&self) -> Option<u32>;
@@ -156,39 +158,19 @@ pub trait Stream<Chan: Channel, const CH: usize>: Sized + IntoIterator<Item = Fr
     fn take(self, samples: usize) -> TakeStream<Chan, Self, CH> {
         TakeStream(self, samples, PhantomData)
     }
-
-/*    /// Blend this stream with another.
-    ///
-    /// # Panics
-    /// If the sample rates are not compatible.
-    fn blend<G: Frame, M: Stream<G>, O: Blend>(
-        self,
-        other: M,
-        op: O,
-    ) -> BlendStream<F, G, Self, M, O> {
-        let mut first = self;
-        let mut second = other;
-
-        let _op = op;
-        let (sr_a, sr_b) = (first.sample_rate(), second.sample_rate());
-        if sr_a != sr_b {
-            assert!(sr_a.is_none() || sr_b.is_none());
-            match (sr_a, sr_b) {
-                (None, None) => { /* Do nothing */ }
-                (None, Some(sr)) => first.set_sample_rate(sr),
-                (Some(sr), None) => second.set_sample_rate(sr),
-                (Some(_), Some(_)) => unreachable!(),
-            }
-        }
-        BlendStream(first, second, PhantomData)
-    }*/
 }
 
 /// Take stream.
 #[derive(Debug)]
-pub struct TakeStream<Chan: Channel, S: Stream<Chan, CH>, const CH: usize>(S, usize, PhantomData<Frame<Chan, CH>>);
+pub struct TakeStream<Chan: Channel, S: Stream<Chan, CH>, const CH: usize>(
+    S,
+    usize,
+    PhantomData<Frame<Chan, CH>>,
+);
 
-impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> IntoIterator for TakeStream<Chan, S, CH> {
+impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> IntoIterator
+    for TakeStream<Chan, S, CH>
+{
     type Item = Frame<Chan, CH>;
     type IntoIter = Take<S::IntoIter>;
 
@@ -198,7 +180,9 @@ impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> IntoIterator for TakeS
     }
 }
 
-impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> Stream<Chan, CH> for TakeStream<Chan, S, CH> {
+impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> Stream<Chan, CH>
+    for TakeStream<Chan, S, CH>
+{
     #[inline(always)]
     fn sample_rate(&self) -> Option<u32> {
         self.0.sample_rate()
@@ -214,66 +198,3 @@ impl<Chan: Channel, S: Stream<Chan, CH>, const CH: usize> Stream<Chan, CH> for T
         self.0.set_sample_rate(rate)
     }
 }
-
-// FIXME
-/*/// Blended stream.
-#[derive(Debug)]
-pub struct BlendStream<F, G, A, B, O>(A, B, PhantomData<(F, G, O)>)
-where
-    F: Frame,
-    G: Frame,
-    A: Stream<F>,
-    B: Stream<G>,
-    O: Blend;
-
-impl<F, G, A, B, O> IntoIterator for BlendStream<F, G, A, B, O>
-where
-    F: Frame,
-    G: Frame,
-    A: Stream<F>,
-    B: Stream<G>,
-    O: Blend,
-{
-    type Item = F;
-    #[allow(clippy::type_complexity)]
-    type IntoIter = Map<Zip<A::IntoIter, B::IntoIter>, fn((F, G)) -> F>;
-
-    #[inline(always)]
-    fn into_iter(self) -> Self::IntoIter {
-        self.0
-            .into_iter()
-            .zip(self.1.into_iter())
-            .map(|(a, b)| O::mix_frames(a, b.convert()))
-    }
-}
-
-impl<F, G, A, B, O> Stream<F> for BlendStream<F, G, A, B, O>
-where
-    F: Frame,
-    G: Frame,
-    A: Stream<F>,
-    B: Stream<G>,
-    O: Blend,
-{
-    #[inline(always)]
-    fn sample_rate(&self) -> Option<u32> {
-        self.0.sample_rate()
-    }
-
-    #[inline(always)]
-    fn len(&self) -> Option<usize> {
-        match (self.0.len(), self.1.len()) {
-            (None, None) => None,
-            (None, Some(len)) => Some(len),
-            (Some(len), None) => Some(len),
-            (Some(a), Some(b)) => Some(a.min(b)),
-        }
-    }
-
-    #[inline(always)]
-    fn set_sample_rate<R: Into<f64>>(&mut self, sr: R) {
-        let sr = sr.into();
-        self.0.set_sample_rate(sr);
-        self.1.set_sample_rate(sr);
-    }
-}*/

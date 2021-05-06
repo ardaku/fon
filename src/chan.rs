@@ -421,7 +421,7 @@ impl<R: Into<Self>> Add<R> for Ch64 {
 
     #[inline(always)]
     fn add(self, rhs: R) -> Self {
-        Self::new(Ch64::from(self).0 + Ch64::from(rhs.into()).0)
+        Self::new(self.0 + rhs.into().0)
     }
 }
 
@@ -430,7 +430,7 @@ impl<R: Into<Self>> Sub<R> for Ch64 {
 
     #[inline(always)]
     fn sub(self, rhs: R) -> Self {
-        Self::new(Ch64::from(self).0 - Ch64::from(rhs.into()).0)
+        Self::new(self.0 - rhs.into().0)
     }
 }
 
@@ -439,7 +439,7 @@ impl<R: Into<Self>> Mul<R> for Ch64 {
 
     #[inline(always)]
     fn mul(self, rhs: R) -> Self {
-        Self::new(Ch64::from(self).0 * Ch64::from(rhs.into()).0)
+        Self::new(self.0 * rhs.into().0)
     }
 }
 
@@ -448,7 +448,7 @@ impl Neg for Ch64 {
 
     #[inline(always)]
     fn neg(self) -> Self {
-        Self(-Ch64::from(self).0)
+        Self(-self.0)
     }
 }
 
@@ -565,7 +565,10 @@ mod tests {
     fn ch24_arith() {
         // Test addition
         assert_eq!(Ch24::new(-1), Ch24::new(-8388608) + Ch24::new(8388607));
-        assert_eq!(Ch24::new(2097152), Ch24::new(-2097152) + Ch24::new(4194304));
+        assert_eq!(
+            Ch24::new(2097152),
+            Ch24::new(-2097152) + Ch24::new(4194304)
+        );
         assert_eq!(Ch24::MAX, Ch24::MID + Ch24::MAX);
         assert_eq!(Ch24::MIN, Ch24::new(-4194304) + Ch24::new(-4194304));
         // Test subtraction
@@ -575,10 +578,22 @@ mod tests {
         // Test multiplication
         assert_eq!(Ch24::new(0), Ch24::new(0) * Ch24::new(8388607));
         assert_eq!(Ch24::new(8388607), Ch24::new(8388607) * Ch24::new(8388607));
-        assert_eq!(Ch24::new(-8388608), Ch24::new(8388607) * Ch24::new(-8388608));
-        assert_eq!(Ch24::new(-8388608), Ch24::new(-8388608) * Ch24::new(8388607));
-        assert_eq!(Ch24::new(8388607), Ch24::new(-8388608) * Ch24::new(-8388608));
-        assert_eq!(Ch24::new(-4194304), Ch24::new(8388607) * Ch24::new(-4194304));
+        assert_eq!(
+            Ch24::new(-8388608),
+            Ch24::new(8388607) * Ch24::new(-8388608)
+        );
+        assert_eq!(
+            Ch24::new(-8388608),
+            Ch24::new(-8388608) * Ch24::new(8388607)
+        );
+        assert_eq!(
+            Ch24::new(8388607),
+            Ch24::new(-8388608) * Ch24::new(-8388608)
+        );
+        assert_eq!(
+            Ch24::new(-4194304),
+            Ch24::new(8388607) * Ch24::new(-4194304)
+        );
         // Test negation
         assert_eq!(Ch24::MIN, -Ch24::MAX);
         assert_eq!(Ch24::MAX, -Ch24::MIN);

@@ -21,7 +21,7 @@ pub enum Position {
     ///  - 6.1
     ///  - 7.1
     Left,
-    
+
     /// Side Right (90 degrees right)
     ///  - Stereo
     ///  - 3.0
@@ -74,7 +74,7 @@ pub enum Position {
     ///  - 5.1
     ///  - 6.1
     ///  - 7.1
-    LFE,
+    Lfe,
 
     /// Back (180 degrees left/right)
     ///  - 6.1
