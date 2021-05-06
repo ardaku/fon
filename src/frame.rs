@@ -37,6 +37,16 @@ impl<Chan: Channel> Frame<Chan, 1> {
     pub fn new(mono: Chan) -> Self {
         Self([mono])
     }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, _x: f32) -> Self {
+        let mut out = Self::default();
+        // Do constant power panning.
+        out.channels_mut()[0] = chan;
+        out
+    }
 }
 
 impl<Chan: Channel> Frame<Chan, 2> {
@@ -44,6 +54,24 @@ impl<Chan: Channel> Frame<Chan, 2> {
     #[inline(always)]
     pub fn new(left: Chan, right: Chan) -> Self {
         Self([left, right])
+    }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+        // Convert to radians, left is now at 0.
+        let x = (x + 0.25) * FRAC_PI_2;
+        // Pan distance
+        out.channels_mut()[0] = chan * x.cos().into();
+        out.channels_mut()[1] = chan * x.sin().into();
+
+        out
     }
 }
 
@@ -53,6 +81,46 @@ impl<Chan: Channel> Frame<Chan, 3> {
     pub fn new(left: Chan, right: Chan, center: Chan) -> Self {
         Self([left, right, center])
     }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+// All nearness distances are 1/4
+                match (x.fract() + 1.0).fract() {
+                    // Center-Right Speakers
+                    x if x < 0.25 => {
+                        let x = 4.0 * x * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Right-Center Speakers
+                    x if x < 0.5 => {
+                        let x = 4.0 * (x - 0.25) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                    // Center-Left Speakers
+                    x if x < 0.75 => {
+                        let x = 4.0 * (x - 0.50) * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                    // Left-Center Speakers
+                    x => {
+                        let x = 4.0 * (x - 0.75) * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                }
+
+        out
+    }
 }
 
 impl<Chan: Channel> Frame<Chan, 4> {
@@ -60,6 +128,46 @@ impl<Chan: Channel> Frame<Chan, 4> {
     #[inline(always)]
     pub fn new(left: Chan, right: Chan, back_left: Chan, back_right: Chan) -> Self {
         Self([left, right, back_left, back_right])
+    }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+// Make 0 be Front Left Speaker
+                match (x.fract() + 1.0 + 1.0 / 12.0).fract() {
+                    // Front Left - Front Right Speakers (60° slice)
+                    x if x < 60.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * x * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Front Right - Back Right Speakers (80° slice)
+                    x if x < 140.0 / 360.0 => {
+                        let x = (360.0 / 80.0) * (x - 60.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[3] = chan * x.sin().into();
+                    }
+                    // Back Right - Back Left Speakers (140° slice)
+                    x if x < 280.0 / 360.0 => {
+                        let x = (360.0 / 140.0) * (x - 140.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[3] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                    // Back Left - Front Left Speakers (80° slice)
+                    x => {
+                        let x = (360.0 / 80.0) * (x - 280.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                }
+
+        out
     }
 }
 
@@ -69,6 +177,51 @@ impl<Chan: Channel> Frame<Chan, 5> {
     pub fn new(left: Chan, right: Chan, center: Chan, back_left: Chan, back_right: Chan) -> Self {
         Self([left, right, center, back_left, back_right])
     }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+match (x.fract() + 1.0).fract() {
+                    // Front Center - Front Right Speakers (30° slice)
+                    x if x < 30.0 / 360.0 => {
+                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Front Right - Back Right Speakers (80° slice)
+                    x if x < 110.0 / 360.0 => {
+                        let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[4] = chan * x.sin().into();
+                    }
+                    // Back Right - Back Left Speakers (140° slice)
+                    x if x < 250.0 / 360.0 => {
+                        let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[4] = chan * x.cos().into();
+                        out.channels_mut()[3] = chan * x.sin().into();
+                    }
+                    // Back Left - Front Left Speakers (80° slice)
+                    x if x < 330.0 / 360.0 => {
+                        let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[3] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                    // Front Left - Center Speakers (30° slice)
+                    x => {
+                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                }
+
+        out
+    }
 }
 
 impl<Chan: Channel> Frame<Chan, 6> {
@@ -76,6 +229,51 @@ impl<Chan: Channel> Frame<Chan, 6> {
     #[inline(always)]
     pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan) -> Self {
         Self([left, right, center, lfe, back_left, back_right])
+    }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+match (x.fract() + 1.0).fract() {
+                    // Front Center - Front Right Speakers (30° slice)
+                    x if x < 30.0 / 360.0 => {
+                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Front Right - Back Right Speakers (80° slice)
+                    x if x < 110.0 / 360.0 => {
+                        let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[5] = chan * x.sin().into();
+                    }
+                    // Back Right - Back Left Speakers (140° slice)
+                    x if x < 250.0 / 360.0 => {
+                        let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[5] = chan * x.cos().into();
+                        out.channels_mut()[4] = chan * x.sin().into();
+                    }
+                    // Back Left - Front Left Speakers (80° slice)
+                    x if x < 330.0 / 360.0 => {
+                        let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[4] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                    // Front Left - Center Speakers (30° slice)
+                    x => {
+                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                }
+
+        out
     }
 }
 
@@ -85,6 +283,57 @@ impl<Chan: Channel> Frame<Chan, 7> {
     pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back: Chan, side_left: Chan, side_right: Chan) -> Self {
         Self([left, right, center, lfe, back, side_left, side_right])
     }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+match (x.fract() + 1.0).fract() {
+                    // Front Center - Front Right Speakers (30° slice)
+                    x if x < 30.0 / 360.0 => {
+                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Front Right - Side Right Speakers (60° slice)
+                    x if x < 90.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[6] = chan * x.sin().into();
+                    }
+                    // Side Right - Back Speakers (90° slice)
+                    x if x < 180.0 / 360.0 => {
+                        let x = (360.0 / 90.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[6] = chan * x.cos().into();
+                        out.channels_mut()[4] = chan * x.sin().into();
+                    }
+                    // Back - Side Left Speakers (90° slice)
+                    x if x < 270.0 / 360.0 => {
+                        let x = (360.0 / 90.0) * (x - 180.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[4] = chan * x.cos().into();
+                        out.channels_mut()[5] = chan * x.sin().into();
+                    }
+                    // Side Left - Front Left Speakers (60° slice)
+                    x if x < 330.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[5] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                    // Front Left - Center Speakers (30° slice)
+                    x => {
+                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                }
+
+        out
+    }
 }
 
 impl<Chan: Channel> Frame<Chan, 8> {
@@ -92,6 +341,63 @@ impl<Chan: Channel> Frame<Chan, 8> {
     #[inline(always)]
     pub fn new(left: Chan, right: Chan, center: Chan, lfe: Chan, back_left: Chan, back_right: Chan, side_left: Chan, side_right: Chan) -> Self {
         Self([left, right, center, lfe, back_left, back_right, side_left, side_right])
+    }
+    
+    /// Create frame from a single channel panned `x` rotations from front
+    /// center.
+    #[inline(always)]
+    pub fn pan(chan: Chan, x: f32) -> Self {
+        use std::f32::consts::FRAC_PI_2;
+    
+        let mut out = Self::default();
+        // Do constant power panning.
+
+match (x.fract() + 1.0).fract() {
+                    // Front Center - Front Right Speakers (30° slice)
+                    x if x < 30.0 / 360.0 => {
+                        let x = (360.0 / 30.0) * x * FRAC_PI_2;
+                        out.channels_mut()[2] = chan * x.cos().into();
+                        out.channels_mut()[1] = chan * x.sin().into();
+                    }
+                    // Front Right - Side Right Speakers (60° slice)
+                    x if x < 90.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[1] = chan * x.cos().into();
+                        out.channels_mut()[7] = chan * x.sin().into();
+                    }
+                    // Side Right - Back Right Speakers (60° slice)
+                    x if x < 150.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[7] = chan * x.cos().into();
+                        out.channels_mut()[5] = chan * x.sin().into();
+                    }
+                    // Back Right - Back Left Speakers (60° slice)
+                    x if x < 210.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 150.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[5] = chan * x.cos().into();
+                        out.channels_mut()[4] = chan * x.sin().into();
+                    }
+                    // Back Left - Side Left Speakers (60° slice)
+                    x if x < 270.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 210.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[4] = chan * x.cos().into();
+                        out.channels_mut()[5] = chan * x.sin().into();
+                    }
+                    // Side Left - Front Left Speakers (60° slice)
+                    x if x < 330.0 / 360.0 => {
+                        let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[5] = chan * x.cos().into();
+                        out.channels_mut()[0] = chan * x.sin().into();
+                    }
+                    // Front Left - Center Speakers (30° slice)
+                    x => {
+                        let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
+                        out.channels_mut()[0] = chan * x.cos().into();
+                        out.channels_mut()[2] = chan * x.sin().into();
+                    }
+                }
+
+        out
     }
 }
 

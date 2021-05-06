@@ -9,16 +9,36 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 /// Speaker position.
+#[derive(Copy, Clone, Debug)]
 pub enum Position {
     /// All directions
     ///  - Mono
     Mono,
 
-    /// Low frequency effects (unimportant direction)
+    /// Side Left (90 degrees left)
+    ///  - Stereo
+    ///  - 3.0
+    ///  - 6.1
+    ///  - 7.1
+    Left,
+    
+    /// Side Right (90 degrees right)
+    ///  - Stereo
+    ///  - 3.0
+    ///  - 6.1
+    ///  - 7.1
+    Right,
+
+    /// Center (0/180 degrees left/right)
+    ///  - 3.0
+    Center,
+
+    /// Front Center (0 degrees left/right)
+    ///  - 5.0
     ///  - 5.1
     ///  - 6.1
     ///  - 7.1
-    LFE,
+    Front,
 
     /// Front Left (30 degrees left)
     ///  - 3.0
@@ -27,7 +47,7 @@ pub enum Position {
     ///  - 5.1
     ///  - 6.1
     ///  - 7.1
-    FLeft,
+    FrontL,
 
     /// Front Right (30 degrees right)
     ///  - 3.0
@@ -36,27 +56,25 @@ pub enum Position {
     ///  - 5.1
     ///  - 6.1
     ///  - 7.1
-    FRight,
-
-    /// Front Center (0 degrees left/right)
-    ///  - 3.0
-    ///  - 5.0
-    ///  - 5.1
-    ///  - 6.1
-    ///  - 7.1
-    Front,
+    FrontR,
 
     /// Left Surround (110 degrees left)
     ///  - 4.0
     ///  - 5.0
     ///  - 5.1
-    SurroundLeft,
+    SurroundL,
 
     /// Right Surround (110 degrees right)
     ///  - 4.0
     ///  - 5.0
     ///  - 5.1
-    SurroundRight,
+    SurroundR,
+
+    /// Low frequency effects (unimportant direction)
+    ///  - 5.1
+    ///  - 6.1
+    ///  - 7.1
+    LFE,
 
     /// Back (180 degrees left/right)
     ///  - 6.1
@@ -64,40 +82,9 @@ pub enum Position {
 
     /// Back Left (150 degrees left)
     ///  - 7.1
-    BackLeft,
+    BackL,
 
     /// Back Right (150 degrees right)
     ///  - 7.1
-    BackRight,
-    
-    /// Side Left (90 degrees left)
-    ///  - Stereo
-    ///  - 6.1
-    ///  - 7.1
-    SideLeft,
-    
-    /// Side Right (90 degrees right)
-    ///  - Stereo
-    ///  - 6.1
-    ///  - 7.1
-    SideRight,
-}
-
-impl From<Position> for f32 {
-    fn from(pos: Position) -> f32 {
-        match pos {
-            Position::Mono => f32::NAN,
-            Position::LFE => f32::NAN,
-            Position::FLeft => -30.0f32 .to_radians(),
-            Position::FRight => 30.0f32 .to_radians(),
-            Position::Front => 0.0,
-            Position::SurroundLeft => -110.0f32 .to_radians(),
-            Position::SurroundRight => 110.0f32 .to_radians(),
-            Position::Back => 180.0f32 .to_radians(),
-            Position::BackLeft => -150.0f32 .to_radians(),
-            Position::BackRight => 150.0f32 .to_radians(),
-            Position::SideLeft => -90.0f32 .to_radians(),
-            Position::SideRight => 90.0f32 .to_radians(),
-        }
-    }
+    BackR,
 }

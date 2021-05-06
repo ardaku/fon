@@ -22,9 +22,9 @@
 //!    - [32-bit Float PCM] (Newer recording/processing standard)
 //!    - [64-bit Float PCM] (Ultra high-quality audio standard)
 //!  - Up to 8 channels (following FLAC/SMPTE/ITU-R recommendations):
-//!    - 1 Channel: [Mono] (Mono)
-//!    - 2 Channels: [Stereo] (Left, Right)
-//!    - 3 Channels: [Surround 3.0] (Left, Right, Center)
+//!    - 1 Channel: [Mono] ([Mono](crate::Position::Mono))
+//!    - 2 Channels: [Stereo] ([Left], [Right])
+//!    - 3 Channels: [Surround 3.0] ([Left], [Right], [Center])
 //!    - 4 Channels: [Surround 4.0] (F.Left, F.Right, B.Left, B.Right)
 //!    - 5 Channels: [Surround 5.0] (F.Left, F.Right, F.Center, B.Left, B.Right)
 //!    - 6 Channels: [Surround 5.1] (F.Left, F.Right, F.Center, LFE, B.Left,
@@ -74,6 +74,9 @@
 //! [Surround 7.1]: crate::frame::Surround71
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
+//! [Left]: crate::Position::Left
+//! [Right]: crate::Position::Right
+//! [Center]: crate::Position::Center
 
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
