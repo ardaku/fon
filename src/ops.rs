@@ -10,8 +10,11 @@
 
 use crate::chan::Channel;
 use crate::frame::Frame;
+use crate::sample::{
+    Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Mono, Right,
+    SurroundL, SurroundR,
+};
 use std::f32::consts::FRAC_PI_2;
-use crate::sample::{Mono, Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Lfe, Right, SurroundL, SurroundR};
 
 /// Trait for mixing a panned channel into a Frame.
 pub trait Pan<Chan: Channel> {
@@ -20,31 +23,27 @@ pub trait Pan<Chan: Channel> {
     fn pan(&mut self, channel: Chan, angle: f32);
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 1>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 1> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, _x: f32)  {
+    fn pan(&mut self, chan: Chan, _x: f32) {
         self[Mono] = self[Mono] + chan;
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 2>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 2> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         // Convert to radians, left is now at 0.
         let x = (x + 0.25) * FRAC_PI_2;
         // Pan distance
         self[Left] = self[Left] + chan * x.cos().into();
-        self[Right] = self[Right] +  chan * x.sin().into();
+        self[Right] = self[Right] + chan * x.sin().into();
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 3>
-    
-{
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 3> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         // All nearness distances are 1/4
         match (x.fract() + 1.0).fract() {
             // Center-Right Speakers
@@ -75,10 +74,9 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 3>
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 4>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 4> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         // Make 0 be Front Left Speaker
         match (x.fract() + 1.0 + 1.0 / 12.0).fract() {
             // Front Left - Front Right Speakers (60° slice)
@@ -109,10 +107,9 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 4>
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 5>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 5> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
@@ -148,10 +145,9 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 5>
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 6>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 6> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
@@ -187,10 +183,9 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 6>
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 7>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 7> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
@@ -232,10 +227,9 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 7>
     }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 8>
-     {
+impl<Chan: Channel> Pan<Chan> for Frame<Chan, 8> {
     #[inline(always)]
-    fn pan(&mut self, chan: Chan, x: f32)  {
+    fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {

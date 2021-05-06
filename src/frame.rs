@@ -12,7 +12,6 @@
 
 use crate::chan::Channel;
 use crate::ops::Pan;
-use crate::sample::{Mono, Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Lfe, Right, SurroundL, SurroundR};
 use core::{
     fmt::Debug,
     ops::{Add, Mul, Neg, Sub},
@@ -32,12 +31,33 @@ impl<Chan: Channel, const CH: usize> Default for Frame<Chan, CH> {
 }
 
 impl<Chan: Channel, const CH: usize> Frame<Chan, CH>
-    where Self: Pan<Chan>
+where
+    Self: Pan<Chan>,
 {
-    /// Pan the channel.  1.0/0.0 is straight ahead, 0.25 is right, 0.5 is back,
-    /// and 0.75 is left.  The algorithm used is "Constant Power Panning".
-    pub fn pan(&mut self, channel: Chan, angle: f32) {
-        Pan::pan(self, channel, angle)
+    /// Mix a panned channel into this audio frame.
+    ///
+    /// 1.0/0.0 is straight ahead, 0.25 is right, 0.5 is back, and 0.75 is left.
+    /// The algorithm used is "Constant Power Panning".
+    #[inline(always)]
+    pub fn pan<C: Channel + Into<Chan>>(&mut self, channel: C, angle: f32) {
+        Pan::pan(self, channel.into(), angle)
+    }
+
+    /// Apply gain to the channel.  This function may introduce clipping
+    /// distortion.
+    #[inline(always)]
+    pub fn gain(&mut self, gain: f32) {
+        for x in self.0.iter_mut() {
+            *x = (x.to_f32() * gain).into();
+        }
+    }
+
+    /// Apply linear interpolation with another frame.
+    #[inline(always)]
+    pub fn lerp(&mut self, rhs: Self, t: f32) {
+        for (out, rhs) in self.0.iter_mut().zip(rhs.channels().iter()) {
+            *out = out.lerp(*rhs, t.into());
+        }
     }
 }
 
@@ -105,7 +125,6 @@ impl<Chan: Channel> Frame<Chan, 6> {
     ) -> Self {
         Self([left, right, center, lfe, back_left, back_right])
     }
-
 }
 
 impl<Chan: Channel> Frame<Chan, 7> {
@@ -158,18 +177,6 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
         &mut self.0
     }
 
-    /// Linear interpolation.
-    #[inline(always)]
-    pub fn lerp(&self, rhs: Self, t: Self) -> Self {
-        let mut out = Self::default();
-        let main = out.0.iter_mut().zip(self.channels().iter());
-        let other = rhs.channels().iter().zip(t.channels().iter());
-        for ((out, this), (rhs, t)) in main.zip(other) {
-            *out = this.lerp(*rhs, *t);
-        }
-        out
-    }
-
     /// Convert an audio frame to another format.
     #[inline(always)]
     pub fn convert<C: Channel, const N: usize>(self) -> Frame<C, N>
@@ -180,9 +187,7 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
 
         match (CH, N) {
             (x, y) if x == y => {
-                for (o, i) in
-                    out.0.iter_mut().zip(self.channels().iter())
-                {
+                for (o, i) in out.0.iter_mut().zip(self.channels().iter()) {
                     *o = C::from(*i);
                 }
             }
@@ -607,9 +612,7 @@ impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
 
     #[inline(always)]
     fn add(mut self, other: Self) -> Self {
-        for (a, b) in
-            self.0.iter_mut().zip(other.channels().iter())
-        {
+        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
             *a = *a + *b;
         }
         self
@@ -621,9 +624,7 @@ impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
 
     #[inline(always)]
     fn sub(mut self, other: Self) -> Self {
-        for (a, b) in
-            self.0.iter_mut().zip(other.channels().iter())
-        {
+        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
             *a = *a - *b;
         }
         self
@@ -635,9 +636,7 @@ impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
 
     #[inline(always)]
     fn mul(mut self, other: Self) -> Self {
-        for (a, b) in
-            self.0.iter_mut().zip(other.channels().iter())
-        {
+        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
             *a = *a * *b;
         }
         self
