@@ -1,12 +1,12 @@
 use fon::chan::{Ch16, Ch32};
-use fon::frame::Position::Mono;
+use fon::sample::Mono;
 use fon::Audio;
 
 fn main() {
     let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);
     let mut counter = 0.0;
     for s in a.iter_mut() {
-        s[Mono] = Ch32::new(counter);
+        s[Mono] = counter.into();
         counter += 0.05;
     }
 

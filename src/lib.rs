@@ -22,16 +22,16 @@
 //!    - [32-bit Float PCM] (Newer recording/processing standard)
 //!    - [64-bit Float PCM] (Ultra high-quality audio standard)
 //!  - Up to 8 channels (following FLAC/SMPTE/ITU-R recommendations):
-//!    - 1 Channel: [Mono] ([Mono](crate::frame::Position::Mono))
-//!    - 2 Channels: [Stereo] ([Left], [Right])
-//!    - 3 Channels: [Surround 3.0] ([Left], [Right], [Center])
-//!    - 4 Channels: [Surround 4.0] (F.Left, F.Right, B.Left, B.Right)
-//!    - 5 Channels: [Surround 5.0] (F.Left, F.Right, F.Center, B.Left, B.Right)
-//!    - 6 Channels: [Surround 5.1] (F.Left, F.Right, F.Center, LFE, B.Left,
+//!    - 1 Channel: Mono ([Mono])
+//!    - 2 Channels: Stereo ([Left], [Right])
+//!    - 3 Channels: Surround 3.0 ([Left], [Right], [Center])
+//!    - 4 Channels: Surround 4.0 (F.Left, F.Right, B.Left, B.Right)
+//!    - 5 Channels: Surround 5.0 (F.Left, F.Right, F.Center, B.Left, B.Right)
+//!    - 6 Channels: Surround 5.1 (F.Left, F.Right, F.Center, LFE, B.Left,
 //!      B.Right)
-//!    - 7 Channels: [Surround 6.1] (F.Left, F.Right, F.Center, LFE, B.Center,
+//!    - 7 Channels: Surround 6.1 (F.Left, F.Right, F.Center, LFE, B.Center,
 //!      S.Left, S.Right)
-//!    - 8 Channels: [Surround 7.1] (F.Left, F.Right, F.Center, LFE, B.Left,
+//!    - 8 Channels: Surround 7.1 (F.Left, F.Right, F.Center, LFE, B.Left,
 //!      B.Right, S.Left, S.Right)
 //!
 //! # Getting Started
@@ -43,13 +43,13 @@
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::{Ch16, Ch32};
-//! use fon::frame::Position::Mono;
+//! use fon::sample::Mono;
 //! use fon::Audio;
 //!
 //! let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);
 //! let mut counter = 0.0;
 //! for s in a.iter_mut() {
-//!     s[Mono] = Ch32::new(counter);
+//!     s[Mono] = counter.into();
 //!     counter += 0.05;
 //! }
 //!
@@ -62,19 +62,12 @@
 //! [24-bit Signed Integer PCM]: crate::chan::Ch24
 //! [32-bit Float PCM]: crate::chan::Ch32
 //! [64-bit Float PCM]: crate::chan::Ch64
-//! [Mono]: crate::frame::Mono
-//! [Stereo]: crate::frame::Stereo
-//! [Surround 3.0]: crate::frame::Surround30
-//! [Surround 4.0]: crate::frame::Surround40
-//! [Surround 5.0]: crate::frame::Surround50
-//! [Surround 5.1]: crate::frame::Surround51
-//! [Surround 6.1]: crate::frame::Surround61
-//! [Surround 7.1]: crate::frame::Surround71
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
-//! [Left]: crate::frame::Position::Left
-//! [Right]: crate::frame::Position::Right
-//! [Center]: crate::frame::Position::Center
+//! [Mono]: crate::sample::Mono
+//! [Left]: crate::sample::Left
+//! [Right]: crate::sample::Right
+//! [Center]: crate::sample::Center
 
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
@@ -108,6 +101,7 @@ mod streaming;
 
 pub mod chan;
 pub mod frame;
+pub mod sample;
 
 pub use audio::Audio;
 pub use streaming::{Resampler, Sink, Stream};
