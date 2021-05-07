@@ -29,9 +29,9 @@ fn main() {
         audio.push(i16::from_le_bytes([sample[0], sample[1]]));
     }
     // Convert from 16-bit PCM array into fon Audio buffer.
-    let audio = Audio::<Ch16, 2>::with_i16_buffer(44_100, audio);
+    let audio = Audio::<Ch16, 2, 44_100>::with_i16_buffer(audio);
     // Change the sample rate.
-    let mut output = Audio::<Ch32, 2>::with_stream(48_000, &audio);
+    let mut output = Audio::<Ch32, 2, 48_000>::with_stream(&audio);
 
     // Overwrite it by converting it sample by sample.
     {
