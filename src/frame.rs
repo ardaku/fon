@@ -55,7 +55,7 @@ where
     /// Apply linear interpolation with another frame.
     #[inline(always)]
     pub fn lerp(&mut self, rhs: Self, t: f32) {
-        for (out, rhs) in self.0.iter_mut().zip(rhs.channels().iter()) {
+        for (out, rhs) in self.0.iter_mut().zip(rhs.0.iter()) {
             *out = out.lerp(*rhs, t.into());
         }
     }
@@ -173,20 +173,6 @@ impl<Chan: Channel> Frame<Chan, 8> {
     }
 }
 
-impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
-    /// Get the channels contained by this frame.
-    #[inline(always)]
-    pub fn channels(&self) -> &[Chan; CH] {
-        &self.0
-    }
-
-    /// Get a mutable reference to the channels contained by this frame.
-    #[inline(always)]
-    pub fn channels_mut(&mut self) -> &mut [Chan; CH] {
-        &mut self.0
-    }
-}
-
 impl<Chan: Channel, const CH: usize> From<f32> for Frame<Chan, CH> {
     fn from(rhs: f32) -> Self {
         Frame([Chan::from(rhs); CH])
@@ -198,7 +184,7 @@ impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
 
     #[inline(always)]
     fn add(mut self, other: Self) -> Self {
-        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
+        for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
             *a = *a + *b;
         }
         self
@@ -210,7 +196,7 @@ impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
 
     #[inline(always)]
     fn sub(mut self, other: Self) -> Self {
-        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
+        for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
             *a = *a - *b;
         }
         self
@@ -222,7 +208,7 @@ impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
 
     #[inline(always)]
     fn mul(mut self, other: Self) -> Self {
-        for (a, b) in self.0.iter_mut().zip(other.channels().iter()) {
+        for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
             *a = *a * *b;
         }
         self
