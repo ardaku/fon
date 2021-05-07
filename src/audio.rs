@@ -371,15 +371,12 @@ where
 }
 
 /// A `Stream` created with `Audio.stream()`
-// FIXME
-struct AudioStream<
-    'a,
+struct AudioStream<'a, Chan, R, const CH: usize>
+where
+    Frame<Chan, CH>: Ops<Chan>,
     Chan: Channel,
     R: RangeBounds<usize>
         + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
-    const CH: usize,
-> where
-    Frame<Chan, CH>: Ops<Chan>,
 {
     audio: &'a Audio<Chan, CH>,
     cursor: usize,
@@ -387,14 +384,12 @@ struct AudioStream<
     size: usize,
 }
 
-impl<
-        Chan: Channel,
-        R: RangeBounds<usize>
-            + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
-        const CH: usize,
-    > Iterator for AudioStream<'_, Chan, R, CH>
+impl<Chan, R, const CH: usize> Iterator for AudioStream<'_, Chan, R, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
+    Chan: Channel,
+    R: RangeBounds<usize>
+        + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
 {
     type Item = Frame<Chan, CH>;
 
@@ -408,14 +403,12 @@ where
     }
 }
 
-impl<
-        Chan: Channel,
-        R: RangeBounds<usize>
-            + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
-        const CH: usize,
-    > Stream<Chan, CH> for AudioStream<'_, Chan, R, CH>
+impl<Chan, R, const CH: usize> Stream<Chan, CH> for AudioStream<'_, Chan, R, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
+    Chan: Channel,
+    R: RangeBounds<usize>
+        + SliceIndex<[Frame<Chan, CH>], Output = [Frame<Chan, CH>]>,
 {
     fn sample_rate(&self) -> Option<u32> {
         Some(self.audio.sample_rate())
