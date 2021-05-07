@@ -1,5 +1,5 @@
 use fon::chan::{Ch16, Ch32};
-use fon::sample::Mono;
+use fon::pos::Mono;
 use fon::Audio;
 
 fn main() {

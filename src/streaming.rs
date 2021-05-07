@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{chan::Channel, frame::Frame};
+use crate::{chan::Channel, frame::Frame, ops::Ops};
 use core::{iter::Take, marker::PhantomData};
 
 /// Context for an audio resampler.
@@ -70,6 +70,8 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
     where
         C: Channel,
         Chan: From<C>,
+        Frame<C, N>: Ops<C>,
+        Frame<Chan, CH>: Ops<Chan>,
     {
         // Ratio of destination samples per stream samples.
         let ratio = if let Some(stream_sr) = stream.sample_rate() {
@@ -113,7 +115,7 @@ pub trait Sink<Chan: Channel, const CH: usize>: Sized {
             } else {
                 break;
             };
-            let src: Frame<Chan, CH> = src.convert();
+            let src: Frame<Chan, CH> = src.to();
             self.buffer()[dst_range][floor] =
                 self.buffer()[dst_range][floor] + src * floor_a;
             if let Some(buf) = self.buffer()[dst_range].get_mut(ceil) {

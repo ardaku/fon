@@ -8,8 +8,9 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-//! Audio channels (left, right, etc. samples that make up each audio
-//! [`Frame`](crate::frame::Frame))
+//! Audio channels (left, right, etc.).  Each channel contains a single sample.
+//!
+//! An audio [`Frame`](crate::frame::Frame) is used to group multiple channels.
 
 use crate::private::Sealed;
 use core::fmt::Debug;

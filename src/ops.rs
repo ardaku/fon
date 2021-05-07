@@ -10,27 +10,45 @@
 
 use crate::chan::Channel;
 use crate::frame::Frame;
-use crate::sample::{
-    Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Mono, Right,
+use crate::pos::{
+    Back, BackL, BackR, Center, Front, FrontL, FrontR, Left, Lfe, Mono, Right,
     SurroundL, SurroundR,
 };
 use std::f32::consts::FRAC_PI_2;
 
-/// Trait for mixing a panned channel into a Frame.
-pub trait Pan<Chan: Channel> {
-    /// Pan the channel.  1.0/0.0 is straight ahead, 0.25 is right, 0.5 is back,
-    /// and 0.75 is left.  The algorithm used is "Constant Power Panning".
+// Trait for mixing a panned channel into a Frame.
+pub trait Ops<Chan: Channel> {
     fn pan(&mut self, channel: Chan, angle: f32);
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>;
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 1> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 1> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, _x: f32) {
         self[Mono] = self[Mono] + chan;
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        let mut frame = Frame::<C, N>::default();
+        let mono = self[Mono].into();
+        if N == 1 {
+            frame.0[0] = mono;
+        } else {
+            // Mono should always be mixed up to first two channels.
+            frame.0[0] = mono;
+            frame.0[1] = mono;
+        }
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 2> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 2> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         // Convert to radians, left is now at 0.
@@ -39,9 +57,27 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 2> {
         self[Left] = self[Left] + chan * x.cos().into();
         self[Right] = self[Right] + chan * x.sin().into();
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        let mut frame = Frame::<C, N>::default();
+        let left = self[Left].into();
+        let right = self[Right].into();
+        if N == 1 {
+            frame.0[0] = left * 0.5.into() + right * 0.5.into();
+        } else {
+            // stereo should always be mixed up to first two channels.
+            frame.0[0] = left;
+            frame.0[1] = right;
+        }
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 3> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 3> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         // All nearness distances are 1/4
@@ -72,9 +108,47 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 3> {
             }
         }
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        let mut frame = Frame::<C, N>::default();
+        let left = self[Left].into();
+        let right = self[Right].into();
+        let center = self[Center].into();
+        match N {
+            1 => {
+                frame.0[0] = left * (1.0 / 3.0).into()
+                    + right * (1.0 / 3.0).into()
+                    + center * (1.0 / 3.0).into()
+            }
+            2 => {
+                frame.0[0] =
+                    left * (2.0 / 3.0).into() + center * (1.0 / 3.0).into();
+                frame.0[1] =
+                    right * (2.0 / 3.0).into() + center * (1.0 / 3.0).into();
+            }
+            4 => {
+                frame.0[0] =
+                    left * (2.0 / 3.0).into() + center * (1.0 / 3.0).into();
+                frame.0[1] =
+                    right * (2.0 / 3.0).into() + center * (1.0 / 3.0).into();
+                frame.0[2] = frame.0[0];
+                frame.0[3] = frame.0[1];
+            }
+            _ => {
+                frame.0[0] = left;
+                frame.0[1] = right;
+                frame.0[2] = center;
+            }
+        }
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 4> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 4> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         // Make 0 be Front Left Speaker
@@ -105,9 +179,29 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 4> {
             }
         }
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        // Surround mix.
+        let mut frame = Frame::<C, N>::default();
+        let front_l = self[FrontL];
+        let front_r = self[FrontR];
+        let surround_l = self[SurroundL];
+        let surround_r = self[SurroundR];
+        // Amplitude reduction.
+        let amplitude = (N as f32 / 4.0).min(1.0);
+        frame.pan(front_l * amplitude.into(), -30.0 / 360.0);
+        frame.pan(front_r * amplitude.into(), 30.0 / 360.0);
+        frame.pan(surround_l * amplitude.into(), -110.0 / 360.0);
+        frame.pan(surround_r * amplitude.into(), 110.0 / 360.0);
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 5> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 5> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
@@ -143,9 +237,31 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 5> {
             }
         }
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        // Surround mix.
+        let mut frame = Frame::<C, N>::default();
+        let front_l = self[FrontL];
+        let front_r = self[FrontR];
+        let surround_l = self[SurroundL];
+        let surround_r = self[SurroundR];
+        let front = self[Front];
+        // Amplitude reduction.
+        let amplitude = (N as f32 / 5.0).min(1.0);
+        frame.pan(front_l * amplitude.into(), -30.0 / 360.0);
+        frame.pan(front_r * amplitude.into(), 30.0 / 360.0);
+        frame.pan(surround_l * amplitude.into(), -110.0 / 360.0);
+        frame.pan(surround_r * amplitude.into(), 110.0 / 360.0);
+        frame.pan(front * amplitude.into(), 0.0);
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 6> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 6> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
@@ -181,9 +297,38 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 6> {
             }
         }
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        // Surround mix.
+        let mut frame = Frame::<C, N>::default();
+        let front_l = self[FrontL];
+        let front_r = self[FrontR];
+        let surround_l = self[SurroundL];
+        let surround_r = self[SurroundR];
+        let front = self[Front];
+        let lfe = self[Lfe];
+        // Amplitude reduction.
+        let amplitude = (N as f32 / 5.0).min(1.0);
+        frame.pan(front_l * amplitude.into(), -30.0 / 360.0);
+        frame.pan(front_r * amplitude.into(), 30.0 / 360.0);
+        frame.pan(surround_l * amplitude.into(), -110.0 / 360.0);
+        frame.pan(surround_r * amplitude.into(), 110.0 / 360.0);
+        frame.pan(front * amplitude.into(), 0.0);
+        // If no LFE channel, pan back center.
+        if N < 5 {
+            frame.pan(lfe * amplitude.into(), 0.5);
+        } else {
+            frame.0[3] = (lfe * amplitude.into()).into();
+        }
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 7> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 7> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
@@ -225,9 +370,40 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 7> {
             }
         }
     }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        // Surround mix.
+        let mut frame = Frame::<C, N>::default();
+        let front_l = self[FrontL];
+        let front_r = self[FrontR];
+        let left = self[Left];
+        let right = self[Right];
+        let front = self[Front];
+        let lfe = self[Lfe];
+        let back = self[Back];
+        // Amplitude reduction.
+        let amplitude = (N as f32 / 6.0).min(1.0);
+        frame.pan(front_l * amplitude.into(), -30.0 / 360.0);
+        frame.pan(front_r * amplitude.into(), 30.0 / 360.0);
+        frame.pan(left * amplitude.into(), -90.0 / 360.0);
+        frame.pan(right * amplitude.into(), 90.0 / 360.0);
+        frame.pan(front * amplitude.into(), 0.0);
+        frame.pan(back * amplitude.into(), 0.5);
+        // If no LFE channel, pan back center.
+        if N < 5 {
+            frame.pan(lfe * amplitude.into(), 0.5);
+        } else {
+            frame.0[3] = (lfe * amplitude.into()).into();
+        }
+        frame
+    }
 }
 
-impl<Chan: Channel> Pan<Chan> for Frame<Chan, 8> {
+impl<Chan: Channel> Ops<Chan> for Frame<Chan, 8> {
     #[inline(always)]
     fn pan(&mut self, chan: Chan, x: f32) {
         match (x.fract() + 1.0).fract() {
@@ -274,5 +450,38 @@ impl<Chan: Channel> Pan<Chan> for Frame<Chan, 8> {
                 self[Front] = self[Front] + chan * x.sin().into();
             }
         }
+    }
+
+    #[inline(always)]
+    fn to<C: Channel + From<Chan>, const N: usize>(self) -> Frame<C, N>
+    where
+        Frame<C, N>: Ops<C>,
+    {
+        // Surround mix.
+        let mut frame = Frame::<C, N>::default();
+        let front_l = self[FrontL];
+        let front_r = self[FrontR];
+        let left = self[Left];
+        let right = self[Right];
+        let front = self[Front];
+        let lfe = self[Lfe];
+        let back_l = self[BackL];
+        let back_r = self[BackR];
+        // Amplitude reduction.
+        let amplitude = (N as f32 / 7.0).min(1.0);
+        frame.pan(front_l * amplitude.into(), -30.0 / 360.0);
+        frame.pan(front_r * amplitude.into(), 30.0 / 360.0);
+        frame.pan(left * amplitude.into(), -90.0 / 360.0);
+        frame.pan(right * amplitude.into(), 90.0 / 360.0);
+        frame.pan(front * amplitude.into(), 0.0);
+        frame.pan(back_l * amplitude.into(), -150.0 / 360.0);
+        frame.pan(back_r * amplitude.into(), 150.0 / 360.0);
+        // If no LFE channel, pan back center.
+        if N < 5 {
+            frame.pan(lfe * amplitude.into(), 0.5);
+        } else {
+            frame.0[3] = (lfe * amplitude.into()).into();
+        }
+        frame
     }
 }

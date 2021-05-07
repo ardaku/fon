@@ -8,7 +8,7 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-//! Component of a speaker configuration (channel ID).
+//! Speaker/channel positions within a speaker configuration.
 
 use crate::chan::Channel;
 use crate::frame::Frame;

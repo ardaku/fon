@@ -44,7 +44,7 @@
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
 //! use fon::chan::{Ch16, Ch32};
-//! use fon::sample::Mono;
+//! use fon::pos::Mono;
 //! use fon::Audio;
 //!
 //! let mut a = Audio::<Ch32, 1>::with_silence(44_100, 256);
@@ -65,19 +65,19 @@
 //! [64-bit Float PCM]: crate::chan::Ch64
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
-//! [Mono]: crate::sample::Mono
-//! [Left]: crate::sample::Left
-//! [Right]: crate::sample::Right
-//! [Center]: crate::sample::Center
-//! [FrontL]: crate::sample::FrontL
-//! [FrontR]: crate::sample::FrontR
-//! [SurroundL]: crate::sample::SurroundL
-//! [SurroundR]: crate::sample::SurroundR
-//! [Front]: crate::sample::Front
-//! [Lfe]: crate::sample::Lfe
-//! [Back]: crate::sample::Back
-//! [BackL]: crate::sample::BackL
-//! [BackR]: crate::sample::BackR
+//! [Mono]: crate::pos::Mono
+//! [Left]: crate::pos::Left
+//! [Right]: crate::pos::Right
+//! [Center]: crate::pos::Center
+//! [FrontL]: crate::pos::FrontL
+//! [FrontR]: crate::pos::FrontR
+//! [SurroundL]: crate::pos::SurroundL
+//! [SurroundR]: crate::pos::SurroundR
+//! [Front]: crate::pos::Front
+//! [Lfe]: crate::pos::Lfe
+//! [Back]: crate::pos::Back
+//! [BackL]: crate::pos::BackL
+//! [BackR]: crate::pos::BackR
 
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
@@ -112,7 +112,7 @@ mod streaming;
 
 pub mod chan;
 pub mod frame;
-pub mod sample;
+pub mod pos;
 
 pub use audio::Audio;
 pub use streaming::{Resampler, Sink, Stream};
