@@ -246,10 +246,12 @@ where
         Frame<C, CH>: Ops<C>,
     {
         let this = self.borrow();
-        let zeros = if len > this.len() { len - this.len() } else { 0 };
-        buffer
-            .0
-            .extend(this.into_iter().map(|x| x.to()).take(len));
+        let zeros = if len > this.len() {
+            len - this.len()
+        } else {
+            0
+        };
+        buffer.0.extend(this.into_iter().map(|x| x.to()).take(len));
         Frame::<C, CH>::default().extend(buffer, zeros);
     }
 }

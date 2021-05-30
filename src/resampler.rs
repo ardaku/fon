@@ -21,6 +21,16 @@ mod speex;
 
 use speex::ResamplerState;
 
+const WINDOW_FN_KAISER_TABLE: &[f64] = &[
+    0.99537781, 1.0, 0.99537781, 0.98162644, 0.95908712, 0.92831446,
+    0.89005583, 0.84522401, 0.79486424, 0.74011713, 0.68217934, 0.62226347,
+    0.56155915, 0.5011968, 0.44221549, 0.38553619, 0.33194107, 0.28205962,
+    0.23636152, 0.19515633, 0.15859932, 0.1267028, 0.09935205, 0.07632451,
+    0.05731132, 0.0419398, 0.02979584, 0.0204451, 0.01345224, 0.00839739,
+    0.00488951, 0.00257636, 0.00115101, 0.00035515, 0.0, 0.0,
+];
+const WINDOW_FN_OVERSAMPLE: usize = 32;
+
 /// Resampler stream.  Wraps a stream, and implements `Stream` with a different
 /// sample rate.
 #[derive(Debug)]
@@ -82,12 +92,12 @@ where
             channel.state.update_filter(num, den);
 
             // Get input latency.
-            let input_latency = (channel.state.filt_len / 2);
+            let input_latency = channel.state.filt_len / 2;
             // Get output latency.
             let output_latency = (input_latency * den + (num >> 1)) / num;
 
             dbg!(input_latency, output_latency);
-            
+
             this.output_latency = output_latency;
             this.input_latency = input_latency;
         }
@@ -113,8 +123,9 @@ where
     {
         // First, de-interleave input audio data into f32 buffer.
         let len_plus_latency = len as u64;
-        let input_samples: u32 = self.input_latency +
-            (len_plus_latency * self.ratio.0 as u64 / self.ratio.1 as u64) as u32;
+        let input_samples: u32 = self.input_latency
+            + (len_plus_latency * self.ratio.0 as u64 / self.ratio.1 as u64)
+                as u32;
         let mut convert = Audio::<Ch32, CH, SR>::with_silence(0);
         self.stream.extend(&mut convert, input_samples as usize);
         for frame in convert.iter() {
@@ -157,48 +168,6 @@ where
             buffer.0.push_back(frame);
         }
         println!("Re-interleaved!");
-
-        /*let input_samples: (u32, u32) = (self.ratio.0 * len_plus_latency, self.ratio.1);
-        let input_samples = input_samples.0 / input_samples.1
-            + (input_samples.0 % input_samples.1 != 0) as u32;*/
-        // dbg!(input_samples);
-    
-        /*// Get the ratio of input to output samples
-        let ratio_io = SR as f64 / HZ as f64;
-        // Calculate the number of input samples required to fill the output
-        let input: usize = (len as f64 * ratio_io).ceil() as usize - 1; // FIXME
-
-        dbg!(input);
-
-        // Set internal audio input buffer to `input` samples from the stream
-        let mut convert = Audio::with_silence(0);
-        self.stream.extend(&mut convert, input);
-        self.buffer = Audio::with_stream(convert, input);
-
-        // Set internal output audio buffer length.
-        self.output.0.resize(len, Default::default());
-
-        // Resample interleaved audio data.
-        for (i, ch) in self.channels.iter_mut().enumerate() {
-            ch.state.out_stride = CH as u32;
-            ch.state.in_stride = CH as u32;
-
-            let mut input = input as u32;
-            let mut len2 = len as u32;
-            dbg!(len2);
-            ch.state.process_float(
-                &self.buffer.as_f32_slice()[i..],
-                &mut input,
-                &mut self.output.as_f32_slice()[i..],
-                &mut len2,
-                self.ratio.1,
-            );
-            dbg!(len2);
-            assert_eq!(len2 as usize, len);
-        }
-
-        // Write to output buffer.
-        buffer.0.extend(self.output.iter().map(|x| x.to()));*/
     }
 }
 
