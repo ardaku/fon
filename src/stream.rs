@@ -20,6 +20,9 @@ where
     Frame<Chan, CH>: Ops<Chan>,
 {
     /// Stream audio, appending `len` samples to the end of `buffer`.
+    ///
+    /// This method should always add `len` samples; If there are not enough
+    /// then this should append zero samples at the end.
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, SR>, len: usize)
     where
         C: From<Chan>,
