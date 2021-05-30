@@ -1,16 +1,11 @@
+// FIXME: Once remove macros, can delete
+#![allow(trivial_casts, trivial_numeric_casts)]
+
 use core::mem;
 use core::f64::consts::PI as PI_64;
-use alloc::collections::VecDeque;
-
-pub(crate) const RESAMPLER_ERR_SUCCESS: usize = 0;
-pub(crate) const RESAMPLER_ERR_ALLOC_FAILED: usize = 1;
-pub(crate) const RESAMPLER_ERR_INVALID_ARG: usize = 3;
-pub(crate) const RESAMPLER_ERR_OVERFLOW: usize = 5;
 
 #[derive(Clone)]
 pub(crate) struct ResamplerState {
-    pub(crate) in_rate: u32,
-    pub(crate) out_rate: u32,
     pub(crate) num_rate: u32,
     pub(crate) den_rate: u32,
     pub(crate) nb_channels: u32,
@@ -99,15 +94,15 @@ macro_rules! chunk_assign {
     };
 }
 
-// FIXME: Evaluate macro.
+// FIXME: macro => function.
 macro_rules! chunk_copy {
     ($ch_mut:ident, $lbound_mut:expr, $ubound_mut:expr,
-     $ch:ident, $lbound:expr, $ubound:expr) => {
+     $ch:ident, $lbound:expr, $ubound:expr) => {{
         $ch_mut[$lbound_mut as usize..$ubound_mut as usize]
             .iter_mut()
             .zip($ch[$lbound as usize..$ubound as usize].iter())
             .for_each(|(x, y)| *x = *y);
-    };
+    }};
 }
 
 // FIXME: Evaluate macro.
@@ -144,16 +139,16 @@ impl ResamplerState {
      */
     pub(crate) fn new(
         nb_channels: usize,
-        in_rate: usize,
-        out_rate: usize,
+        in_rate: u32,
+        out_rate: u32,
     ) -> Self {
-        Self::init_frac(
+        let mut this = Self::init_frac(
             nb_channels,
             in_rate,
             out_rate,
-            in_rate,
-            out_rate,
-        )
+        );
+        this.skip_zeros();
+        this
     }
 
     /* * Create a new resampler with fractional input/output rates. The sampling
@@ -171,16 +166,12 @@ impl ResamplerState {
      */
     pub(crate) fn init_frac(
         nb_channels: usize,
-        ratio_num: usize,
-        ratio_den: usize,
-        in_rate: usize,
-        out_rate: usize,
+        ratio_num: u32,
+        ratio_den: u32,
     ) -> Self {
         let mut st = Self {
             initialised: 0,
             started: 0,
-            in_rate: 0,
-            out_rate: 0,
             num_rate: 0,
             den_rate: 0,
             sinc_table: Vec::new(),
@@ -201,13 +192,9 @@ impl ResamplerState {
             magic_samples: vec![0; nb_channels as usize],
             samp_frac_num: vec![0; nb_channels as usize],
         };
-        st.set_rate_frac(ratio_num, ratio_den, in_rate, out_rate);
-        let filter_err = st.update_filter();
-        if filter_err == RESAMPLER_ERR_SUCCESS {
-            st.initialised = 1;
-        } else {
-            panic!("Error");
-        }
+        st.set_rate_frac(ratio_num, ratio_den);
+        st.update_filter();
+        st.initialised = 1;
         st
     }
 
@@ -228,7 +215,7 @@ impl ResamplerState {
         in_len: &mut u32,
         mut out: &mut [f32],
         out_len: &mut u32,
-    ) -> usize {
+    ) {
         if in_0.is_empty() {
             panic!("Empty slice is not allowed");
         }
@@ -271,9 +258,7 @@ impl ResamplerState {
         *out_len -= olen;
         let resampler = self.resampler_ptr.unwrap();
         if resampler as usize == resampler_basic_zero as usize {
-            RESAMPLER_ERR_ALLOC_FAILED
-        } else {
-            RESAMPLER_ERR_SUCCESS
+            panic!("alloc failed");
         }
     }
 
@@ -287,51 +272,26 @@ impl ResamplerState {
      */
     pub(crate) fn set_rate_frac(
         &mut self,
-        ratio_num: usize,
-        ratio_den: usize,
-        in_rate: usize,
-        out_rate: usize,
-    ) -> usize {
-        if ratio_num == 0 || ratio_den == 0 {
-            RESAMPLER_ERR_INVALID_ARG
-        } else if self.in_rate == in_rate as u32
-            && self.out_rate == out_rate as u32
-            && self.num_rate == ratio_num as u32
-            && self.den_rate == ratio_den as u32
-        {
-            RESAMPLER_ERR_SUCCESS
-        } else {
-            let old_den = self.den_rate;
-            self.in_rate = in_rate as u32;
-            self.out_rate = out_rate as u32;
-            self.num_rate = ratio_num as u32;
-            self.den_rate = ratio_den as u32;
-            let fact = gcd(self.num_rate, self.den_rate);
-            self.num_rate /= fact;
-            self.den_rate /= fact;
-            if old_den > 0 {
-                for val in &mut self.samp_frac_num {
-                    let res = _muldiv(val, *val, self.den_rate, old_den);
-                    if res != RESAMPLER_ERR_SUCCESS {
-                        return RESAMPLER_ERR_OVERFLOW;
-                    } else if *val >= self.den_rate {
-                        *val = self.den_rate - 1;
-                    }
+        ratio_num: u32,
+        ratio_den: u32,
+    ) {
+        let old_den = self.den_rate;
+        self.num_rate = ratio_num as u32;
+        self.den_rate = ratio_den as u32;
+        let fact = gcd(self.num_rate, self.den_rate);
+        self.num_rate /= fact;
+        self.den_rate /= fact;
+        if old_den > 0 {
+            for val in &mut self.samp_frac_num {
+                _muldiv(val, *val, self.den_rate, old_den);
+                if *val >= self.den_rate {
+                    *val = self.den_rate - 1;
                 }
             }
-            if self.initialised != 0 {
-                self.update_filter()
-            } else {
-                RESAMPLER_ERR_SUCCESS
-            }
         }
-    }
-
-    /* * Get the current input/output sampling rates (integer value).
-     * @param st Resampler state
-     */
-    pub(crate) fn get_rate(&self) -> (usize, usize) {
-        (self.in_rate as usize, self.out_rate as usize)
+        if self.initialised != 0 {
+            self.update_filter();
+        }
     }
 
     /* * Get the current resampling ratio. This will be reduced to the least
@@ -375,6 +335,7 @@ impl ResamplerState {
     /* * Reset a resampler so a new (unrelated) stream can be processed.
      * @param st Resampler state
      */
+    #[allow(unused)] // For now.
     pub(crate) fn reset_mem(&mut self) {
         self.last_sample.iter_mut().for_each(|elem| *elem = 0);
         self.magic_samples.iter_mut().for_each(|elem| *elem = 0);
@@ -468,7 +429,7 @@ impl ResamplerState {
         }
     }
 
-    fn update_filter(&mut self) -> usize {
+    fn update_filter(&mut self) {
         let old_length = self.filt_len;
         let old_alloc_size = self.mem_alloc_size as usize;
         self.int_advance = self.num_rate / self.den_rate;
@@ -522,7 +483,6 @@ impl ResamplerState {
         } else if self.filt_len < old_length {
             self.chunks_iterator(old_length, self.mem_alloc_size as usize, 2);
         }
-        RESAMPLER_ERR_SUCCESS
     }
 }
 
@@ -764,17 +724,16 @@ fn resampler_basic_direct(
     out_sample as i32
 }
 
-fn _muldiv(result: &mut u32, value: u32, mul: u32, div: u32) -> usize {
+fn _muldiv(result: &mut u32, value: u32, mul: u32, div: u32) {
     let major: u32 = value / div;
     let remainder: u32 = value % div;
     if remainder > 4294967295 / mul
         || major > 4294967295 / mul
         || major * mul > 4294967295 - remainder * mul / div
     {
-        RESAMPLER_ERR_OVERFLOW
+        panic!("overflow");
     } else {
         *result = remainder * mul / div + major * mul;
-        RESAMPLER_ERR_SUCCESS
     }
 }
 
@@ -793,7 +752,7 @@ fn speex_resampler_process_native(
     in_len: &mut u32,
     out: &mut [f32],
     out_len: &mut u32,
-) -> usize {
+) {
     let n: usize = st.filt_len as usize;
     let mem_idx = (channel_index * st.mem_alloc_size) as usize;
     st.started = 1;
@@ -815,14 +774,12 @@ fn speex_resampler_process_native(
 
     st.mem[mem_idx..(mem_idx + n - 1)]
         .copy_from_slice(&mem[(mem_idx + ilen)..(mem_idx + ilen + n - 1)]);
-
-    RESAMPLER_ERR_SUCCESS
 }
 
-fn speex_resampler_magic<'a, 'b>(
+fn speex_resampler_magic(
     st: &mut ResamplerState,
     channel_index: u32,
-    out: &'a mut &'b mut [f32],
+    out: &mut &mut [f32],
     mut out_len: u32,
 ) -> u32 {
     let channel_idx = channel_index as usize;
@@ -845,7 +802,7 @@ fn speex_resampler_magic<'a, 'b>(
             .take(st.magic_samples[channel_idx] as usize)
             .for_each(|(x, &y)| *x = y);
     }
-    let value: &'b mut [f32] = mem::replace(out, &mut []);
+    let value: &mut [f32] = mem::replace(out, &mut []);
     *out = &mut value[(out_len * st.out_stride as u32) as usize..];
     out_len
 }

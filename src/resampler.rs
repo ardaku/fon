@@ -59,8 +59,8 @@ impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Resampler<S, Ch
             buffer: Audio::with_silence(0),
             output: Audio::with_silence(0),
             state: rep![ResamplerState::new(CH /*fixme: should be const generic */,
-                SR as usize /*fixme: input hz should be const generic */ ,
-                HZ as usize /*fixme: output hz should be const generic */ ); CH],
+                SR /*fixme: input hz should be const generic */ ,
+                HZ /*fixme: output hz should be const generic */ ); CH],
         }
     }
 }
@@ -76,7 +76,7 @@ impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Stream<Chan, CH
         // Get the ratio of input to output samples
         let ratio_io = SR as f64 / HZ as f64;
         // Calculate the number of input samples required to fill the output
-        let input: usize = (len as f64 * ratio_io) as usize - 1;
+        let input: usize = (len as f64 * ratio_io).floor() as usize - 1; // FIXME
 
         // Set internal audio input buffer to `input` samples from the stream
         let mut convert = Audio::with_silence(0);
@@ -88,18 +88,25 @@ impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Stream<Chan, CH
 
         // Resample interleaved audio data.
         for (i, state) in self.state.iter_mut().enumerate() {
+            dbg!(state.get_input_latency(),
+                state.get_output_latency(),
+                state.get_ratio());
+        
             state.out_stride = CH as u32;
             state.in_stride = CH as u32;
 
             let mut input = input as u32;
-            let mut len = len as u32;
+            let mut len2 = len as u32;
+            dbg!(len2);
             state.process_float(
                 0,
                 &self.buffer.as_f32_slice()[i..],
                 &mut input,
                 &mut self.output.as_f32_slice()[i..],
-                &mut len,
+                &mut len2,
             );
+            dbg!(len2);
+            assert_eq!(len2 as usize, len);
         }
 
         // Write to output buffer.

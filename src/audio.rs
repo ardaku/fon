@@ -27,7 +27,7 @@ use core::{
     fmt::Debug,
     iter::Cloned,
     mem::{size_of},
-    slice::{from_raw_parts_mut, SliceIndex},
+    slice::{from_raw_parts_mut},
 };
 
 // Channel Identification
@@ -248,7 +248,7 @@ where
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
         where C: From<Chan>, Frame<C, CH>: Ops<C>
     {
-        buffer.0.extend(self.borrow().into_iter().map(|x| x.to()));        
+        buffer.0.extend(self.borrow().into_iter().map(|x| x.to()).take(len));        
     }
 }
 

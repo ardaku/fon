@@ -107,7 +107,6 @@ mod audio;
 mod ops;
 mod private;
 mod resampler;
-mod streaming;
 mod stream;
 
 pub mod chan;

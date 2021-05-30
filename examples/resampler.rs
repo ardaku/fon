@@ -1,5 +1,5 @@
 use fon::chan::{Ch32};
-use fon::{Audio, Stream, Resampler};
+use fon::{Audio, Resampler};
 
 // Resample an audio file from one sample rate to another.
 fn resample<const IN_HZ: u32, const OUT_HZ: u32>(in_file: &str, out_file: &str) {
