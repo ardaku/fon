@@ -9,6 +9,8 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use core::marker::PhantomData;
+use core::mem;
+use core::num::NonZeroU32;
 
 use crate::chan::{Ch32, Channel};
 use crate::frame::Frame;
@@ -30,8 +32,10 @@ where
     Frame<Chan, CH>: Ops<Chan>,
     Frame<Ch32, CH>: Ops<Ch32>,
 {
-    ///
+    /// Phantom data of output channel type.
     _phantom: PhantomData<Chan>,
+    /// Denominator of the simplified ratio of input ÷ output samples.
+    denominator: NonZeroU32,
     /// Source stream.
     stream: S,
     /// Input buffer (audio from source stream).
@@ -47,13 +51,6 @@ where
     output: [Vec<f32>; CH], */
 }
 
-use std::convert::TryInto;
-macro_rules! rep {
-    ($a:expr; $b:expr) => {
-        vec![$a; $b].try_into().unwrap()
-    };
-}
-
 impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32>
     Resampler<S, Chan, CH, SR, HZ>
 where
@@ -65,15 +62,37 @@ where
 {
     /// Create a new resampler.
     pub fn new(stream: S) -> Self {
-        Self {
+        use std::convert::TryInto; // wait for impl Default for T on [T; N]
+
+        // Calculate simplified ratio of input ÷ output samples.
+        let ratio = simplify(
+            NonZeroU32::new(SR).unwrap(),
+            NonZeroU32::new(HZ).unwrap(),
+        );
+        let mut this = Self {
             _phantom: PhantomData,
+            denominator: ratio.1,
             stream,
             buffer: Audio::with_silence(0),
             output: Audio::with_silence(0),
-            state: rep![ResamplerState::new(
-                SR /*fixme: input hz should be const generic */ ,
-                HZ /*fixme: output hz should be const generic */ ); CH],
+            state: vec![Default::default(); CH].try_into().unwrap(),
+        };
+        for channel in this.state.iter_mut() {
+            let num = ratio.0.get();
+            let den = ratio.1.get();
+
+            channel.update_filter(num, den);
+
+            // Get output latency.
+            let output_latency =
+                (((channel.filt_len / 2) * den + (num >> 1)) / num) as usize;
+            // Get input latency.
+            let input_latency = (channel.filt_len / 2) as usize;
+
+            dbg!(input_latency, output_latency);
         }
+
+        this
     }
 }
 
@@ -95,7 +114,7 @@ where
         // Get the ratio of input to output samples
         let ratio_io = SR as f64 / HZ as f64;
         // Calculate the number of input samples required to fill the output
-        let input: usize = (len as f64 * ratio_io).floor() as usize - 1; // FIXME
+        let input: usize = (len as f64 * ratio_io).ceil() as usize - 1; // FIXME
 
         // Set internal audio input buffer to `input` samples from the stream
         let mut convert = Audio::with_silence(0);
@@ -107,12 +126,6 @@ where
 
         // Resample interleaved audio data.
         for (i, state) in self.state.iter_mut().enumerate() {
-            dbg!(
-                state.get_input_latency(),
-                state.get_output_latency(),
-                state.get_ratio()
-            );
-
             state.out_stride = CH as u32;
             state.in_stride = CH as u32;
 
@@ -124,6 +137,7 @@ where
                 &mut input,
                 &mut self.output.as_f32_slice()[i..],
                 &mut len2,
+                self.denominator.get(),
             );
             dbg!(len2);
             assert_eq!(len2 as usize, len);
@@ -132,4 +146,27 @@ where
         // Write to output buffer.
         buffer.0.extend(self.output.iter().map(|x| x.to()));
     }
+}
+
+// Simplify a ratio (fraction with non-zero numerator and denominator).
+#[inline(always)]
+fn simplify(num: NonZeroU32, den: NonZeroU32) -> (NonZeroU32, NonZeroU32) {
+    let factor = gcd(num.get(), den.get());
+    (
+        NonZeroU32::new(num.get() / factor).unwrap(),
+        NonZeroU32::new(den.get() / factor).unwrap(),
+    )
+}
+
+// Calculate the greatest common divisor of two 32-bit integers.
+#[inline(always)]
+fn gcd(mut a: u32, mut b: u32) -> u32 {
+    if b == 0 {
+        return a;
+    }
+    while a != 0 {
+        mem::swap(&mut a, &mut b);
+        a %= b;
+    }
+    b
 }
