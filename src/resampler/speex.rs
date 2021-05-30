@@ -8,7 +8,6 @@ use core::mem;
 pub(crate) struct ResamplerState {
     pub(crate) num_rate: u32,
     pub(crate) den_rate: u32,
-    pub(crate) nb_channels: u32,
     pub(crate) filt_len: u32,
     pub(crate) mem_alloc_size: u32,
     pub(crate) buffer_size: u32,
@@ -18,15 +17,17 @@ pub(crate) struct ResamplerState {
     pub(crate) oversample: u32,
     pub(crate) initialised: u32,
     pub(crate) started: u32,
-    pub(crate) last_sample: Vec<u32>,
-    pub(crate) samp_frac_num: Vec<u32>,
-    pub(crate) magic_samples: Vec<u32>,
     pub(crate) mem: Vec<f32>,
     pub(crate) sinc_table: Vec<f32>,
     pub(crate) sinc_table_length: u32,
     pub(crate) resampler_ptr: ResamplerBasicFunc,
     pub(crate) in_stride: u32,
     pub(crate) out_stride: u32,
+
+    // ex-vecs
+    pub(crate) last_sample: u32,
+    pub(crate) samp_frac_num: u32,
+    pub(crate) magic_samples: u32,
 }
 
 impl core::fmt::Debug for ResamplerState {
@@ -77,7 +78,6 @@ impl QualityMapping {
 pub(crate) type ResamplerBasicFunc = Option<
     fn(
         _: &mut ResamplerState,
-        _: u32,
         _: &[f32],
         _: &mut u32,
         _: &mut [f32],
@@ -113,7 +113,8 @@ macro_rules! algo {
         let filt_len = $self.filt_len - 1;
         if $self.filt_len > olen {
             let new_filt_len = $self.filt_len - olen;
-            for new_last_sample in &mut $self.last_sample {
+            let new_last_sample = &mut $self.last_sample;
+            {
                 chunk_copy!($ch_mut, new_filt_len, filt_len, $ch, 0, olen - 1);
                 chunk_assign!($ch_mut, 0, new_filt_len, 0.0);
                 $magic = 0;
@@ -130,15 +131,14 @@ macro_rules! algo {
 
 impl ResamplerState {
     /* * Create a new resampler with integer input and output rates.
-     * @param nb_channels number of channels to be processed
      * @param in_rate Input sampling rate (integer number of Hz).
      * @param out_rate Output sampling rate (integer number of Hz).
      * @param quality Resampling quality between 0 and 10, where 0 has poor quality
      * and 10 has very high quality.
      * @return newly created resampler state
      */
-    pub(crate) fn new(nb_channels: usize, in_rate: u32, out_rate: u32) -> Self {
-        let mut this = Self::init_frac(nb_channels, in_rate, out_rate);
+    pub(crate) fn new(in_rate: u32, out_rate: u32) -> Self {
+        let mut this = Self::init_frac(in_rate, out_rate);
         this.skip_zeros();
         this
     }
@@ -146,7 +146,6 @@ impl ResamplerState {
     /* * Create a new resampler with fractional input/output rates. The sampling
      * rate ratio is an arbitrary rational number with both the numerator and
      * denominator being 32-bit integers.
-     * @param nb_channels number of channels to be processed
      * @param ratio_num numerator of the sampling rate ratio
      * @param ratio_den Denominator of the sampling rate ratio
      * @param in_rate Input sampling rate rounded to the nearest integer (in Hz).
@@ -157,7 +156,6 @@ impl ResamplerState {
      * @retval nULL Error: not enough memory
      */
     pub(crate) fn init_frac(
-        nb_channels: usize,
         ratio_num: u32,
         ratio_den: u32,
     ) -> Self {
@@ -175,14 +173,13 @@ impl ResamplerState {
             filt_len: 0,
             resampler_ptr: None,
             cutoff: 1.0,
-            nb_channels: nb_channels as u32,
             in_stride: 1,
             out_stride: 1,
             buffer_size: 160,
             oversample: 0,
-            last_sample: vec![0; nb_channels as usize],
-            magic_samples: vec![0; nb_channels as usize],
-            samp_frac_num: vec![0; nb_channels as usize],
+            last_sample: 0,
+            magic_samples: 0,
+            samp_frac_num: 0,
         };
         st.set_rate_frac(ratio_num, ratio_den);
         st.update_filter();
@@ -192,8 +189,6 @@ impl ResamplerState {
 
     /* * Resample a float array. The input and output buffers must *not* overlap.
      * @param st Resampler state
-     * @param channel_index Index of the channel to process for the multi-channel
-     * base (0 otherwise)
      * @param in Input buffer
      * @param in_len number of input samples in the input buffer. Returns the
      * number of samples processed
@@ -202,7 +197,6 @@ impl ResamplerState {
      */
     pub(crate) fn process_float(
         &mut self,
-        channel_index: u32,
         mut in_0: &[f32],
         in_len: &mut u32,
         mut out: &mut [f32],
@@ -213,15 +207,14 @@ impl ResamplerState {
         }
         let mut ilen = *in_len;
         let mut olen = *out_len;
-        let channel_idx = channel_index as usize;
         let filt_offs = (self.filt_len - 1) as usize;
-        let mem_idx = filt_offs + channel_idx * self.mem_alloc_size as usize;
+        let mem_idx = filt_offs;
         let xlen = self.mem_alloc_size - self.filt_len - 1;
         let istride = self.in_stride as usize;
-        if self.magic_samples[channel_idx] != 0 {
-            olen -= speex_resampler_magic(self, channel_index, &mut out, olen);
+        if self.magic_samples != 0 {
+            olen -= speex_resampler_magic(self, &mut out, olen);
         }
-        if self.magic_samples[channel_idx] == 0 {
+        if self.magic_samples == 0 {
             while 0 != ilen && 0 != olen {
                 let mut ichunk: u32 = if ilen > xlen { xlen } else { ilen };
                 let mut ochunk: u32 = olen;
@@ -235,7 +228,6 @@ impl ResamplerState {
                 );
                 speex_resampler_process_native(
                     self,
-                    channel_index,
                     &mut ichunk,
                     out,
                     &mut ochunk,
@@ -270,7 +262,8 @@ impl ResamplerState {
         self.num_rate /= fact;
         self.den_rate /= fact;
         if old_den > 0 {
-            for val in &mut self.samp_frac_num {
+            let val = &mut self.samp_frac_num;
+            {
                 _muldiv(val, *val, self.den_rate, old_den);
                 if *val >= self.den_rate {
                     *val = self.den_rate - 1;
@@ -315,9 +308,7 @@ impl ResamplerState {
      */
     pub(crate) fn skip_zeros(&mut self) {
         let filt_len = self.filt_len / 2;
-        self.last_sample.iter_mut().for_each(|v: &mut u32| {
-            *v = filt_len;
-        });
+        self.last_sample = filt_len;
     }
 
     /* * Reset a resampler so a new (unrelated) stream can be processed.
@@ -325,9 +316,9 @@ impl ResamplerState {
      */
     #[allow(unused)] // For now.
     pub(crate) fn reset_mem(&mut self) {
-        self.last_sample.iter_mut().for_each(|elem| *elem = 0);
-        self.magic_samples.iter_mut().for_each(|elem| *elem = 0);
-        self.samp_frac_num.iter_mut().for_each(|elem| *elem = 0);
+        self.last_sample = 0;
+        self.magic_samples = 0;
+        self.samp_frac_num = 0;
 
         self.mem.iter_mut().for_each(|elem| *elem = 0.);
     }
@@ -400,7 +391,8 @@ impl ResamplerState {
         let mem = mem_copy.chunks(alloc_size);
 
         for (ch_mut, ch) in mut_mem.zip(mem) {
-            for magic in &mut self.magic_samples {
+            let magic = &mut self.magic_samples;
+            {
                 if algo == 0 {
                     let range = old_length - 1 + *magic;
                     chunk_copy!(ch_mut, *magic, range, ch, 0, range);
@@ -457,13 +449,13 @@ impl ResamplerState {
         let min_alloc_size = self.filt_len - 1 + self.buffer_size;
         if min_alloc_size > self.mem_alloc_size {
             let mem = self.mem.clone();
-            self.mem = vec![0.0; (self.nb_channels * min_alloc_size) as usize];
+            self.mem = vec![0.0; (min_alloc_size) as usize];
             self.mem[0..mem.len()].copy_from_slice(&mem);
             self.mem_alloc_size = min_alloc_size;
         }
 
         if self.started == 0 {
-            let dim = (self.nb_channels * self.mem_alloc_size) as usize;
+            let dim = self.mem_alloc_size as usize;
             self.mem = vec![0.0; dim];
         } else if self.filt_len > old_length {
             self.chunks_iterator(old_length, old_alloc_size, 0);
@@ -476,15 +468,14 @@ impl ResamplerState {
 
 fn resampler_basic_zero(
     st: &mut ResamplerState,
-    channel_index: u32,
     _in_0: &[f32],
     in_len: &mut u32,
     out: &mut [f32],
     out_len: &mut u32,
 ) -> i32 {
     let mut out_sample: u32 = 0;
-    let mut last_sample = st.last_sample[channel_index as usize];
-    let mut samp_frac_num = st.samp_frac_num[channel_index as usize];
+    let mut last_sample = st.last_sample;
+    let mut samp_frac_num = st.samp_frac_num;
     let out_stride = st.out_stride;
     let int_advance = st.int_advance;
     let frac_advance = st.frac_advance;
@@ -499,8 +490,8 @@ fn resampler_basic_zero(
             last_sample += 1
         }
     }
-    st.last_sample[channel_index as usize] = last_sample;
-    st.samp_frac_num[channel_index as usize] = samp_frac_num;
+    st.last_sample = last_sample;
+    st.samp_frac_num = samp_frac_num;
     out_sample as i32
 }
 
@@ -566,16 +557,14 @@ fn direct_step(
 
 fn resampler_basic_interpolate(
     st: &mut ResamplerState,
-    channel_index: u32,
     in_0: &[f32],
     in_len: &mut u32,
     out: &mut [f32],
     out_len: &mut u32,
 ) -> i32 {
     let n = st.filt_len as usize;
-    let channel_idx = channel_index as usize;
-    let mut last_sample = st.last_sample[channel_idx];
-    let mut samp_frac_num = st.samp_frac_num[channel_idx];
+    let mut last_sample = st.last_sample;
+    let mut samp_frac_num = st.samp_frac_num;
     let out_stride = st.out_stride;
     let int_advance = st.int_advance;
     let frac_advance = st.frac_advance;
@@ -610,8 +599,8 @@ fn resampler_basic_interpolate(
             last_sample += 1;
         }
     }
-    st.last_sample[channel_idx] = last_sample;
-    st.samp_frac_num[channel_idx] = samp_frac_num;
+    st.last_sample = last_sample;
+    st.samp_frac_num = samp_frac_num;
     out_sample as i32
 }
 
@@ -669,7 +658,6 @@ fn compute_func(x: f32, func: &FuncDef) -> f64 {
 
 fn resampler_basic_direct(
     st: &mut ResamplerState,
-    channel_index: u32,
     in_0: &[f32],
     in_len: &mut u32,
     out: &mut [f32],
@@ -677,8 +665,8 @@ fn resampler_basic_direct(
 ) -> i32 {
     let n = st.filt_len as usize;
     let mut out_sample: u32 = 0;
-    let mut last_sample = st.last_sample[channel_index as usize];
-    let mut samp_frac_num = st.samp_frac_num[channel_index as usize];
+    let mut last_sample = st.last_sample;
+    let mut samp_frac_num = st.samp_frac_num;
     let out_stride = st.out_stride;
     let int_advance = st.int_advance;
     let frac_advance = st.frac_advance;
@@ -705,8 +693,8 @@ fn resampler_basic_direct(
             last_sample += 1
         }
     }
-    st.last_sample[channel_index as usize] = last_sample;
-    st.samp_frac_num[channel_index as usize] = samp_frac_num;
+    st.last_sample = last_sample;
+    st.samp_frac_num = samp_frac_num;
     out_sample as i32
 }
 
@@ -734,58 +722,51 @@ fn gcd(mut a: u32, mut b: u32) -> u32 {
 
 fn speex_resampler_process_native(
     st: &mut ResamplerState,
-    channel_index: u32,
     in_len: &mut u32,
     out: &mut [f32],
     out_len: &mut u32,
 ) {
     let n: usize = st.filt_len as usize;
-    let mem_idx = (channel_index * st.mem_alloc_size) as usize;
     st.started = 1;
     let mem = &st.mem.clone();
     let out_sample: i32 = st.resampler_ptr.expect("non-null function pointer")(
         st,
-        channel_index,
         mem,
         in_len,
         out,
         out_len,
     );
-    if st.last_sample[channel_index as usize] < *in_len {
-        *in_len = st.last_sample[channel_index as usize] as u32;
+    if st.last_sample < *in_len {
+        *in_len = st.last_sample as u32;
     }
     *out_len = out_sample as u32;
-    st.last_sample[channel_index as usize] -= *in_len;
+    st.last_sample -= *in_len;
     let ilen = *in_len as usize;
 
-    st.mem[mem_idx..(mem_idx + n - 1)]
-        .copy_from_slice(&mem[(mem_idx + ilen)..(mem_idx + ilen + n - 1)]);
+    st.mem[0..(n - 1)].copy_from_slice(&mem[ilen..(ilen + n - 1)]);
 }
 
 fn speex_resampler_magic(
     st: &mut ResamplerState,
-    channel_index: u32,
     out: &mut &mut [f32],
     mut out_len: u32,
 ) -> u32 {
-    let channel_idx = channel_index as usize;
-    let mut tmp_in_len = st.magic_samples[channel_idx];
-    let mem_idx = (st.filt_len + channel_index * st.mem_alloc_size) as usize;
+    let mut tmp_in_len = st.magic_samples;
+    let mem_idx = st.filt_len as usize;
     speex_resampler_process_native(
         st,
-        channel_index,
         &mut tmp_in_len,
         *out,
         &mut out_len,
     );
-    st.magic_samples[channel_idx] -= tmp_in_len;
-    if st.magic_samples[channel_idx] != 0 {
+    st.magic_samples -= tmp_in_len;
+    if st.magic_samples != 0 {
         let mem = &st.mem[mem_idx - 1 + tmp_in_len as usize..].to_vec();
         st.mem
             .iter_mut()
             .skip(mem_idx - 1)
             .zip(mem.iter())
-            .take(st.magic_samples[channel_idx] as usize)
+            .take(st.magic_samples as usize)
             .for_each(|(x, &y)| *x = y);
     }
     let value: &mut [f32] = mem::replace(out, &mut []);

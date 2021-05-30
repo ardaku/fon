@@ -41,6 +41,10 @@ where
     /// State (For all channels)
     // FIXME: Use const generic arrays instead of `Vec`s.
     state: [ResamplerState; CH],
+    /* /// De-interleaved f32 input buffers.
+    input: [Vec<f32>; CH],
+    /// De-interleaved f32 output buffers.
+    output: [Vec<f32>; CH], */
 }
 
 use std::convert::TryInto;
@@ -66,7 +70,7 @@ where
             stream,
             buffer: Audio::with_silence(0),
             output: Audio::with_silence(0),
-            state: rep![ResamplerState::new(CH /*fixme: should be const generic */,
+            state: rep![ResamplerState::new(
                 SR /*fixme: input hz should be const generic */ ,
                 HZ /*fixme: output hz should be const generic */ ); CH],
         }
@@ -116,7 +120,6 @@ where
             let mut len2 = len as u32;
             dbg!(len2);
             state.process_float(
-                0,
                 &self.buffer.as_f32_slice()[i..],
                 &mut input,
                 &mut self.output.as_f32_slice()[i..],
