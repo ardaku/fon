@@ -1,8 +1,8 @@
 // FIXME: Once remove macros, can delete
 #![allow(trivial_casts, trivial_numeric_casts)]
 
-use core::mem;
 use core::f64::consts::PI as PI_64;
+use core::mem;
 
 #[derive(Clone)]
 pub(crate) struct ResamplerState {
@@ -137,16 +137,8 @@ impl ResamplerState {
      * and 10 has very high quality.
      * @return newly created resampler state
      */
-    pub(crate) fn new(
-        nb_channels: usize,
-        in_rate: u32,
-        out_rate: u32,
-    ) -> Self {
-        let mut this = Self::init_frac(
-            nb_channels,
-            in_rate,
-            out_rate,
-        );
+    pub(crate) fn new(nb_channels: usize, in_rate: u32, out_rate: u32) -> Self {
+        let mut this = Self::init_frac(nb_channels, in_rate, out_rate);
         this.skip_zeros();
         this
     }
@@ -270,11 +262,7 @@ impl ResamplerState {
      * @param in_rate Input sampling rate rounded to the nearest integer (in Hz).
      * @param out_rate Output sampling rate rounded to the nearest integer (in Hz).
      */
-    pub(crate) fn set_rate_frac(
-        &mut self,
-        ratio_num: u32,
-        ratio_den: u32,
-    ) {
+    pub(crate) fn set_rate_frac(&mut self, ratio_num: u32, ratio_den: u32) {
         let old_den = self.den_rate;
         self.num_rate = ratio_num as u32;
         self.den_rate = ratio_den as u32;
@@ -444,7 +432,7 @@ impl ResamplerState {
 
         let use_direct = self.filt_len * self.den_rate
             <= self.filt_len * self.oversample + 8
-            && 2147483647 as u64
+            && 2147483647_u64
                 / ::std::mem::size_of::<f32>() as u64
                 / self.den_rate as u64
                 >= self.filt_len as u64;
@@ -627,19 +615,19 @@ fn resampler_basic_interpolate(
     out_sample as i32
 }
 
-static QUALITY_MAPPING: QualityMapping
-    = QualityMapping::new(160, 16, 0.96, 0.96, &_KAISER10);
+static QUALITY_MAPPING: QualityMapping =
+    QualityMapping::new(160, 16, 0.96, 0.96, &_KAISER10);
 
 static _KAISER10: FuncDef = FuncDef::new(&KAISER10_TABLE, 32);
 
 static KAISER10_TABLE: [f64; 36] = {
     [
         0.99537781, 1.0, 0.99537781, 0.98162644, 0.95908712, 0.92831446,
-        0.89005583, 0.84522401, 0.79486424, 0.74011713, 0.68217934,
-        0.62226347, 0.56155915, 0.5011968, 0.44221549, 0.38553619, 0.33194107,
-        0.28205962, 0.23636152, 0.19515633, 0.15859932, 0.1267028, 0.09935205,
-        0.07632451, 0.05731132, 0.0419398, 0.02979584, 0.0204451, 0.01345224,
-        0.00839739, 0.00488951, 0.00257636, 0.00115101, 0.00035515, 0.0, 0.0,
+        0.89005583, 0.84522401, 0.79486424, 0.74011713, 0.68217934, 0.62226347,
+        0.56155915, 0.5011968, 0.44221549, 0.38553619, 0.33194107, 0.28205962,
+        0.23636152, 0.19515633, 0.15859932, 0.1267028, 0.09935205, 0.07632451,
+        0.05731132, 0.0419398, 0.02979584, 0.0204451, 0.01345224, 0.00839739,
+        0.00488951, 0.00257636, 0.00115101, 0.00035515, 0.0, 0.0,
     ]
 };
 
@@ -654,10 +642,8 @@ fn sinc(cutoff: f32, x: f32, n: i32, window_func: &FuncDef) -> f32 {
         0.0
     } else {
         let first_factor = cutoff_64 * (PI_64 * xx).sin() / (PI_64 * xx);
-        let second_factor = compute_func(
-            (2.0 * f64::from(x) / n_64).abs() as f32,
-            window_func,
-        );
+        let second_factor =
+            compute_func((2.0 * f64::from(x) / n_64).abs() as f32, window_func);
         (first_factor * second_factor) as f32
     }
 }
@@ -669,8 +655,8 @@ fn compute_func(x: f32, func: &FuncDef) -> f64 {
     let frac = f64::from(y - ind as f32);
     interp[3] = -0.1666666667 * frac + 0.1666666667 * frac.powi(3);
     interp[2] = frac + 0.5 * frac.powi(2) - 0.5 * frac.powi(3);
-    interp[0] = -0.3333333333 * frac + 0.5 * frac.powi(2)
-        - 0.1666666667 * frac.powi(3);
+    interp[0] =
+        -0.3333333333 * frac + 0.5 * frac.powi(2) - 0.1666666667 * frac.powi(3);
 
     interp[1] = 1.0 - interp[3] - interp[2] - interp[0];
 

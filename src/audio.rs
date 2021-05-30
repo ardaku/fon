@@ -23,12 +23,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use core::{
-    fmt::Debug,
-    iter::Cloned,
-    mem::{size_of},
-    slice::{from_raw_parts_mut},
-};
+use core::{fmt::Debug, iter::Cloned, mem::size_of, slice::from_raw_parts_mut};
 
 // Channel Identification
 // 0. Front Left (Mono)
@@ -107,7 +102,8 @@ where
     /// When an infinite stream is passed in.
     pub fn with_stream<M>(mut src: M, len: usize) -> Self
     where
-        M: Stream<Chan, CH, HZ>, Frame<Chan, CH>: Ops<Chan>
+        M: Stream<Chan, CH, HZ>,
+        Frame<Chan, CH>: Ops<Chan>,
     {
         let mut audio = Self::with_frames::<[Frame<Chan, CH>; 0]>([]);
         src.extend(&mut audio, len);
@@ -237,18 +233,21 @@ where
     }
 }
 
-impl<Chan, F, const CH: usize, const HZ: u32> Stream<Chan, CH, HZ>
-    for F
+impl<Chan, F, const CH: usize, const HZ: u32> Stream<Chan, CH, HZ> for F
 where
     Frame<Chan, CH>: Ops<Chan>,
     Chan: Channel,
-    F: core::borrow::Borrow<Audio<Chan, CH, HZ>>
+    F: core::borrow::Borrow<Audio<Chan, CH, HZ>>,
 {
     #[inline(always)]
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-        where C: From<Chan>, Frame<C, CH>: Ops<C>
+    where
+        C: From<Chan>,
+        Frame<C, CH>: Ops<C>,
     {
-        buffer.0.extend(self.borrow().into_iter().map(|x| x.to()).take(len));        
+        buffer
+            .0
+            .extend(self.borrow().into_iter().map(|x| x.to()).take(len));
     }
 }
 
@@ -282,7 +281,9 @@ where
 {
     #[inline(always)]
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-        where C: From<Chan>, Frame<C, CH>: Ops<C>
+    where
+        C: From<Chan>,
+        Frame<C, CH>: Ops<C>,
     {
         (*self.buffer).extend(buffer, len);
     }

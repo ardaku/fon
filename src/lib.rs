@@ -113,9 +113,8 @@ pub mod chan;
 pub mod frame;
 pub mod pos;
 
-
 pub use audio::Audio;
 // pub use streaming::{Resampler, Sink, Stream};
 
-pub use stream::Stream;
 pub use resampler::Resampler;
+pub use stream::Stream;

@@ -11,9 +11,9 @@
 use core::marker::PhantomData;
 
 use crate::chan::{Ch32, Channel};
-use crate::Audio;
 use crate::frame::Frame;
 use crate::ops::Ops;
+use crate::Audio;
 use crate::Stream;
 
 mod speex;
@@ -24,8 +24,11 @@ use speex::ResamplerState;
 /// sample rate.
 #[derive(Debug)]
 pub struct Resampler<S, Chan, const CH: usize, const SR: u32, const HZ: u32>
-    where Chan: Channel, S: Stream<Chan, CH, SR>, Frame<Chan, CH>: Ops<Chan>, 
-        Frame<Ch32, CH>: Ops<Ch32>
+where
+    Chan: Channel,
+    S: Stream<Chan, CH, SR>,
+    Frame<Chan, CH>: Ops<Chan>,
+    Frame<Ch32, CH>: Ops<Ch32>,
 {
     ///
     _phantom: PhantomData<Chan>,
@@ -44,12 +47,17 @@ use std::convert::TryInto;
 macro_rules! rep {
     ($a:expr; $b:expr) => {
         vec![$a; $b].try_into().unwrap()
-    }
+    };
 }
 
-impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Resampler<S, Chan, CH, SR, HZ>
-    where Chan: Channel, S: Stream<Chan, CH, SR>, Frame<Chan, CH>: Ops<Chan>,
-        Frame<Ch32, CH>: Ops<Ch32>, Ch32: From<Chan>
+impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32>
+    Resampler<S, Chan, CH, SR, HZ>
+where
+    Chan: Channel,
+    S: Stream<Chan, CH, SR>,
+    Frame<Chan, CH>: Ops<Chan>,
+    Frame<Ch32, CH>: Ops<Ch32>,
+    Ch32: From<Chan>,
 {
     /// Create a new resampler.
     pub fn new(stream: S) -> Self {
@@ -65,13 +73,20 @@ impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Resampler<S, Ch
     }
 }
 
-impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Stream<Chan, CH, HZ> for Resampler<S, Chan, CH, SR, HZ>
-    where Chan: Channel, S: Stream<Chan, CH, SR>, Frame<Chan, CH>: Ops<Chan>,
-        Frame<Ch32, CH>: Ops<Ch32>, Ch32: From<Chan>
+impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32>
+    Stream<Chan, CH, HZ> for Resampler<S, Chan, CH, SR, HZ>
+where
+    Chan: Channel,
+    S: Stream<Chan, CH, SR>,
+    Frame<Chan, CH>: Ops<Chan>,
+    Frame<Ch32, CH>: Ops<Ch32>,
+    Ch32: From<Chan>,
 {
     #[inline(always)]
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-        where C: From<Chan>, Frame<C, CH>: Ops<C>
+    where
+        C: From<Chan>,
+        Frame<C, CH>: Ops<C>,
     {
         // Get the ratio of input to output samples
         let ratio_io = SR as f64 / HZ as f64;
@@ -88,10 +103,12 @@ impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32> Stream<Chan, CH
 
         // Resample interleaved audio data.
         for (i, state) in self.state.iter_mut().enumerate() {
-            dbg!(state.get_input_latency(),
+            dbg!(
+                state.get_input_latency(),
                 state.get_output_latency(),
-                state.get_ratio());
-        
+                state.get_ratio()
+            );
+
             state.out_stride = CH as u32;
             state.in_stride = CH as u32;
 

@@ -10,9 +10,9 @@
 
 //! Frame (interleaved sample) types
 
-use crate::Audio;
 use crate::chan::Channel;
 use crate::ops::Ops;
+use crate::Audio;
 use core::{
     fmt::Debug,
     ops::{Add, Mul, Neg, Sub},
@@ -239,11 +239,14 @@ impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
 
 impl<Chan: Channel, const CH: usize, const HZ: u32> crate::Stream<Chan, CH, HZ>
     for Frame<Chan, CH>
-    where Frame<Chan, CH>: Ops<Chan>
+where
+    Frame<Chan, CH>: Ops<Chan>,
 {
     #[inline(always)]
     fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-        where C: From<Chan>, Frame<C, CH>: Ops<C>
+    where
+        C: From<Chan>,
+        Frame<C, CH>: Ops<C>,
     {
         buffer.0.extend(self.to().take(len));
     }
