@@ -23,7 +23,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
-use core::{fmt::Debug, iter::Cloned, mem::size_of, slice::from_raw_parts_mut};
+use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 
 // Channel Identification
 // 0. Front Left (Mono)
@@ -309,20 +309,6 @@ where
     }
 }
 
-impl<'a, Chan, const CH: usize> IntoIterator for &'a Audio<Chan, CH>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-    Chan: Channel,
-{
-    type IntoIter = Cloned<Iter<'a, Frame<Chan, CH>>>;
-    type Item = Frame<Chan, CH>;
-
-    #[inline(always)]
-    fn into_iter(self) -> Self::IntoIter {
-        self.data.iter().cloned()
-    }
-}
-
 impl<Chan, F, const CH: usize> Stream<Chan, CH> for F
 where
     Frame<Chan, CH>: Ops<Chan>,
@@ -351,7 +337,7 @@ where
         };
         buffer
             .data
-            .extend(this.into_iter().map(|x| x.to()).take(len));
+            .extend(this.data.iter().map(|x| x.to()).take(len));
         Frame::<C, N>::default().extend(buffer, zeros);
     }
 }
@@ -363,19 +349,6 @@ where
 {
     cursor: usize,
     buffer: &'a mut Audio<Chan, CH>,
-}
-
-impl<Chan: Channel, const CH: usize> Iterator for AudioDrain<'_, Chan, CH>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
-    type Item = Frame<Chan, CH>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let sample = self.buffer.get(self.cursor)?;
-        self.cursor += 1;
-        Some(sample)
-    }
 }
 
 impl<'a, Chan: Channel, const CH: usize> Stream<Chan, CH>

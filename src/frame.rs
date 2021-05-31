@@ -228,15 +228,6 @@ impl<Chan: Channel, const CH: usize> Neg for Frame<Chan, CH> {
     }
 }
 
-impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
-    type Item = Self;
-
-    #[inline(always)]
-    fn next(&mut self) -> Option<Self> {
-        Some(*self)
-    }
-}
-
 impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH> for Frame<Chan, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
@@ -256,6 +247,10 @@ where
         Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
-        buffer.data.extend(self.to().take(len));
+        let frame = self.to();
+        buffer.data.reserve(len);
+        for _ in 0..len {
+            buffer.data.push_back(frame);
+        }
     }
 }
