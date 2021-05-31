@@ -54,7 +54,7 @@
 //!     counter += 0.05;
 //!     counter %= 1.0;
 //! }
-//! 
+//!
 //! let mut audio = Audio::<Ch16, 2>::with_stream(&a, a.len());
 //! ```
 //!
@@ -104,17 +104,17 @@
 extern crate alloc;
 
 mod audio;
+mod frame;
 mod ops;
 mod private;
 mod resampler;
 mod stream;
 
 pub mod chan;
-pub mod frame;
+
 pub mod pos;
 
 pub use audio::Audio;
-// pub use streaming::{Resampler, Sink, Stream};
-
+pub use frame::Frame;
 pub use resampler::Resampler;
 pub use stream::Stream;

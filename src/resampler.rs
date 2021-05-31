@@ -31,10 +31,10 @@ const WINDOW_FN_KAISER_TABLE: &[f64] = &[
 ];
 const WINDOW_FN_OVERSAMPLE: usize = 32;
 
-/// Resampler stream.  Wraps a stream, and implements [`Stream`](crate::Stream)
-/// with a different sample rate.
+/// Resampled stream returned from
+/// [`Stream::resample()`](crate::Stream::resample).
 #[derive(Debug)]
-pub struct Resampler<S, Chan, const CH: usize>
+pub struct Resampler<S: ?Sized, Chan, const CH: usize>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
@@ -47,18 +47,17 @@ where
     sample_rate: u32,
     /// Simplified ratio of input ÷ output samples.
     ratio: (u32, u32),
-    /// Source stream.
-    stream: S,
     /// Channel data.
     channels: [Resampler32; CH],
     /// Calculated output latency for resampler.
     output_latency: u32,
     /// Calculated input latency for resampler.
     input_latency: u32,
+    /// Source stream.
+    stream: S,
 }
 
-impl<'a, S, Chan, const CH: usize>
-    Resampler<S, Chan, CH>
+impl<'a, S, Chan, const CH: usize> Resampler<S, Chan, CH>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
@@ -67,7 +66,7 @@ where
     Ch32: From<Chan>,
 {
     /// Create a new resampler.
-    pub fn new(new_hz: u32, stream: S) -> Self {
+    pub(crate) fn new(new_hz: u32, stream: S) -> Self {
         // FIXME remove when for impl Default for T on [T; N]
         use std::convert::TryInto;
 
@@ -101,8 +100,7 @@ where
     }
 }
 
-impl<'a, S, Chan, const CH: usize>
-    Stream<Chan, CH> for Resampler<S, Chan, CH>
+impl<'a, S, Chan, const CH: usize> Stream<Chan, CH> for Resampler<S, Chan, CH>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
@@ -130,7 +128,10 @@ where
         let input_samples: u32 = self.input_latency
             + (len_plus_latency * self.ratio.0 as u64 / self.ratio.1 as u64)
                 as u32;
-        let mut convert = Audio::<Ch32, CH>::with_silence(self.stream.sample_rate().unwrap(), 0);
+        let mut convert = Audio::<Ch32, CH>::with_silence(
+            self.stream.sample_rate().unwrap(),
+            0,
+        );
         self.stream.extend(&mut convert, input_samples as usize);
         for frame in convert.iter() {
             for chan in 0..CH {

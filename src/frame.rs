@@ -237,8 +237,7 @@ impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
     }
 }
 
-impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH>
-    for Frame<Chan, CH>
+impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH> for Frame<Chan, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
 {
