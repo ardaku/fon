@@ -85,12 +85,11 @@ where
             // Prepare each channel for sample rate change
             for ch in channels.iter_mut() {
                 let state = &mut ch.state;
-                let old_den = self.ratio.1;
                 let num = ratio.0;
                 let den = ratio.1;
 
                 let v = state.samp_frac_num;
-                speex::_muldiv(&mut state.samp_frac_num, v, den, old_den);
+                speex::_muldiv(&mut state.samp_frac_num, v, den, self.ratio.1);
                 if state.samp_frac_num >= den {
                     state.samp_frac_num = den - 1;
                 }
