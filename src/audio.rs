@@ -55,15 +55,44 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
 {
+    /// Construct an empty `Audio` buffer.
+    #[inline(always)]
+    pub fn new(hz: u32) -> Self {
+        Self::with_frames::<[Frame<Chan, CH>; 0]>(hz, [])
+    }
+
     /// Construct an `Audio` buffer with all all samples set to zero.
+    #[inline(always)]
     pub fn with_silence(hz: u32, len: usize) -> Self {
         Self::with_frame(hz, Frame::<Chan, CH>::default(), len)
+    }
+
+    /// Construct an `Audio` buffer with owned sample data.   You can get
+    /// ownership of the sample data back from the `Audio` buffer as either a
+    /// `Vec<S>` or a `Box<[S]>` by calling into().
+    #[inline(always)]
+    pub fn with_frames<B>(hz: u32, frames: B) -> Self
+    where
+        B: Into<Box<[Frame<Chan, CH>]>>,
+    {
+        Audio {
+            rate: hz,
+            data: Vec::<Frame<Chan, CH>>::from(frames.into()).into(),
+        }
+    }
+
+    /// Construct an `Audio` buffer with all audio frames set to one value.
+    #[inline(always)]
+    pub fn with_frame(hz: u32, frame: Frame<Chan, CH>, len: usize) -> Self {
+        Self::with_frames(hz, vec![frame; len])
     }
 
     /// Construct an [`Audio`](crate::Audio) buffer from the contents of a
     /// [`Stream`](crate::Stream).
     ///
-    /// The audio format can be converted with this function.
+    /// The audio format can be converted with this function.  Sample rate in
+    /// hertz is taken from the source (`src`) stream.
+    #[inline(always)]
     pub fn with_stream<M, C: Channel, const N: usize>(
         mut src: M,
         len: usize,
@@ -74,42 +103,25 @@ where
         Frame<Chan, N>: Ops<Chan>,
         Chan: From<C>,
     {
-        let hz = src.sample_rate().unwrap();
-        let mut audio = Self::with_frames::<[Frame<Chan, CH>; 0]>(hz, []);
+        let mut audio = Self::new(src.sample_rate().unwrap());
         src.extend::<Chan, CH>(&mut audio, len);
         audio
     }
 
-    /// Construct an `Audio` buffer with owned sample data.   You can get
-    /// ownership of the sample data back from the `Audio` buffer as either a
-    /// `Vec<S>` or a `Box<[S]>` by calling into().
-    pub fn with_frames<B>(hz: u32, frames: B) -> Self
-    where
-        B: Into<Box<[Frame<Chan, CH>]>>,
-    {
-        let frames: Vec<Frame<Chan, CH>> = frames.into().into();
-        Audio {
-            rate: hz,
-            data: frames.into(),
-        }
-    }
-
-    /// Construct an `Audio` buffer with all audio frames set to one value.
-    pub fn with_frame(hz: u32, frame: Frame<Chan, CH>, len: usize) -> Self {
-        Self::with_frames(hz, vec![frame; len])
-    }
-
     /// Clear the audio buffer.
+    #[inline(always)]
     pub fn clear(&mut self) {
         self.data.clear()
     }
 
     /// Get an audio frame.
+    #[inline(always)]
     pub fn get(&self, index: usize) -> Option<Frame<Chan, CH>> {
         self.data.get(index).cloned()
     }
 
     /// Get a mutable reference to an audio frame.
+    #[inline(always)]
     pub fn get_mut(&mut self, index: usize) -> Option<&mut Frame<Chan, CH>> {
         self.data.get_mut(index)
     }
@@ -117,32 +129,38 @@ where
     /// Get a contiguous slice of all audio frames.  This may have to re-arrange
     /// memory if `drain()` was used, and could be slow.  If `drain()` was not
     /// called, this method should run in constant time.
+    #[inline(always)]
     pub fn as_slice(&mut self) -> &mut [Frame<Chan, CH>] {
         self.data.make_contiguous()
     }
 
     /// Returns an iterator over the audio frames.
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, Frame<Chan, CH>> {
         self.data.iter()
     }
 
     /// Returns an iterator that allows modifying each audio frame.
+    #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_, Frame<Chan, CH>> {
         self.data.iter_mut()
     }
 
     /// Get the length of the `Audio` buffer.
+    #[inline(always)]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
     /// Check if `Audio` buffer is empty.
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
     /// Create a draining audio stream from this `Audio` buffer.  When the
     /// stream is dropped, only sinked audio samples will be removed.
+    #[inline(always)]
     pub fn drain(&mut self) -> impl Stream<Chan, CH> + '_ {
         AudioDrain {
             cursor: 0,
