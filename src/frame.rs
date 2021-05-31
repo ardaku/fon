@@ -237,21 +237,26 @@ impl<Chan: Channel, const CH: usize> Iterator for Frame<Chan, CH> {
     }
 }
 
-impl<Chan: Channel, const CH: usize, const HZ: u32> crate::Stream<Chan, CH, HZ>
+impl<Chan: Channel, const CH: usize> crate::Stream<Chan, CH>
     for Frame<Chan, CH>
 where
     Frame<Chan, CH>: Ops<Chan>,
 {
     #[inline(always)]
+    fn sample_rate(&self) -> Option<u32> {
+        None
+    }
+
+    #[inline(always)]
     fn extend<C: Channel, const N: usize>(
         &mut self,
-        buffer: &mut Audio<C, N, HZ>,
+        buffer: &mut Audio<C, N>,
         len: usize,
     ) where
         C: From<Chan>,
         Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
-        buffer.0.extend(self.to().take(len));
+        buffer.data.extend(self.to().take(len));
     }
 }

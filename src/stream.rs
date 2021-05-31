@@ -14,18 +14,21 @@ use crate::ops::Ops;
 use crate::Audio;
 
 /// Audio stream - a type that generates audio samples.
-pub trait Stream<Chan, const CH: usize, const SR: u32>
+pub trait Stream<Chan, const CH: usize>
 where
     Chan: Channel,
     Frame<Chan, CH>: Ops<Chan>,
 {
+    /// Get the sample rate of the stream in hertz.
+    fn sample_rate(&self) -> Option<u32>;
+
     /// Stream audio, appending `len` samples to the end of `buffer`.
     ///
     /// This method should always add `len` samples; If there are not enough
     /// then this should append zero samples at the end.
     fn extend<C: Channel, const N: usize>(
         &mut self,
-        buffer: &mut Audio<C, N, SR>,
+        buffer: &mut Audio<C, N>,
         len: usize,
     ) where
         C: From<Chan>,
@@ -36,7 +39,7 @@ where
     #[inline(always)]
     fn stream<C: Channel, const N: usize>(
         &mut self,
-        buffer: &mut Audio<C, N, SR>,
+        buffer: &mut Audio<C, N>,
     ) where
         C: From<Chan>,
         Frame<C, N>: Ops<C>,

@@ -31,26 +31,24 @@ const WINDOW_FN_KAISER_TABLE: &[f64] = &[
 ];
 const WINDOW_FN_OVERSAMPLE: usize = 32;
 
-/// Resampler stream.  Wraps a stream, and implements `Stream` with a different
-/// sample rate.
+/// Resampler stream.  Wraps a stream, and implements [`Stream`](crate::Stream)
+/// with a different sample rate.
 #[derive(Debug)]
-pub struct Resampler<S, Chan, const CH: usize, const SR: u32, const HZ: u32>
+pub struct Resampler<S, Chan, const CH: usize>
 where
     Chan: Channel,
-    S: Stream<Chan, CH, SR>,
+    S: Stream<Chan, CH>,
     Frame<Chan, CH>: Ops<Chan>,
     Frame<Ch32, CH>: Ops<Ch32>,
 {
     /// Phantom data of output channel type.
     _phantom: PhantomData<Chan>,
-    /// Denominator of the simplified ratio of input ÷ output samples.
+    /// Target sample rate.
+    sample_rate: u32,
+    /// Simplified ratio of input ÷ output samples.
     ratio: (u32, u32),
     /// Source stream.
     stream: S,
-    /// Input buffer (audio from source stream).
-    buffer: Audio<Ch32, CH, SR>,
-    /// Output buffer (audio from source stream).
-    output: Audio<Ch32, CH, SR>,
     /// Channel data.
     channels: [Resampler32; CH],
     /// Calculated output latency for resampler.
@@ -59,28 +57,27 @@ where
     input_latency: u32,
 }
 
-impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32>
-    Resampler<S, Chan, CH, SR, HZ>
+impl<'a, S, Chan, const CH: usize>
+    Resampler<S, Chan, CH>
 where
     Chan: Channel,
-    S: Stream<Chan, CH, SR>,
+    S: Stream<Chan, CH>,
     Frame<Chan, CH>: Ops<Chan>,
     Frame<Ch32, CH>: Ops<Ch32>,
     Ch32: From<Chan>,
 {
     /// Create a new resampler.
-    pub fn new(stream: S) -> Self {
+    pub fn new(new_hz: u32, stream: S) -> Self {
         // FIXME remove when for impl Default for T on [T; N]
         use std::convert::TryInto;
 
         // Calculate simplified ratio of input ÷ output samples.
-        let ratio = simplify(SR, HZ);
+        let ratio = simplify(stream.sample_rate().unwrap(), new_hz);
         let mut this = Self {
             _phantom: PhantomData,
+            sample_rate: new_hz,
             ratio,
             stream,
-            buffer: Audio::with_silence(0),
-            output: Audio::with_silence(0),
             channels: vec![Default::default(); CH].try_into().unwrap(),
             output_latency: 0,
             input_latency: 0,
@@ -104,19 +101,24 @@ where
     }
 }
 
-impl<'a, S, Chan, const CH: usize, const SR: u32, const HZ: u32>
-    Stream<Chan, CH, HZ> for Resampler<S, Chan, CH, SR, HZ>
+impl<'a, S, Chan, const CH: usize>
+    Stream<Chan, CH> for Resampler<S, Chan, CH>
 where
     Chan: Channel,
-    S: Stream<Chan, CH, SR>,
+    S: Stream<Chan, CH>,
     Frame<Chan, CH>: Ops<Chan>,
     Frame<Ch32, CH>: Ops<Ch32>,
     Ch32: From<Chan>,
 {
     #[inline(always)]
+    fn sample_rate(&self) -> Option<u32> {
+        Some(self.sample_rate)
+    }
+
+    #[inline(always)]
     fn extend<C: Channel, const N: usize>(
         &mut self,
-        buffer: &mut Audio<C, N, HZ>,
+        buffer: &mut Audio<C, N>,
         len: usize,
     ) where
         C: From<Chan>,
@@ -128,7 +130,7 @@ where
         let input_samples: u32 = self.input_latency
             + (len_plus_latency * self.ratio.0 as u64 / self.ratio.1 as u64)
                 as u32;
-        let mut convert = Audio::<Ch32, CH, SR>::with_silence(0);
+        let mut convert = Audio::<Ch32, CH>::with_silence(self.stream.sample_rate().unwrap(), 0);
         self.stream.extend(&mut convert, input_samples as usize);
         for frame in convert.iter() {
             for chan in 0..CH {
@@ -159,13 +161,13 @@ where
         }
 
         // Then, re-interleave the samples back.
-        buffer.0.reserve(len);
+        buffer.data.reserve(len);
         for i in 0..len {
             let mut frame = Frame::<C, CH>::default();
             for chan in 0..CH {
                 frame.0[chan] = C::from(self.channels[chan].output[i]);
             }
-            buffer.0.push_back(frame.to());
+            buffer.data.push_back(frame.to());
         }
     }
 }
