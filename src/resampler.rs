@@ -96,8 +96,6 @@ where
             // Get output latency.
             let output_latency = (input_latency * den + (num >> 1)) / num;
 
-            dbg!(input_latency, output_latency);
-
             this.output_latency = output_latency;
             this.input_latency = input_latency;
         }
@@ -116,9 +114,13 @@ where
     Ch32: From<Chan>,
 {
     #[inline(always)]
-    fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-    where
+    fn extend<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, HZ>,
+        len: usize,
+    ) where
         C: From<Chan>,
+        Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
         // First, de-interleave input audio data into f32 buffer.
@@ -133,7 +135,6 @@ where
                 self.channels[chan].input.push(frame.0[chan].to_f32());
             }
         }
-        println!("De-interleaved!");
 
         // Next, allocate space for output channels and resample.
         for chan in 0..CH {
@@ -156,7 +157,6 @@ where
             assert_eq!(out, len as u32);
             assert_eq!(in_, input_samples);
         }
-        println!("Resampled!");
 
         // Then, re-interleave the samples back.
         buffer.0.reserve(len);
@@ -165,9 +165,8 @@ where
             for chan in 0..CH {
                 frame.0[chan] = C::from(self.channels[chan].output[i]);
             }
-            buffer.0.push_back(frame);
+            buffer.0.push_back(frame.to());
         }
-        println!("Re-interleaved!");
     }
 }
 

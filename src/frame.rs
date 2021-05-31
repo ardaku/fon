@@ -243,9 +243,13 @@ where
     Frame<Chan, CH>: Ops<Chan>,
 {
     #[inline(always)]
-    fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-    where
+    fn extend<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, HZ>,
+        len: usize,
+    ) where
         C: From<Chan>,
+        Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
         buffer.0.extend(self.to().take(len));

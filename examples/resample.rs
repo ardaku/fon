@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use fon::chan::Ch32;
 use fon::{Audio, Resampler};
 
@@ -10,11 +12,8 @@ fn resample<const IN_HZ: u32, const OUT_HZ: u32>(
     let rawfile = std::fs::read(in_file).unwrap();
     let mut audio = Vec::new();
     for sample in rawfile.chunks(4) {
-        audio.push(f32::from_le_bytes([
-            sample[0], sample[1], sample[2], sample[3],
-        ]));
+        audio.push(f32::from_le_bytes(sample.try_into().unwrap()));
     }
-    dbg!(audio.len());
     // Create type-safe audio type from f32 buffer.
     let audio = Audio::<Ch32, 2, IN_HZ>::with_f32_buffer(audio);
     // Calculate new length after resampling.

@@ -552,13 +552,7 @@ fn resampler_basic_direct(
             &st.sinc_table[(samp_frac_num * n as u32) as usize..];
         let iptr: &[f32] = &in_0[last_sample as usize..];
 
-        direct_step(
-            iptr,
-            out,
-            out_sample as usize,
-            n,
-            sinct,
-        );
+        direct_step(iptr, out, out_sample as usize, n, sinct);
 
         out_sample += 1;
         last_sample += int_advance;

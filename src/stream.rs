@@ -23,16 +23,23 @@ where
     ///
     /// This method should always add `len` samples; If there are not enough
     /// then this should append zero samples at the end.
-    fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, SR>, len: usize)
-    where
+    fn extend<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, SR>,
+        len: usize,
+    ) where
         C: From<Chan>,
+        Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>;
 
     /// Stream audio into `buffer`, overwriting the samples.
     #[inline(always)]
-    fn stream<C: Channel>(&mut self, buffer: &mut Audio<C, CH, SR>)
-    where
+    fn stream<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, SR>,
+    ) where
         C: From<Chan>,
+        Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
         // Get old (original) length.

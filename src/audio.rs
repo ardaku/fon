@@ -100,13 +100,18 @@ where
     ///
     /// # Panics
     /// When an infinite stream is passed in.
-    pub fn with_stream<M>(mut src: M, len: usize) -> Self
+    pub fn with_stream<M, C: Channel, const N: usize>(
+        mut src: M,
+        len: usize,
+    ) -> Self
     where
-        M: Stream<Chan, CH, HZ>,
-        Frame<Chan, CH>: Ops<Chan>,
+        M: Stream<C, N, HZ>,
+        Frame<C, N>: Ops<C>,
+        Frame<Chan, N>: Ops<Chan>,
+        Chan: From<C>,
     {
         let mut audio = Self::with_frames::<[Frame<Chan, CH>; 0]>([]);
-        src.extend(&mut audio, len);
+        src.extend::<Chan, CH>(&mut audio, len);
         audio
     }
 
@@ -240,10 +245,13 @@ where
     F: core::borrow::Borrow<Audio<Chan, CH, HZ>>,
 {
     #[inline(always)]
-    fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-    where
+    fn extend<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, HZ>,
+        len: usize,
+    ) where
         C: From<Chan>,
-        Frame<C, CH>: Ops<C>,
+        Frame<C, N>: Ops<C>,
     {
         let this = self.borrow();
         let zeros = if len > this.len() {
@@ -252,7 +260,7 @@ where
             0
         };
         buffer.0.extend(this.into_iter().map(|x| x.to()).take(len));
-        Frame::<C, CH>::default().extend(buffer, zeros);
+        Frame::<C, N>::default().extend(buffer, zeros);
     }
 }
 
@@ -285,9 +293,13 @@ where
     Frame<Chan, CH>: Ops<Chan>,
 {
     #[inline(always)]
-    fn extend<C: Channel>(&mut self, buffer: &mut Audio<C, CH, HZ>, len: usize)
-    where
+    fn extend<C: Channel, const N: usize>(
+        &mut self,
+        buffer: &mut Audio<C, N, HZ>,
+        len: usize,
+    ) where
         C: From<Chan>,
+        Frame<C, N>: Ops<C>,
         Frame<C, CH>: Ops<C>,
     {
         (*self.buffer).extend(buffer, len);
