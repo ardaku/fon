@@ -57,7 +57,8 @@ where
     #[inline(always)]
     fn resample(self, sample_rate_hz: u32) -> Resampler<Self, Chan, CH>
     where
-        Frame<Ch32, CH>: Ops<Ch32>, Ch32: From<Chan>
+        Frame<Ch32, CH>: Ops<Ch32>,
+        Ch32: From<Chan>,
     {
         crate::resampler::Resampler::new(sample_rate_hz, self)
     }

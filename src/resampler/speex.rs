@@ -567,7 +567,7 @@ fn resampler_basic_direct(
     out_sample as i32
 }
 
-fn _muldiv(result: &mut u32, value: u32, mul: u32, div: u32) {
+pub(super) fn _muldiv(result: &mut u32, value: u32, mul: u32, div: u32) {
     let major: u32 = value / div;
     let remainder: u32 = value % div;
     if remainder > 4294967295 / mul

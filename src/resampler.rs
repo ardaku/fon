@@ -65,6 +65,55 @@ where
     Frame<Ch32, CH>: Ops<Ch32>,
     Ch32: From<Chan>,
 {
+    /// Switch source stream for resampler.
+    pub fn switch<Z>(self, stream: Z) -> Resampler<Z, Chan, CH>
+    where
+        Z: Stream<Chan, CH>,
+    {
+        // Target sample rate always stays the same.
+        let sample_rate = self.sample_rate;
+        // Calculate new simplified ratio of input ÷ output samples.
+        let ratio = simplify(stream.sample_rate().unwrap(), sample_rate);
+        // Channels may need to change if input sample rate is changed.
+        let mut channels = self.channels;
+        // Latency will change with different sample rates as well.
+        let mut output_latency = self.output_latency;
+        let mut input_latency = self.input_latency;
+
+        // Handle sample rate change, if needed.
+        if stream.sample_rate() != self.stream.sample_rate() {
+            // Prepare each channel for sample rate change
+            for ch in channels.iter_mut() {
+                let state = &mut ch.state;
+                let old_den = self.ratio.1;
+                let num = ratio.0;
+                let den = ratio.1;
+
+                let v = state.samp_frac_num;
+                speex::_muldiv(&mut state.samp_frac_num, v, den, old_den);
+                if state.samp_frac_num >= den {
+                    state.samp_frac_num = den - 1;
+                }
+
+                state.update_filter(num, den);
+
+                input_latency = state.filt_len / 2;
+                output_latency = (input_latency * den + (num >> 1)) / num;
+            }
+        }
+
+        //
+        Resampler {
+            _phantom: PhantomData,
+            sample_rate,
+            ratio,
+            channels,
+            output_latency,
+            input_latency,
+            stream,
+        }
+    }
+
     /// Create a new resampler.
     pub(crate) fn new(new_hz: u32, stream: S) -> Self {
         // FIXME remove when for impl Default for T on [T; N]
