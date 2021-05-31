@@ -13,7 +13,6 @@ use core::mem;
 
 use crate::chan::{Ch32, Channel};
 use crate::frame::Frame;
-use crate::ops::Ops;
 use crate::Audio;
 use crate::Stream;
 
@@ -38,8 +37,6 @@ pub struct Resampler<S: ?Sized, Chan, const CH: usize>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
-    Frame<Chan, CH>: Ops<Chan>,
-    Frame<Ch32, CH>: Ops<Ch32>,
 {
     /// Phantom data of output channel type.
     _phantom: PhantomData<Chan>,
@@ -61,8 +58,6 @@ impl<'a, S, Chan, const CH: usize> Resampler<S, Chan, CH>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
-    Frame<Chan, CH>: Ops<Chan>,
-    Frame<Ch32, CH>: Ops<Ch32>,
     Ch32: From<Chan>,
 {
     /// Switch source stream for resampler.
@@ -152,8 +147,6 @@ impl<'a, S, Chan, const CH: usize> Stream<Chan, CH> for Resampler<S, Chan, CH>
 where
     Chan: Channel,
     S: Stream<Chan, CH>,
-    Frame<Chan, CH>: Ops<Chan>,
-    Frame<Ch32, CH>: Ops<Ch32>,
     Ch32: From<Chan>,
 {
     #[inline(always)]
@@ -168,8 +161,6 @@ where
         len: usize,
     ) where
         C: From<Chan>,
-        Frame<C, N>: Ops<C>,
-        Frame<C, CH>: Ops<C>,
     {
         // First, de-interleave input audio data into f32 buffer.
         let len_plus_latency = len as u64;

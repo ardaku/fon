@@ -11,7 +11,6 @@
 use crate::{
     chan::{Ch16, Ch24, Ch32, Ch64, Channel},
     frame::Frame,
-    ops::Ops,
     Stream,
 };
 use alloc::{
@@ -40,10 +39,7 @@ use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 ///
 /// `Audio` implements the [`Stream`](crate::Stream) trait.
 #[derive(Debug)]
-pub struct Audio<Chan: Channel, const CH: usize>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+pub struct Audio<Chan: Channel, const CH: usize> {
     // Sample rate of the audio in hertz.
     rate: u32,
     // Audio sample data
@@ -51,10 +47,7 @@ where
     pub(crate) data: VecDeque<Frame<Chan, CH>>,
 }
 
-impl<Chan: Channel, const CH: usize> Audio<Chan, CH>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     /// Construct an empty `Audio` buffer.
     #[inline(always)]
     pub fn new(hz: u32) -> Self {
@@ -99,8 +92,6 @@ where
     ) -> Self
     where
         M: Stream<C, N>,
-        Frame<C, N>: Ops<C>,
-        Frame<Chan, N>: Ops<Chan>,
         Chan: From<C>,
     {
         let mut audio = Self::new(src.sample_rate().unwrap());
@@ -169,10 +160,7 @@ where
     }
 }
 
-impl<const CH: usize> Audio<Ch16, CH>
-where
-    Frame<Ch16, CH>: Ops<Ch16>,
-{
+impl<const CH: usize> Audio<Ch16, CH> {
     /// Construct an `Audio` buffer from an `i16` buffer.
     #[allow(unsafe_code)]
     pub fn with_i16_buffer<B>(hz: u32, buffer: B) -> Self
@@ -204,10 +192,7 @@ where
     }
 }
 
-impl<const CH: usize> Audio<Ch24, CH>
-where
-    Frame<Ch24, CH>: Ops<Ch24>,
-{
+impl<const CH: usize> Audio<Ch24, CH> {
     /// Construct an `Audio` buffer from an `u8` buffer.
     #[allow(unsafe_code)]
     pub fn with_u8_buffer<B>(hz: u32, buffer: B) -> Self
@@ -239,10 +224,7 @@ where
     }
 }
 
-impl<const CH: usize> Audio<Ch32, CH>
-where
-    Frame<Ch32, CH>: Ops<Ch32>,
-{
+impl<const CH: usize> Audio<Ch32, CH> {
     /// Construct an `Audio` buffer from an `f32` buffer.
     #[allow(unsafe_code)]
     pub fn with_f32_buffer<B>(hz: u32, buffer: B) -> Self
@@ -274,10 +256,7 @@ where
     }
 }
 
-impl<const CH: usize> Audio<Ch64, CH>
-where
-    Frame<Ch64, CH>: Ops<Ch64>,
-{
+impl<const CH: usize> Audio<Ch64, CH> {
     /// Construct an `Audio` buffer from an `f64` buffer.
     #[allow(unsafe_code)]
     pub fn with_f64_buffer<B>(hz: u32, buffer: B) -> Self
@@ -311,7 +290,6 @@ where
 
 impl<Chan, F, const CH: usize> Stream<Chan, CH> for F
 where
-    Frame<Chan, CH>: Ops<Chan>,
     Chan: Channel,
     F: core::borrow::Borrow<Audio<Chan, CH>>,
 {
@@ -327,7 +305,6 @@ where
         len: usize,
     ) where
         C: From<Chan>,
-        Frame<C, N>: Ops<C>,
     {
         let this = self.borrow();
         let zeros = if len > this.len() {
@@ -343,19 +320,13 @@ where
 }
 
 /// A `Stream` created with `Audio.drain()`
-struct AudioDrain<'a, Chan: Channel, const CH: usize>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+struct AudioDrain<'a, Chan: Channel, const CH: usize> {
     cursor: usize,
     buffer: &'a mut Audio<Chan, CH>,
 }
 
 impl<'a, Chan: Channel, const CH: usize> Stream<Chan, CH>
-    for AudioDrain<'_, Chan, CH>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+    for AudioDrain<'_, Chan, CH> {
     #[inline(always)]
     fn sample_rate(&self) -> Option<u32> {
         Some(self.buffer.rate)
@@ -368,17 +339,12 @@ where
         len: usize,
     ) where
         C: From<Chan>,
-        Frame<C, N>: Ops<C>,
-        Frame<C, CH>: Ops<C>,
     {
         (*self.buffer).extend(buffer, len);
     }
 }
 
-impl<'a, Chan: Channel, const CH: usize> Drop for AudioDrain<'_, Chan, CH>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+impl<'a, Chan: Channel, const CH: usize> Drop for AudioDrain<'_, Chan, CH> {
     #[inline(always)]
     fn drop(&mut self) {
         self.buffer.data.drain(..self.cursor);
@@ -388,7 +354,6 @@ where
 impl<Chan, const CH: usize> From<Audio<Chan, CH>> for Vec<Frame<Chan, CH>>
 where
     Chan: Channel,
-    Frame<Chan, CH>: Ops<Chan>,
 {
     /// Get internal sample data as `Vec` of audio frames.
     fn from(audio: Audio<Chan, CH>) -> Self {
@@ -397,10 +362,7 @@ where
 }
 
 impl<Chan: Channel, const CH: usize> From<Audio<Chan, CH>>
-    for Box<[Frame<Chan, CH>]>
-where
-    Frame<Chan, CH>: Ops<Chan>,
-{
+    for Box<[Frame<Chan, CH>]> {
     /// Get internal sample data as `Vec` of audio frames.
     fn from(audio: Audio<Chan, CH>) -> Self {
         let audio: Vec<Frame<Chan, CH>> = audio.data.into();
@@ -408,10 +370,7 @@ where
     }
 }
 
-impl<const CH: usize> From<Audio<Ch16, CH>> for Box<[i16]>
-where
-    Frame<Ch16, CH>: Ops<Ch16>,
-{
+impl<const CH: usize> From<Audio<Ch16, CH>> for Box<[i16]> {
     /// Get internal sample data as boxed slice of *i16*.
     #[allow(unsafe_code)]
     fn from(audio: Audio<Ch16, CH>) -> Self {
@@ -425,10 +384,7 @@ where
     }
 }
 
-impl<const CH: usize> From<Audio<Ch24, CH>> for Box<[u8]>
-where
-    Frame<Ch24, CH>: Ops<Ch24>,
-{
+impl<const CH: usize> From<Audio<Ch24, CH>> for Box<[u8]> {
     /// Get internal sample data as boxed slice of *u8*.
     #[allow(unsafe_code)]
     fn from(audio: Audio<Ch24, CH>) -> Self {
@@ -442,10 +398,7 @@ where
     }
 }
 
-impl<const CH: usize> From<Audio<Ch32, CH>> for Box<[f32]>
-where
-    Frame<Ch32, CH>: Ops<Ch32>,
-{
+impl<const CH: usize> From<Audio<Ch32, CH>> for Box<[f32]> {
     /// Get internal sample data as boxed slice of *f32*.
     #[allow(unsafe_code)]
     fn from(audio: Audio<Ch32, CH>) -> Self {
@@ -459,10 +412,7 @@ where
     }
 }
 
-impl<const CH: usize> From<Audio<Ch64, CH>> for Box<[f64]>
-where
-    Frame<Ch64, CH>: Ops<Ch64>,
-{
+impl<const CH: usize> From<Audio<Ch64, CH>> for Box<[f64]> {
     /// Get internal sample data as boxed slice of *f64*.
     #[allow(unsafe_code)]
     fn from(audio: Audio<Ch64, CH>) -> Self {

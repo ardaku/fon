@@ -9,8 +9,6 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use crate::chan::{Ch32, Channel};
-use crate::frame::Frame;
-use crate::ops::Ops;
 use crate::resampler::Resampler;
 use crate::Audio;
 
@@ -18,7 +16,6 @@ use crate::Audio;
 pub trait Stream<Chan, const CH: usize>: Sized
 where
     Chan: Channel,
-    Frame<Chan, CH>: Ops<Chan>,
 {
     /// Get the sample rate of the stream in hertz.
     fn sample_rate(&self) -> Option<u32>;
@@ -32,17 +29,13 @@ where
         buffer: &mut Audio<C, N>,
         len: usize,
     ) where
-        C: From<Chan>,
-        Frame<C, N>: Ops<C>,
-        Frame<C, CH>: Ops<C>;
+        C: From<Chan>;
 
     /// Stream audio into `buffer`, overwriting the samples.
     #[inline(always)]
     fn stream<C: Channel, const N: usize>(&mut self, buffer: &mut Audio<C, N>)
     where
         C: From<Chan>,
-        Frame<C, N>: Ops<C>,
-        Frame<C, CH>: Ops<C>,
     {
         // Get old (original) length.
         let len = buffer.len();
@@ -57,7 +50,6 @@ where
     #[inline(always)]
     fn resample(self, sample_rate_hz: u32) -> Resampler<Self, Chan, CH>
     where
-        Frame<Ch32, CH>: Ops<Ch32>,
         Ch32: From<Chan>,
     {
         crate::resampler::Resampler::new(sample_rate_hz, self)

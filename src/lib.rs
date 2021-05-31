@@ -105,7 +105,6 @@ extern crate alloc;
 
 mod audio;
 mod frame;
-mod ops;
 mod private;
 mod resampler;
 mod stream;
