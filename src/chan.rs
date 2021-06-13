@@ -410,10 +410,10 @@ impl From<Ch32> for Ch64 {
     }
 }
 
-impl From<Ch64> for f32 {
+impl From<Ch64> for f64 {
     #[inline(always)]
-    fn from(ch: Ch64) -> f32 {
-        ch.0 as f32
+    fn from(ch: Ch64) -> f64 {
+        ch.0
     }
 }
 

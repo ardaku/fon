@@ -18,32 +18,12 @@ where
     Chan: Channel,
 {
     /// Get the sample rate of the stream in hertz.
-    fn sample_rate(&self) -> Option<u32>;
+    fn sample_rate(&self) -> u32;
 
-    /// Stream audio, appending `len` samples to the end of `buffer`.
-    ///
-    /// This method should always add `len` samples; If there are not enough
-    /// then this should append zero samples at the end.
-    fn extend<C: Channel, const N: usize>(
-        &mut self,
-        buffer: &mut Audio<C, N>,
-        len: usize,
-    ) where
-        C: From<Chan>;
-
-    /// Stream audio into `buffer`, overwriting the samples.
-    #[inline(always)]
-    fn stream<C: Channel, const N: usize>(&mut self, buffer: &mut Audio<C, N>)
+    /// Sink samples into audio buffer from this audio stream.
+    fn sink<C: Channel, const N: usize>(&mut self, buf: &mut Audio<C, N>)
     where
-        C: From<Chan>,
-    {
-        // Get old (original) length.
-        let len = buffer.len();
-        // Empty buffer.
-        buffer.clear();
-        // Extend back to old (original) length.
-        self.extend(buffer, len);
-    }
+        C: From<Chan>;
 
     /// Convert this stream to a [`Stream`](crate::Stream) of a different
     /// sample rate.

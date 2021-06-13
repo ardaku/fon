@@ -68,7 +68,7 @@ where
         // Target sample rate always stays the same.
         let sample_rate = self.sample_rate;
         // Calculate new simplified ratio of input ÷ output samples.
-        let ratio = simplify(stream.sample_rate().unwrap(), sample_rate);
+        let ratio = simplify(stream.sample_rate(), sample_rate);
         // Channels may need to change if input sample rate is changed.
         let mut channels = self.channels;
         // Latency will change with different sample rates as well.
@@ -114,7 +114,7 @@ where
         use std::convert::TryInto;
 
         // Calculate simplified ratio of input ÷ output samples.
-        let ratio = simplify(stream.sample_rate().unwrap(), new_hz);
+        let ratio = simplify(stream.sample_rate(), new_hz);
         let mut this = Self {
             _phantom: PhantomData,
             sample_rate: new_hz,
@@ -150,28 +150,30 @@ where
     Ch32: From<Chan>,
 {
     #[inline(always)]
-    fn sample_rate(&self) -> Option<u32> {
-        Some(self.sample_rate)
+    fn sample_rate(&self) -> u32 {
+        self.sample_rate
     }
 
     #[inline(always)]
-    fn extend<C: Channel, const N: usize>(
-        &mut self,
-        buffer: &mut Audio<C, N>,
-        len: usize,
-    ) where
+    fn sink<C: Channel, const N: usize>(&mut self, buf: &mut Audio<C, N>)
+    where
         C: From<Chan>,
     {
+        // Make sure target sample rate is the same.
+        assert_eq!(buf.sample_rate(), self.sample_rate);
+
+        let len = buf.len();
         // First, de-interleave input audio data into f32 buffer.
-        let len_plus_latency = len as u64;
         let input_samples: u32 = self.input_latency
-            + (len_plus_latency * self.ratio.0 as u64 / self.ratio.1 as u64)
-                as u32;
+            + (len as u64 * self.ratio.0 as u64 / self.ratio.1 as u64) as u32;
         let mut convert = Audio::<Ch32, CH>::with_silence(
-            self.stream.sample_rate().unwrap(),
-            0,
+            self.stream.sample_rate(),
+            input_samples as usize,
         );
-        self.stream.extend(&mut convert, input_samples as usize);
+        self.stream.sink(&mut convert);
+        for chan in 0..CH {
+            self.channels[chan].input.clear();
+        }
         for frame in convert.iter() {
             for chan in 0..CH {
                 self.channels[chan].input.push(frame.0[chan].to_f32());
@@ -201,13 +203,12 @@ where
         }
 
         // Then, re-interleave the samples back.
-        buffer.data.reserve(len);
         for i in 0..len {
             let mut frame = Frame::<C, CH>::default();
             for chan in 0..CH {
                 frame.0[chan] = C::from(self.channels[chan].output[i]);
             }
-            buffer.data.push_back(frame.to());
+            *buf.get_mut(i).unwrap() = frame.to();
         }
     }
 }
