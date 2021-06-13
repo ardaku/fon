@@ -43,7 +43,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     /// Construct an `Audio` buffer with all all samples set to zero.
     #[inline(always)]
     pub fn with_silence(hz: u32, len: usize) -> Self {
-        Self::with_frame(hz, Frame::<Chan, CH>::default(), len)
+        Self::with_frames(hz, vec![Frame::<Chan, CH>::default(); len])
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get
@@ -60,12 +60,6 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         }
     }
 
-    /// Construct an `Audio` buffer with all audio frames set to one value.
-    #[inline(always)]
-    pub fn with_frame(hz: u32, frame: Frame<Chan, CH>, len: usize) -> Self {
-        Self::with_frames(hz, vec![frame; len])
-    }
-
     /// Construct an [`Audio`](crate::Audio) buffer from the contents of a
     /// [`Stream`](crate::Stream).
     ///
@@ -73,7 +67,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     /// hertz is taken from the source (`src`) stream.
     #[inline(always)]
     pub fn with_stream<M, C: Channel, const N: usize>(
-        src: M,
+        mut src: M,
         len: usize,
     ) -> Self
     where
@@ -81,7 +75,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         Chan: From<C>,
     {
         let mut audio = Self::with_silence(src.sample_rate(), len);
-        audio.sink(src);
+        audio.stream(&mut src);
         audio
     }
 
@@ -147,9 +141,9 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         }
     }
 
-    /// Sink samples into this buffer from a stream.
+    /// Stream samples into this buffer.
     #[inline(always)]
-    pub fn sink<Ch, S, const N: usize>(&mut self, mut stream: S)
+    pub fn stream<Ch, S, const N: usize>(&mut self, stream: &mut S)
     where
         Ch: Channel,
         S: Stream<Ch, N>,
