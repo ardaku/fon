@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use fon::chan::Ch32;
-use fon::{Audio, Stream};
+use fon::Audio;
 
 // Resample an audio file from one sample rate to another.
 fn resample(in_hz: u32, in_file: &str, out_hz: u32, out_file: &str) {
@@ -13,13 +13,8 @@ fn resample(in_hz: u32, in_file: &str, out_hz: u32, out_file: &str) {
     }
     // Create type-safe audio type from f32 buffer.
     let audio = Audio::<Ch32, 2>::with_f32_buffer(in_hz, audio);
-    // Calculate new length after resampling.
-    let len =
-        (audio.len() as f64 * out_hz as f64 / in_hz as f64).ceil() as usize;
-    // Create resampler wrapping audio.
-    let resampler = audio.resample(out_hz);
     // Stream resampler into new audio type.
-    let mut audio = Audio::<Ch32, 2>::with_stream(resampler, len);
+    let mut audio = Audio::<Ch32, 2>::with_audio(out_hz, &audio);
     // Write file as f32 buffer.
     let mut bytes = Vec::new();
     for sample in audio.as_f32_slice() {

@@ -1,7 +1,7 @@
 // FIXME: Once remove macros, can delete
 #![allow(trivial_casts, trivial_numeric_casts)]
 
-use core::f64::consts::PI as PI_64;
+use core::f64::consts::PI;
 use core::mem;
 
 #[derive(Clone)]
@@ -223,7 +223,7 @@ impl ResamplerState {
         self.cutoff =
             QUALITY_MAPPING.downsample_bandwidth * den as f32 / num as f32;
         let pass = self.filt_len;
-        _muldiv(&mut self.filt_len, pass, num, den);
+        self.filt_len = _muldiv(pass, num, den);
         self.filt_len = ((self.filt_len - 1) & (!7)) + 8;
         self.oversample = (1..5)
             .filter(|x| 2u32.pow(*x) * den < num)
@@ -507,7 +507,7 @@ fn sinc(cutoff: f32, x: f32, n: i32) -> f32 {
     } else if x_abs > 0.5 * n_64 {
         0.0
     } else {
-        let first_factor = cutoff_64 * (PI_64 * xx).sin() / (PI_64 * xx);
+        let first_factor = cutoff_64 * (PI * xx).sin() / (PI * xx);
         let second_factor =
             compute_func((2.0 * f64::from(x) / n_64).abs() as f32);
         (first_factor * second_factor) as f32
@@ -567,16 +567,16 @@ fn resampler_basic_direct(
     out_sample as i32
 }
 
-pub(super) fn _muldiv(result: &mut u32, value: u32, mul: u32, div: u32) {
+pub(super) fn _muldiv(value: u32, mul: u32, div: u32) -> u32 {
     let major: u32 = value / div;
     let remainder: u32 = value % div;
     if remainder > 4294967295 / mul
         || major > 4294967295 / mul
         || major * mul > 4294967295 - remainder * mul / div
     {
-        panic!("overflow");
+        panic!("overflow")
     } else {
-        *result = remainder * mul / div + major * mul;
+        remainder * mul / div + major * mul
     }
 }
 

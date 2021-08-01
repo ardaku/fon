@@ -1,5 +1,4 @@
-// Fon
-// Copyright © 2020-2021 Jeron Aldaron Lau.
+// Copyright © 2020-2021 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -11,7 +10,7 @@
 use crate::{
     chan::{Ch16, Ch24, Ch32, Ch64, Channel},
     frame::Frame,
-    Stream,
+    Sink, Stream,
 };
 use alloc::{
     boxed::Box,
@@ -19,6 +18,7 @@ use alloc::{
     vec,
     vec::Vec,
 };
+use core::borrow::BorrowMut;
 use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 
 /// Audio buffer (fixed-size array of audio [`Frame`](crate::frame::Frame)s at
@@ -60,23 +60,21 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         }
     }
 
-    /// Construct an [`Audio`](crate::Audio) buffer from the contents of a
-    /// [`Stream`](crate::Stream).
-    ///
-    /// The audio format can be converted with this function.  Sample rate in
-    /// hertz is taken from the source (`src`) stream.
+    /// Construct an `Audio` buffer from another `Audio` buffer of a differnt
+    /// format.
     #[inline(always)]
-    pub fn with_stream<M, C: Channel, const N: usize>(
-        mut src: M,
-        len: usize,
-    ) -> Self
+    pub fn with_audio<Ch>(hz: u32, audio: &Audio<Ch, CH>) -> Self
     where
-        M: Stream<C, N>,
-        Chan: From<C>,
+        Ch: Channel,
+        Ch32: From<Ch>,
     {
-        let mut audio = Self::with_silence(src.sample_rate(), len);
-        audio.stream(&mut src);
-        audio
+        let rate = audio.len() as f64 * hz as f64 / audio.sample_rate() as f64;
+        let mut output = Self::with_silence(hz, rate.ceil() as usize);
+        let mut stream = Stream::new(audio.sample_rate(), hz);
+        let mut sink = output.sink();
+        stream.pipe(audio, &mut sink);
+        stream.flush(&mut sink);
+        output
     }
 
     /// Get an audio frame.
@@ -141,17 +139,73 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         }
     }
 
-    /// Stream samples into this buffer.
+    /// Sink audio into this audio buffer from a `Stream`.
     #[inline(always)]
-    pub fn stream<Ch, S, const N: usize>(&mut self, stream: &mut S)
-    where
-        Ch: Channel,
-        S: Stream<Ch, N>,
-        Chan: From<Ch>,
-    {
-        stream.sink(self)
+    pub fn sink(&mut self) -> AudioSink<'_, Chan, CH> {
+        AudioSink {
+            index: 0,
+            audio: self,
+        }
     }
 }
+
+/// Returned from [`Audio::sink()`](crate::Audio::sink).
+#[derive(Debug)]
+pub struct AudioSink<'a, Chan: Channel, const CH: usize> {
+    index: usize,
+    audio: &'a mut Audio<Chan, CH>,
+}
+
+// Using '_ results in reserved lifetime error.
+#[allow(single_use_lifetimes)]
+impl<'a, T, Chan: Channel, const CH: usize> Sink<Chan, CH> for T
+where
+    T: BorrowMut<AudioSink<'a, Chan, CH>>,
+{
+    #[inline(always)]
+    fn sample_rate(&self) -> u32 {
+        self.borrow().audio.sample_rate()
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.borrow().audio.len()
+    }
+
+    #[inline(always)]
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
+        let audio = self.borrow_mut();
+        for frame in audio.audio.iter_mut().skip(audio.index) {
+            *frame = if let Some(frame) = iter.next() {
+                frame
+            } else {
+                break;
+            };
+            audio.index += 1;
+        }
+    }
+}
+
+/*impl<T, Chan: Channel, const CH: usize> Sink<Chan, CH> for T
+    where T: BorrowMut<Audio<Chan, CH>>
+{
+    #[inline(always)]
+    fn sample_rate(&self) -> u32 {
+        self.borrow().sample_rate
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.borrow().len()
+    }
+
+    #[inline(always)]
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
+        for frame in self.borrow_mut().iter_mut() {
+            *frame = iter.next().unwrap_or_default();
+        }
+    }
+}*/
 
 impl<const CH: usize> Audio<Ch16, CH> {
     /// Construct an `Audio` buffer from an `i16` buffer.
@@ -277,32 +331,6 @@ impl<const CH: usize> Audio<Ch64, CH> {
             debug_assert!(prefix.is_empty());
             debug_assert!(suffix.is_empty());
             v
-        }
-    }
-}
-
-impl<Chan, F, const CH: usize> Stream<Chan, CH> for F
-where
-    Chan: Channel,
-    F: core::borrow::Borrow<Audio<Chan, CH>>,
-{
-    #[inline(always)]
-    fn sample_rate(&self) -> u32 {
-        self.borrow().sample_rate
-    }
-
-    #[inline(always)]
-    fn sink<C: Channel, const N: usize>(&mut self, buf: &mut Audio<C, N>)
-    where
-        C: From<Chan>,
-    {
-        assert_eq!(self.sample_rate(), buf.sample_rate());
-
-        // Get iterator
-        let mut it = self.borrow().iter().cloned().map(|x| x.to());
-        // Convert channel type.
-        for out in buf.iter_mut() {
-            *out = it.next().unwrap_or_default();
         }
     }
 }

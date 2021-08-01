@@ -1,5 +1,4 @@
-// Fon
-// Copyright © 2020-2021 Jeron Aldaron Lau.
+// Copyright © 2020-2021 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -55,7 +54,7 @@
 //!     counter %= 1.0;
 //! }
 //!
-//! let mut audio = Audio::<Ch16, 2>::with_stream(&a, a.len());
+//! let mut audio = Audio::<Ch16, 1>::with_audio(48_000, &a);
 //! ```
 //!
 //! [audio buffer]: crate::Audio
@@ -106,14 +105,14 @@ extern crate alloc;
 mod audio;
 mod frame;
 mod private;
-mod resampler;
+mod sink;
 mod stream;
 
 pub mod chan;
 
 pub mod pos;
 
-pub use audio::Audio;
+pub use audio::{Audio, AudioSink};
 pub use frame::Frame;
-pub use resampler::Resampler;
+pub use sink::Sink;
 pub use stream::Stream;

@@ -1,5 +1,4 @@
-// Fon
-// Copyright © 2020-2021 Jeron Aldaron Lau.
+// Copyright © 2020-2021 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -20,7 +19,7 @@ use core::ops::{Add, Mul, Neg, Sub};
 /// [channel]: crate::chan::Channel
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Frame<Chan: Channel, const CH: usize>(pub(crate) [Chan; CH]);
+pub struct Frame<Chan: Channel, const CH: usize>([Chan; CH]);
 
 impl<Chan: Channel, const CH: usize> Default for Frame<Chan, CH> {
     fn default() -> Self {
@@ -29,6 +28,18 @@ impl<Chan: Channel, const CH: usize> Default for Frame<Chan, CH> {
 }
 
 impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
+    /// Get a mutable slice of the channels in this frame.
+    #[inline(always)]
+    pub fn channels_mut(&mut self) -> &mut [Chan; CH] {
+        &mut self.0
+    }
+
+    /// Get a slice of the channels in this frame.
+    #[inline(always)]
+    pub fn channels(&self) -> &[Chan; CH] {
+        &self.0
+    }
+
     /// Mix a panned channel into this audio frame.
     ///
     /// 1.0/0.0 is straight ahead, 0.25 is right, 0.5 is back, and 0.75 is left.
@@ -385,11 +396,10 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
 
         let mut frame = Frame::<C, N>::default();
         let mono = self.0[MONO].into();
+        frame.0[0] = mono;
         if N == 1 {
-            frame.0[0] = mono;
         } else {
             // Mono should always be mixed up to first two channels.
-            frame.0[0] = mono;
             frame.0[1] = mono;
         }
         frame

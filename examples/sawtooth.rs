@@ -12,11 +12,13 @@ fn main() {
         counter %= 1.0;
     }
 
-    // Convert to stereo 16-Bit audio format
-    let mut audio = Audio::<Ch16, 2>::with_stream(&a, a.len());
+    // Convert to 16-Bit audio format
+    let mut audio = Audio::<Ch16, 1>::with_audio(48_000, &a);
 
     // Print out converted wave.
-    for sample in audio.as_i16_slice() {
-        println!("{}", sample);
+    for (sample, other) in
+        audio.as_i16_slice().iter().zip(a.as_f32_slice().iter())
+    {
+        println!("{} {}", sample, other);
     }
 }
