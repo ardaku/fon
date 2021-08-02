@@ -8,6 +8,7 @@
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
 use core::mem;
+use core::num::NonZeroU32;
 
 use crate::chan::{Ch32, Channel};
 use crate::frame::Frame;
@@ -33,7 +34,7 @@ pub struct Stream<const CH: usize> {
     /// Target sample rate (constant).
     output_sample_rate: u32,
     /// Source sample rate (changeable)
-    input_sample_rate: u32,
+    input_sample_rate: Option<NonZeroU32>,
     /// Simplified ratio of input ÷ output samples.
     ratio: (u32, u32),
     /// Channel data.
@@ -43,14 +44,13 @@ pub struct Stream<const CH: usize> {
 }
 
 impl<const CH: usize> Stream<CH> {
-    /// Create a new stream.
-    pub fn new(in_hz: u32, out_hz: u32) -> Self {
-        // Calculate simplified ratio of input ÷ output samples.
-        let ratio = simplify(in_hz, out_hz);
-        let mut this = Self {
-            output_sample_rate: out_hz,
-            input_sample_rate: in_hz,
-            ratio,
+    /// Create a new stream at target sample rate.
+    pub fn new(target_hz: u32) -> Self {
+        assert_ne!(target_hz, 0);
+        Self {
+            output_sample_rate: target_hz,
+            input_sample_rate: None,
+            ratio: (0, 1),
             channels: [
                 Default::default(),
                 Default::default(),
@@ -62,42 +62,29 @@ impl<const CH: usize> Stream<CH> {
                 Default::default(),
             ],
             input_latency: 0,
-        };
-        for channel in this.channels.iter_mut() {
-            let num = ratio.0;
-            let den = ratio.1;
-
-            channel.state.update_filter(num, den);
-
-            // Get input latency.
-            this.input_latency = channel.state.filt_len / 2;
         }
-
-        this
     }
 
     /// Switch source sample rate.
-    fn source_hz(&mut self, hz: u32) {
+    fn source_hz(&mut self, hz: NonZeroU32) {
         // Calculate new simplified ratio of input ÷ output samples.
-        let ratio = simplify(hz, self.output_sample_rate);
+        let ratio = simplify(hz.get(), self.output_sample_rate);
+        let (num, den) = ratio;
 
         // Handle sample rate change, if needed.
-        if hz != self.input_sample_rate {
+        if NonZeroU32::new(hz.get()) != self.input_sample_rate {
             // Prepare each channel for sample rate change
             for ch in self.channels.iter_mut() {
-                let state = &mut ch.state;
-                let num = ratio.0;
-                let den = ratio.1;
-
-                let v = state.samp_frac_num;
-                state.samp_frac_num = speex::_muldiv(v, den, self.ratio.1);
-                if state.samp_frac_num >= den {
-                    state.samp_frac_num = den - 1;
+                // Store fractional sample data.
+                let v = ch.state.samp_frac_num;
+                ch.state.samp_frac_num = speex::_muldiv(v, den, self.ratio.1);
+                if ch.state.samp_frac_num >= den {
+                    ch.state.samp_frac_num = den - 1;
                 }
 
-                state.update_filter(num, den);
-
-                self.input_latency = state.filt_len / 2;
+                // Update filter and calculate input latency.
+                ch.state.update_filter(num, den);
+                self.input_latency = ch.state.filt_len / 2;
             }
             self.ratio = ratio;
         }
@@ -141,17 +128,17 @@ impl<const CH: usize> Stream<CH> {
         Ch32: From<Chan>,
     {
         // Make sure that the sample rates match.
-        assert_eq!(sink.sample_rate(), self.output_sample_rate);
-        if audio.sample_rate() != self.input_sample_rate {
+        assert_eq!(sink.sample_rate().get(), self.output_sample_rate);
+        if NonZeroU32::new(audio.sample_rate().get()) != self.input_sample_rate {
             self.source_hz(audio.sample_rate());
-            debug_assert_eq!(audio.sample_rate(), self.input_sample_rate);
+            debug_assert_eq!(NonZeroU32::new(audio.sample_rate().get()), self.input_sample_rate);
         }
 
         // Get the output length from the sink.
         let len = sink.len();
         // First, de-interleave input audio data into f32 buffer.
         let converted = Audio::<Ch32, CH>::with_frames(
-            audio.sample_rate(),
+            audio.sample_rate().get(),
             audio
                 .as_slice()
                 .iter()

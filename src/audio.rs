@@ -20,6 +20,8 @@ use alloc::{
 };
 use core::borrow::BorrowMut;
 use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
+use core::num::NonZeroU32;
+use core::convert::TryInto;
 
 /// Audio buffer (fixed-size array of audio [`Frame`](crate::frame::Frame)s at
 /// sample rate specified in hertz).
@@ -28,7 +30,7 @@ use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 #[derive(Debug)]
 pub struct Audio<Chan: Channel, const CH: usize> {
     // Sample rate of the audio in hertz.
-    sample_rate: u32,
+    sample_rate: NonZeroU32,
     // Audio frames.
     frames: Box<[Frame<Chan, CH>]>,
 }
@@ -55,7 +57,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         B: Into<Box<[Frame<Chan, CH>]>>,
     {
         Audio {
-            sample_rate: hz,
+            sample_rate: hz.try_into().unwrap(),
             frames: frames.into(),
         }
     }
@@ -68,9 +70,9 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         Ch: Channel,
         Ch32: From<Ch>,
     {
-        let rate = audio.len() as f64 * hz as f64 / audio.sample_rate() as f64;
+        let rate = audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
         let mut output = Self::with_silence(hz, rate.ceil() as usize);
-        let mut stream = Stream::new(audio.sample_rate(), hz);
+        let mut stream = Stream::new(hz);
         let mut sink = output.sink();
         stream.pipe(audio, &mut sink);
         stream.flush(&mut sink);
@@ -115,7 +117,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
 
     /// Get the sample rate of this audio buffer.
     #[inline(always)]
-    pub fn sample_rate(&self) -> u32 {
+    pub fn sample_rate(&self) -> NonZeroU32 {
         self.sample_rate
     }
 
@@ -163,7 +165,7 @@ where
     T: BorrowMut<AudioSink<'a, Chan, CH>>,
 {
     #[inline(always)]
-    fn sample_rate(&self) -> u32 {
+    fn sample_rate(&self) -> NonZeroU32 {
         self.borrow().audio.sample_rate()
     }
 

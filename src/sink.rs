@@ -7,13 +7,15 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
+use core::num::NonZeroU32;
+
 use crate::chan::Channel;
 use crate::Frame;
 
 /// Audio sink - a type that consumes audio samples.
 pub trait Sink<Chan: Channel, const CH: usize> {
     /// Get the sample rate of the sink in hertz.
-    fn sample_rate(&self) -> u32;
+    fn sample_rate(&self) -> NonZeroU32;
 
     /// Get the length of the sink in frames.
     ///
