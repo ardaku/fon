@@ -69,6 +69,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     where
         Ch: Channel,
         Ch32: From<Ch>,
+        Chan: From<Ch>
     {
         let rate =
             audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
@@ -176,7 +177,7 @@ where
     }
 
     #[inline(always)]
-    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
+    fn sink_with<I: Iterator<Item = Frame<Chan, CH>>>(&mut self, mut iter: I) {
         let audio = self.borrow_mut();
         for frame in audio.audio.iter_mut().skip(audio.index) {
             *frame = if let Some(frame) = iter.next() {

@@ -27,7 +27,7 @@ pub trait Sink<Chan: Channel, const CH: usize> {
     /// **Warning**: if used incorrectly, this method may introduce audio
     /// aliasing.  To avoid that, make sure the sample rate of the frames from
     /// the iterator matches exactly the sample rate of the sink.
-    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>);
+    fn sink_with<I: Iterator<Item = Frame<Chan, CH>>>(&mut self, iter: I);
 
     /// Check if the sink is empty (length of zero).
     fn is_empty(&self) -> bool {

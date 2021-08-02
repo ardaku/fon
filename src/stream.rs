@@ -117,15 +117,22 @@ impl<const CH: usize> Stream<CH> {
     /// If the sink gets full, then no more audio will be written.  If there is
     /// not enough audio then the sink chooses whether or not to fill the rest
     /// of it's buffer with silence.
-    pub fn pipe<Chan, Ch, S>(&mut self, audio: &Audio<Chan, CH>, sink: S)
+    pub fn pipe<Chan, Ch, S>(&mut self, audio: &Audio<Chan, CH>, mut sink: S)
     where
         Chan: Channel,
-        Ch: Channel,
+        Ch: Channel + From<Chan>,
         S: Sink<Ch, CH>,
         Ch32: From<Chan>,
     {
         // Make sure that the sample rates match.
         assert_eq!(sink.sample_rate().get(), self.output_sample_rate);
+
+        // If sample rates match, do a copy (faster than resampling).
+        if self.channels[0].state.started == 0 && sink.sample_rate() == audio.sample_rate() {
+            sink.sink_with(audio.iter().cloned().map(|x| x.to()));
+            return;
+        }
+
         if NonZeroU32::new(audio.sample_rate().get()) != self.input_sample_rate
         {
             self.source_hz(audio.sample_rate());
