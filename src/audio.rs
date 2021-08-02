@@ -19,9 +19,9 @@ use alloc::{
     vec::Vec,
 };
 use core::borrow::BorrowMut;
-use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
-use core::num::NonZeroU32;
 use core::convert::TryInto;
+use core::num::NonZeroU32;
+use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 
 /// Audio buffer (fixed-size array of audio [`Frame`](crate::frame::Frame)s at
 /// sample rate specified in hertz).
@@ -70,7 +70,8 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         Ch: Channel,
         Ch32: From<Ch>,
     {
-        let rate = audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
+        let rate =
+            audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
         let mut output = Self::with_silence(hz, rate.ceil() as usize);
         let mut stream = Stream::new(hz);
         let mut sink = output.sink();

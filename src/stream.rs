@@ -87,6 +87,7 @@ impl<const CH: usize> Stream<CH> {
                 self.input_latency = ch.state.filt_len / 2;
             }
             self.ratio = ratio;
+            self.input_sample_rate = Some(hz);
         }
     }
 
@@ -108,11 +109,7 @@ impl<const CH: usize> Stream<CH> {
 
         // Resample and output audio to sink.
         let len = sink.len();
-        self.resample_audio(
-            sink,
-            len,
-            self.input_latency,
-        );
+        self.resample_audio(sink, len, self.input_latency);
     }
 
     /// Pipe audio through this stream, and out to the sink.
@@ -129,9 +126,9 @@ impl<const CH: usize> Stream<CH> {
     {
         // Make sure that the sample rates match.
         assert_eq!(sink.sample_rate().get(), self.output_sample_rate);
-        if NonZeroU32::new(audio.sample_rate().get()) != self.input_sample_rate {
+        if NonZeroU32::new(audio.sample_rate().get()) != self.input_sample_rate
+        {
             self.source_hz(audio.sample_rate());
-            debug_assert_eq!(NonZeroU32::new(audio.sample_rate().get()), self.input_sample_rate);
         }
 
         // Get the output length from the sink.
