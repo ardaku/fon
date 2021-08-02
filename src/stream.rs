@@ -7,7 +7,6 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::convert::TryInto;
 use core::mem;
 
 use crate::chan::{Ch32, Channel};
@@ -39,8 +38,6 @@ pub struct Stream<const CH: usize> {
     ratio: (u32, u32),
     /// Channel data.
     channels: [Resampler32; 8],
-    /// Calculated output latency for resampler.
-    output_latency: u32,
     /// Calculated input latency for resampler.
     input_latency: u32,
 }
@@ -64,7 +61,6 @@ impl<const CH: usize> Stream<CH> {
                 Default::default(),
                 Default::default(),
             ],
-            output_latency: 0,
             input_latency: 0,
         };
         for channel in this.channels.iter_mut() {
@@ -74,12 +70,7 @@ impl<const CH: usize> Stream<CH> {
             channel.state.update_filter(num, den);
 
             // Get input latency.
-            let input_latency = channel.state.filt_len / 2;
-            // Get output latency.
-            let output_latency = (input_latency * den + (num >> 1)) / num;
-
-            this.output_latency = output_latency;
-            this.input_latency = input_latency;
+            this.input_latency = channel.state.filt_len / 2;
         }
 
         this
@@ -89,9 +80,6 @@ impl<const CH: usize> Stream<CH> {
     fn source_hz(&mut self, hz: u32) {
         // Calculate new simplified ratio of input ÷ output samples.
         let ratio = simplify(hz, self.output_sample_rate);
-        // Latency will change with different sample rates as well.
-        // let output_latency = self.output_latency;
-        let input_latency = self.input_latency;
 
         // Handle sample rate change, if needed.
         if hz != self.input_sample_rate {
@@ -110,25 +98,10 @@ impl<const CH: usize> Stream<CH> {
                 state.update_filter(num, den);
 
                 self.input_latency = state.filt_len / 2;
-                self.output_latency = (input_latency * den + (num >> 1)) / num;
             }
             self.ratio = ratio;
         }
     }
-
-    /*/// Get the number of audio [`Frame`](crate::Frame)s needed to input before
-    /// the stream can output.
-    #[inline(always)]
-    pub fn input_latency(&self) -> usize {
-        self.input_latency.try_into().unwrap()
-    }
-
-    /// Get the number of audio [`Frame`](crate::Frame)s the output is behind
-    /// the input frames.
-    #[inline(always)]
-    pub fn output_latency(&self) -> usize {
-        self.output_latency.try_into().unwrap()
-    }*/
 
     /// Flush audio to sink and end stream.
     pub fn flush<Ch, S>(mut self, sink: S)
@@ -147,9 +120,10 @@ impl<const CH: usize> Stream<CH> {
         }
 
         // Resample and output audio to sink.
+        let len = sink.len();
         self.resample_audio(
             sink,
-            self.output_latency.try_into().unwrap(),
+            len,
             self.input_latency,
         );
     }
