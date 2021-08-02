@@ -97,6 +97,10 @@ impl<const CH: usize> Stream<CH> {
         Ch: Channel,
         S: Sink<Ch, CH>,
     {
+        if self.channels[0].state.started == 0 {
+            return;
+        }
+
         // Generate silence.
         for chan in 0..CH {
             self.channels[chan].input.clear();
