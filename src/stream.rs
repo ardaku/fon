@@ -112,8 +112,41 @@ impl<const CH: usize> Stream<CH> {
         }
 
         // Resample and output audio to sink.
-        let len = sink.len();
-        self.resample_audio(sink, len, self.input_latency);
+        self.resample_audio(sink);
+    }
+
+    /// Pipe audio through this stream, and out to the sink.
+    ///
+    /// Similar to [`Stream::pipe()`](crate::Stream::pipe), except writes
+    /// directly to de-interleaved buffers.  You should only use this method if
+    /// you need a speed-up when working directly with hardware.
+    pub fn pipe_raw<Ch, S, F>(&mut self, len: usize, audio_fn: F, sink: S)
+    where
+        Ch: Channel,
+        S: Sink<Ch, CH>,
+        F: Fn([&mut [f32]; 8]),
+    {
+        // Make sure all input channels are the same requested length.
+        for channel in self.channels.iter_mut() {
+            channel.input.resize(len, 0.0);
+        }
+        // Use user-specified function to write to each input buffer.
+        let mut buffers = [
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+        ];
+        for (channel, i) in self.channels.iter_mut().zip(buffers.iter_mut()) {
+            *i = channel.input.as_mut_slice();
+        }
+        (audio_fn)(buffers);
+        // Resample from the input buffer -> sink.
+        self.resample_audio(sink);
     }
 
     /// Pipe audio through this stream, and out to the sink.
@@ -132,7 +165,9 @@ impl<const CH: usize> Stream<CH> {
         assert_eq!(sink.sample_rate().get(), self.output_sample_rate);
 
         // If sample rates match, do a copy (faster than resampling).
-        if self.channels[0].state.started == 0 && sink.sample_rate() == audio.sample_rate() {
+        if self.channels[0].state.started == 0
+            && sink.sample_rate() == audio.sample_rate()
+        {
             sink.sink_with(audio.iter().cloned().map(|x| x.to()));
             return;
         }
@@ -142,8 +177,6 @@ impl<const CH: usize> Stream<CH> {
             self.source_hz(audio.sample_rate());
         }
 
-        // Get the output length from the sink.
-        let len = sink.len();
         // First, de-interleave input audio data into f32 buffer.
         let converted = Audio::<Ch32, CH>::with_frames(
             audio.sample_rate().get(),
@@ -165,33 +198,24 @@ impl<const CH: usize> Stream<CH> {
         }
 
         // Next, allocate space for output channels and resample.
-        self.resample_audio(sink, len, audio.len() as u32);
+        self.resample_audio(sink);
     }
 
-    fn resample_audio<Ch, S>(
-        &mut self,
-        mut sink: S,
-        len: usize,
-        input_samples: u32,
-    ) where
+    fn resample_audio<Ch, S>(&mut self, mut sink: S)
+    where
         Ch: Channel,
         S: Sink<Ch, CH>,
     {
-        let mut out = 0;
+        let mut out = u32::MAX;
 
         // Allocate space for output channels and resample
         for chan in 0..CH {
-            self.channels[chan].output.resize(len, 0.0);
+            self.channels[chan].output.resize(sink.len(), 0.0);
 
-            let mut in_ = input_samples;
-            out = len as u32;
-
-            debug_assert_eq!(in_, self.channels[chan].input.len() as u32);
-            debug_assert_eq!(out, self.channels[chan].output.len() as u32);
-
+            // FIXME: Remove length parameters, return number of output samples.
             self.channels[chan].state.process_float(
                 self.channels[chan].input.as_slice(),
-                &mut in_,
+                &mut (self.channels[chan].input.len() as u32),
                 self.channels[chan].output.as_mut_slice(),
                 &mut out,
                 self.ratio.1,

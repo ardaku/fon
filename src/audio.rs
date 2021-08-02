@@ -69,7 +69,7 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
     where
         Ch: Channel,
         Ch32: From<Ch>,
-        Chan: From<Ch>
+        Chan: From<Ch>,
     {
         let rate =
             audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
