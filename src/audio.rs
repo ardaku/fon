@@ -190,27 +190,6 @@ where
     }
 }
 
-/*impl<T, Chan: Channel, const CH: usize> Sink<Chan, CH> for T
-    where T: BorrowMut<Audio<Chan, CH>>
-{
-    #[inline(always)]
-    fn sample_rate(&self) -> u32 {
-        self.borrow().sample_rate
-    }
-
-    #[inline(always)]
-    fn len(&self) -> usize {
-        self.borrow().len()
-    }
-
-    #[inline(always)]
-    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
-        for frame in self.borrow_mut().iter_mut() {
-            *frame = iter.next().unwrap_or_default();
-        }
-    }
-}*/
-
 impl<const CH: usize> Audio<Ch16, CH> {
     /// Construct an `Audio` buffer from an `i16` buffer.
     #[allow(unsafe_code)]
