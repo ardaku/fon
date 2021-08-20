@@ -117,40 +117,6 @@ impl<const CH: usize> Stream<CH> {
 
     /// Pipe audio through this stream, and out to the sink.
     ///
-    /// Similar to [`Stream::pipe()`](crate::Stream::pipe), except writes
-    /// directly to de-interleaved buffers.  You should only use this method if
-    /// you need a speed-up when working directly with hardware.
-    pub fn pipe_raw<Ch, S, F>(&mut self, len: usize, audio_fn: F, sink: S)
-    where
-        Ch: Channel,
-        S: Sink<Ch, CH>,
-        F: Fn([&mut [f32]; 8]),
-    {
-        // Make sure all input channels are the same requested length.
-        for channel in self.channels.iter_mut() {
-            channel.input.resize(len, 0.0);
-        }
-        // Use user-specified function to write to each input buffer.
-        let mut buffers = [
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-            &mut [][..],
-        ];
-        for (channel, i) in self.channels.iter_mut().zip(buffers.iter_mut()) {
-            *i = channel.input.as_mut_slice();
-        }
-        (audio_fn)(buffers);
-        // Resample from the input buffer -> sink.
-        self.resample_audio(sink);
-    }
-
-    /// Pipe audio through this stream, and out to the sink.
-    ///
     /// If the sink gets full, then no more audio will be written.  If there is
     /// not enough audio then the sink chooses whether or not to fill the rest
     /// of it's buffer with silence.
@@ -201,11 +167,50 @@ impl<const CH: usize> Stream<CH> {
         self.resample_audio(sink);
     }
 
+    /// Pipe audio through this stream, and out to the sink.
+    ///
+    /// Similar to [`Stream::pipe()`](crate::Stream::pipe), except writes
+    /// directly to de-interleaved buffers.  You should only use this method if
+    /// you need a speed-up when working directly with hardware.
+    pub fn pipe_raw<Ch, S, F>(&mut self, len: usize, audio_fn: F, sink: S)
+    where
+        Ch: Channel,
+        S: Sink<Ch, CH>,
+        F: Fn([&mut [f32]; 8]),
+    {
+        // Make sure all input channels are the same requested length.
+        for channel in self.channels.iter_mut() {
+            channel.input.resize(len, 0.0);
+        }
+        // Use user-specified function to write to each input buffer.
+        let mut buffers = [
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+            &mut [][..],
+        ];
+        for (channel, i) in self.channels.iter_mut().zip(buffers.iter_mut()) {
+            *i = channel.input.as_mut_slice();
+        }
+        (audio_fn)(buffers);
+        // Resample from the input buffer -> sink.
+        self.resample_audio(sink);
+    }
+
     fn resample_audio<Ch, S>(&mut self, mut sink: S)
     where
         Ch: Channel,
         S: Sink<Ch, CH>,
     {
+        // If no input samples, skip doing the work.
+        if self.channels[0].input.is_empty() {
+            return;
+        }
+
         let mut out = u32::MAX;
 
         // Allocate space for output channels and resample
