@@ -138,6 +138,7 @@ impl<const CH: usize> Stream<CH> {
             return;
         }
 
+        // Change source sample rate if it doesn't match.
         if NonZeroU32::new(audio.sample_rate().get()) != self.input_sample_rate
         {
             self.source_hz(audio.sample_rate());
@@ -172,12 +173,17 @@ impl<const CH: usize> Stream<CH> {
     /// Similar to [`Stream::pipe()`](crate::Stream::pipe), except writes
     /// directly to de-interleaved buffers.  You should only use this method if
     /// you need a speed-up when working directly with hardware.
-    pub fn pipe_raw<Ch, S, F>(&mut self, len: usize, audio_fn: F, sink: S)
+    pub fn pipe_raw<Ch, S, F>(&mut self, sample_rate: NonZeroU32, len: usize, audio_fn: F, sink: S)
     where
         Ch: Channel,
         S: Sink<Ch, CH>,
         F: Fn([&mut [f32]; 8]),
     {
+        // Change source sample rate if it doesn't match.
+        if NonZeroU32::new(sample_rate.get()) != self.input_sample_rate {
+            self.source_hz(sample_rate);
+        }
+
         // Make sure all input channels are the same requested length.
         for channel in self.channels.iter_mut() {
             channel.input.resize(len, 0.0);
