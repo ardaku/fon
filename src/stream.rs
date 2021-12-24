@@ -173,8 +173,13 @@ impl<const CH: usize> Stream<CH> {
     /// Similar to [`Stream::pipe()`](crate::Stream::pipe), except writes
     /// directly to de-interleaved buffers.  You should only use this method if
     /// you need a speed-up when working directly with hardware.
-    pub fn pipe_raw<Ch, S, F>(&mut self, sample_rate: NonZeroU32, len: usize, audio_fn: F, sink: S)
-    where
+    pub fn pipe_raw<Ch, S, F>(
+        &mut self,
+        sample_rate: NonZeroU32,
+        len: usize,
+        audio_fn: F,
+        sink: S,
+    ) where
         Ch: Channel,
         S: Sink<Ch, CH>,
         F: Fn([&mut [f32]; 8]),

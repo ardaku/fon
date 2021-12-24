@@ -96,7 +96,7 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
     fn pan_1(mut self, chan: Chan, _x: f32) -> Self {
         const MONO: usize = 0;
 
-        self.0[MONO] = self.0[MONO] + chan;
+        self.0[MONO] += chan;
 
         self
     }
@@ -109,8 +109,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
         // Convert to radians, left is now at 0.
         let x = (x + 0.25) * std::f32::consts::PI;
         // Pan distance
-        self.0[LEFT] = self.0[LEFT] + chan * x.cos().into();
-        self.0[RIGHT] = self.0[RIGHT] + chan * x.sin().into();
+        self.0[LEFT] += chan * x.cos().into();
+        self.0[RIGHT] += chan * x.sin().into();
 
         self
     }
@@ -126,26 +126,26 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Center-Right Speakers
             x if x < 0.25 => {
                 let x = 4.0 * x * FRAC_PI_2;
-                self.0[CENTER] = self.0[CENTER] + chan * x.cos().into();
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.sin().into();
+                self.0[CENTER] += chan * x.cos().into();
+                self.0[RIGHT] += chan * x.sin().into();
             }
             // Right-Center Speakers
             x if x < 0.5 => {
                 let x = 4.0 * (x - 0.25) * FRAC_PI_2;
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.cos().into();
-                self.0[CENTER] = self.0[CENTER] + chan * x.sin().into();
+                self.0[RIGHT] += chan * x.cos().into();
+                self.0[CENTER] += chan * x.sin().into();
             }
             // Center-Left Speakers
             x if x < 0.75 => {
                 let x = 4.0 * (x - 0.50) * FRAC_PI_2;
-                self.0[CENTER] = self.0[CENTER] + chan * x.cos().into();
-                self.0[LEFT] = self.0[LEFT] + chan * x.sin().into();
+                self.0[CENTER] += chan * x.cos().into();
+                self.0[LEFT] += chan * x.sin().into();
             }
             // Left-Center Speakers
             x => {
                 let x = 4.0 * (x - 0.75) * FRAC_PI_2;
-                self.0[LEFT] = self.0[LEFT] + chan * x.cos().into();
-                self.0[CENTER] = self.0[CENTER] + chan * x.sin().into();
+                self.0[LEFT] += chan * x.cos().into();
+                self.0[CENTER] += chan * x.sin().into();
             }
         }
 
@@ -164,26 +164,26 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Front Left - Front Right Speakers (60° slice)
             x if x < 60.0 / 360.0 => {
                 let x = (360.0 / 60.0) * x * FRAC_PI_2;
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.cos().into();
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.sin().into();
+                self.0[FRONT_L] += chan * x.cos().into();
+                self.0[FRONT_R] += chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 140.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 60.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.cos().into();
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.sin().into();
+                self.0[FRONT_R] += chan * x.cos().into();
+                self.0[SURROUND_R] += chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 280.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 140.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.cos().into();
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.sin().into();
+                self.0[SURROUND_R] += chan * x.cos().into();
+                self.0[SURROUND_L] += chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x => {
                 let x = (360.0 / 80.0) * (x - 280.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.cos().into();
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.sin().into();
+                self.0[SURROUND_L] += chan * x.cos().into();
+                self.0[FRONT_L] += chan * x.sin().into();
             }
         }
 
@@ -202,32 +202,32 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                self.0[FRONT] = self.0[FRONT] + chan * x.cos().into();
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.sin().into();
+                self.0[FRONT] += chan * x.cos().into();
+                self.0[FRONT_R] += chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 110.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.cos().into();
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.sin().into();
+                self.0[FRONT_R] += chan * x.cos().into();
+                self.0[SURROUND_R] += chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 250.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.cos().into();
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.sin().into();
+                self.0[SURROUND_R] += chan * x.cos().into();
+                self.0[SURROUND_L] += chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.cos().into();
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.sin().into();
+                self.0[SURROUND_L] += chan * x.cos().into();
+                self.0[FRONT_L] += chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.cos().into();
-                self.0[FRONT] = self.0[FRONT] + chan * x.sin().into();
+                self.0[FRONT_L] += chan * x.cos().into();
+                self.0[FRONT] += chan * x.sin().into();
             }
         }
 
@@ -247,32 +247,32 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                self.0[FRONT] = self.0[FRONT] + chan * x.cos().into();
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.sin().into();
+                self.0[FRONT] += chan * x.cos().into();
+                self.0[FRONT_R] += chan * x.sin().into();
             }
             // Front Right - Back Right Speakers (80° slice)
             x if x < 110.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.cos().into();
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.sin().into();
+                self.0[FRONT_R] += chan * x.cos().into();
+                self.0[SURROUND_R] += chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (140° slice)
             x if x < 250.0 / 360.0 => {
                 let x = (360.0 / 140.0) * (x - 110.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_R] = self.0[SURROUND_R] + chan * x.cos().into();
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.sin().into();
+                self.0[SURROUND_R] += chan * x.cos().into();
+                self.0[SURROUND_L] += chan * x.sin().into();
             }
             // Back Left - Front Left Speakers (80° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 80.0) * (x - 250.0 / 360.0) * FRAC_PI_2;
-                self.0[SURROUND_L] = self.0[SURROUND_L] + chan * x.cos().into();
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.sin().into();
+                self.0[SURROUND_L] += chan * x.cos().into();
+                self.0[FRONT_L] += chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.cos().into();
-                self.0[FRONT] = self.0[FRONT] + chan * x.sin().into();
+                self.0[FRONT_L] += chan * x.cos().into();
+                self.0[FRONT] += chan * x.sin().into();
             }
         }
 
@@ -293,38 +293,38 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                self.0[FRONT] = self.0[FRONT] + chan * x.cos().into();
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.sin().into();
+                self.0[FRONT] += chan * x.cos().into();
+                self.0[FRONT_R] += chan * x.sin().into();
             }
             // Front Right - Side Right Speakers (60° slice)
             x if x < 90.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.cos().into();
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.sin().into();
+                self.0[FRONT_R] += chan * x.cos().into();
+                self.0[RIGHT] += chan * x.sin().into();
             }
             // Side Right - Back Speakers (90° slice)
             x if x < 180.0 / 360.0 => {
                 let x = (360.0 / 90.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.cos().into();
-                self.0[BACK] = self.0[BACK] + chan * x.sin().into();
+                self.0[RIGHT] += chan * x.cos().into();
+                self.0[BACK] += chan * x.sin().into();
             }
             // Back - Side Left Speakers (90° slice)
             x if x < 270.0 / 360.0 => {
                 let x = (360.0 / 90.0) * (x - 180.0 / 360.0) * FRAC_PI_2;
-                self.0[BACK] = self.0[BACK] + chan * x.cos().into();
-                self.0[LEFT] = self.0[LEFT] + chan * x.sin().into();
+                self.0[BACK] += chan * x.cos().into();
+                self.0[LEFT] += chan * x.sin().into();
             }
             // Side Left - Front Left Speakers (60° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                self.0[LEFT] = self.0[LEFT] + chan * x.cos().into();
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.sin().into();
+                self.0[LEFT] += chan * x.cos().into();
+                self.0[FRONT_L] += chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.cos().into();
-                self.0[FRONT] = self.0[FRONT] + chan * x.sin().into();
+                self.0[FRONT_L] += chan * x.cos().into();
+                self.0[FRONT] += chan * x.sin().into();
             }
         }
 
@@ -346,44 +346,44 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
             // Front Center - Front Right Speakers (30° slice)
             x if x < 30.0 / 360.0 => {
                 let x = (360.0 / 30.0) * x * FRAC_PI_2;
-                self.0[FRONT] = self.0[FRONT] + chan * x.cos().into();
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.sin().into();
+                self.0[FRONT] += chan * x.cos().into();
+                self.0[FRONT_R] += chan * x.sin().into();
             }
             // Front Right - Side Right Speakers (60° slice)
             x if x < 90.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 30.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_R] = self.0[FRONT_R] + chan * x.cos().into();
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.sin().into();
+                self.0[FRONT_R] += chan * x.cos().into();
+                self.0[RIGHT] += chan * x.sin().into();
             }
             // Side Right - Back Right Speakers (60° slice)
             x if x < 150.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 90.0 / 360.0) * FRAC_PI_2;
-                self.0[RIGHT] = self.0[RIGHT] + chan * x.cos().into();
-                self.0[BACK_R] = self.0[BACK_R] + chan * x.sin().into();
+                self.0[RIGHT] += chan * x.cos().into();
+                self.0[BACK_R] += chan * x.sin().into();
             }
             // Back Right - Back Left Speakers (60° slice)
             x if x < 210.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 150.0 / 360.0) * FRAC_PI_2;
-                self.0[BACK_R] = self.0[BACK_R] + chan * x.cos().into();
-                self.0[BACK_L] = self.0[BACK_L] + chan * x.sin().into();
+                self.0[BACK_R] += chan * x.cos().into();
+                self.0[BACK_L] += chan * x.sin().into();
             }
             // Back Left - Side Left Speakers (60° slice)
             x if x < 270.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 210.0 / 360.0) * FRAC_PI_2;
-                self.0[BACK_L] = self.0[BACK_L] + chan * x.cos().into();
-                self.0[LEFT] = self.0[LEFT] + chan * x.sin().into();
+                self.0[BACK_L] += chan * x.cos().into();
+                self.0[LEFT] += chan * x.sin().into();
             }
             // Side Left - Front Left Speakers (60° slice)
             x if x < 330.0 / 360.0 => {
                 let x = (360.0 / 60.0) * (x - 270.0 / 360.0) * FRAC_PI_2;
-                self.0[LEFT] = self.0[LEFT] + chan * x.cos().into();
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.sin().into();
+                self.0[LEFT] += chan * x.cos().into();
+                self.0[FRONT_L] += chan * x.sin().into();
             }
             // Front Left - Center Speakers (30° slice)
             x => {
                 let x = (360.0 / 30.0) * (x - 330.0 / 360.0) * FRAC_PI_2;
-                self.0[FRONT_L] = self.0[FRONT_L] + chan * x.cos().into();
-                self.0[FRONT] = self.0[FRONT] + chan * x.sin().into();
+                self.0[FRONT_L] += chan * x.cos().into();
+                self.0[FRONT] += chan * x.sin().into();
             }
         }
 
@@ -731,7 +731,7 @@ impl<Chan: Channel, const CH: usize> Add for Frame<Chan, CH> {
     #[inline(always)]
     fn add(mut self, other: Self) -> Self {
         for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-            *a = *a + *b;
+            *a += *b;
         }
         self
     }
@@ -743,7 +743,7 @@ impl<Chan: Channel, const CH: usize> Sub for Frame<Chan, CH> {
     #[inline(always)]
     fn sub(mut self, other: Self) -> Self {
         for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-            *a = *a - *b;
+            *a -= *b;
         }
         self
     }
@@ -755,7 +755,7 @@ impl<Chan: Channel, const CH: usize> Mul for Frame<Chan, CH> {
     #[inline(always)]
     fn mul(mut self, other: Self) -> Self {
         for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-            *a = *a * *b;
+            *a *= *b;
         }
         self
     }

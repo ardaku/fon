@@ -628,7 +628,7 @@ fn speex_resampler_magic(
             .take(st.magic_samples as usize)
             .for_each(|(x, &y)| *x = y);
     }
-    let value: &mut [f32] = mem::replace(out, &mut []);
+    let value: &mut [f32] = mem::take(out);
     *out = &mut value[(out_len as u32) as usize..];
     out_len
 }

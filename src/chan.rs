@@ -13,7 +13,7 @@
 
 use crate::private::Sealed;
 use core::fmt::Debug;
-use core::ops::{Add, Mul, Neg, Sub};
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Component of a speaker configuration, such as *front left*, *lfe*, *etc*.
 pub trait Channel:
@@ -24,8 +24,11 @@ pub trait Channel:
     + From<f32>
     + PartialOrd
     + Add<Output = Self>
+    + AddAssign
     + Sub<Output = Self>
+    + SubAssign
     + Mul<Output = Self>
+    + MulAssign
     + Neg<Output = Self>
     + From<Ch16>
     + From<Ch24>
@@ -449,6 +452,78 @@ impl Neg for Ch64 {
     #[inline(always)]
     fn neg(self) -> Self {
         Self(-self.0)
+    }
+}
+
+impl AddAssign for Ch16 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch24 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch32 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch64 {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for Ch16 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch24 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch32 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch64 {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl MulAssign for Ch16 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch24 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch32 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch64 {
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
     }
 }
 
