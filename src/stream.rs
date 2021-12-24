@@ -9,6 +9,7 @@
 
 use core::mem;
 use core::num::NonZeroU32;
+use alloc::vec::Vec;
 
 use crate::chan::{Ch32, Channel};
 use crate::frame::Frame;

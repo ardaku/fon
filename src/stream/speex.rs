@@ -1,8 +1,13 @@
 // FIXME: Once remove macros, can delete
 #![allow(trivial_casts, trivial_numeric_casts)]
 
+#[cfg(not(test))]
+use crate::math::Libm;
+
 use core::f64::consts::PI;
 use core::mem;
+use alloc::vec;
+use alloc::vec::Vec;
 
 #[derive(Clone)]
 pub(crate) struct ResamplerState {
@@ -317,7 +322,7 @@ impl ResamplerState {
         let use_direct = self.filt_len * den
             <= self.filt_len * self.oversample + 8
             && 2147483647_u64
-                / ::std::mem::size_of::<f32>() as u64
+                / core::mem::size_of::<f32>() as u64
                 / den as u64
                 >= self.filt_len as u64;
 

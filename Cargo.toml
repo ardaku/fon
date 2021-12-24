@@ -25,3 +25,4 @@ categories = ["multimedia::audio", "multimedia", "algorithms", "data-structures"
 include = ["Cargo.toml", "src/*"]
 
 [dependencies]
+libm = "0.2"

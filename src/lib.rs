@@ -78,12 +78,13 @@
 //! [BackL]: crate::pos::BackL
 //! [BackR]: crate::pos::BackR
 
+#![no_std]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
     html_favicon_url = "https://libcala.github.io/icon.svg",
     html_root_url = "https://docs.rs/fon"
 )]
-// #![deny(unsafe_code)]
+#![deny(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -107,6 +108,7 @@ mod frame;
 mod private;
 mod sink;
 mod stream;
+mod math;
 
 pub mod chan;
 

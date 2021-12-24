@@ -7,17 +7,17 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use crate::{
-    chan::{Ch16, Ch24, Ch32, Ch64, Channel},
-    frame::Frame,
-    Sink, Stream,
-};
-use alloc::{
-    boxed::Box,
-    slice::{Iter, IterMut},
-    vec,
-    vec::Vec,
-};
+#[cfg(not(test))]
+use crate::math::Libm;
+
+use crate::chan::{Ch16, Ch24, Ch32, Ch64, Channel};
+use crate::frame::Frame;
+use crate::{Sink, Stream};
+
+use alloc::boxed::Box;
+use alloc::slice::{Iter, IterMut};
+use alloc::{vec, vec::Vec};
+
 use core::borrow::BorrowMut;
 use core::convert::TryInto;
 use core::num::NonZeroU32;
@@ -211,6 +211,7 @@ impl<const CH: usize> Audio<Ch16, CH> {
     }
 
     /// Get view of samples as an `i16` slice.
+    #[allow(unsafe_code)]
     pub fn as_i16_slice(&mut self) -> &mut [i16] {
         let frames = self.as_mut_slice();
         unsafe {
@@ -243,6 +244,7 @@ impl<const CH: usize> Audio<Ch24, CH> {
     }
 
     /// Get view of samples as an `u8` slice.
+    #[allow(unsafe_code)]
     pub fn as_u8_slice(&mut self) -> &mut [u8] {
         let frames = self.as_mut_slice();
         unsafe {
@@ -275,6 +277,7 @@ impl<const CH: usize> Audio<Ch32, CH> {
     }
 
     /// Get view of samples as an `f32` slice.
+    #[allow(unsafe_code)]
     pub fn as_f32_slice(&mut self) -> &mut [f32] {
         let frames = self.as_mut_slice();
         unsafe {
@@ -307,6 +310,7 @@ impl<const CH: usize> Audio<Ch64, CH> {
     }
 
     /// Get view of samples as an `f64` slice.
+    #[allow(unsafe_code)]
     pub fn as_f64_slice(&mut self) -> &mut [f64] {
         let frames = self.as_mut_slice();
         unsafe {

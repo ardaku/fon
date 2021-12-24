@@ -9,6 +9,9 @@
 
 //! Frame (interleaved sample) types
 
+#[cfg(not(test))]
+use crate::math::Libm;
+
 use crate::chan::Channel;
 use core::f32::consts::FRAC_PI_2;
 use core::fmt::Debug;
@@ -107,7 +110,7 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
         const RIGHT: usize = 1;
 
         // Convert to radians, left is now at 0.
-        let x = (x + 0.25) * std::f32::consts::PI;
+        let x = (x + 0.25) * core::f32::consts::PI;
         // Pan distance
         self.0[LEFT] += chan * x.cos().into();
         self.0[RIGHT] += chan * x.sin().into();
