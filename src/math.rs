@@ -182,11 +182,11 @@ mod tests {
         if a != b {
             let c = ((a - b) / a.min(b)).abs();
             if c.is_infinite() {
-                if (a - b).abs() >= 0.000005 {
+                if (a - b).abs() >= 0.000000000000005 {
                     panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
                 }
-            } else if c >= 4.0 / 3.0 {
-                panic!("{} libm powi(x, i) = {} ≠ std powi() = {}", c, a, b);
+            } else if c >= 1.0000005 {
+                panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
             }
         }
     }
@@ -195,11 +195,11 @@ mod tests {
         if a != b {
             let c = ((a - b) / a.min(b)).abs();
             if c.is_infinite() {
-                if (a - b).abs() >= 0.000005 {
+                if (a - b).abs() >= 0.000000000000005 {
                     panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
                 }
-            } else if c >= 4.0 / 3.0 {
-                panic!("{} libm powi(x, i) = {} ≠ std powi() = {}", c, a, b);
+            } else if c >= 0.000000000000005 {
+                panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
             }
         }
     }
