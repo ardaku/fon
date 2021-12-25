@@ -190,7 +190,7 @@ mod tests {
     fn assert_approx_eq_f64(a: f64, b: f64) {
         if a != b {
             let c = (a - b).abs();
-            if c >= 0.000000005 {
+            if c >= 0.00005 {
                 panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
             }
         }
