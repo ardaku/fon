@@ -7,9 +7,9 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
+use alloc::vec::Vec;
 use core::mem;
 use core::num::NonZeroU32;
-use alloc::vec::Vec;
 
 use crate::chan::{Ch32, Channel};
 use crate::frame::Frame;

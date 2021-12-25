@@ -25,36 +25,70 @@ pub(crate) trait Libm: Rem<Output = Self> + Sized {
 
 impl Libm for f32 {
     #[inline(always)]
-    fn sin(self) -> Self { libm::sinf(self) }
+    fn sin(self) -> Self {
+        libm::sinf(self)
+    }
 
     #[inline(always)]
-    fn cos(self) -> Self { libm::cosf(self) }
+    fn cos(self) -> Self {
+        libm::cosf(self)
+    }
 
     #[inline(always)]
-    fn floor(self) -> Self { libm::floorf(self) }
+    fn floor(self) -> Self {
+        libm::floorf(self)
+    }
 
     #[inline(always)]
-    fn ceil(self) -> Self { libm::ceilf(self) }
+    fn ceil(self) -> Self {
+        libm::ceilf(self)
+    }
 
     #[inline(always)]
-    fn abs(self) -> Self { libm::fabsf(self) }
+    fn abs(self) -> Self {
+        libm::fabsf(self)
+    }
 
     #[inline(always)]
-    fn trunc(self) -> Self { libm::truncf(self) }
+    fn trunc(self) -> Self {
+        libm::truncf(self)
+    }
 
     #[inline(always)]
-    fn powi(self, n: i32) -> Self {
-        let mut val = 1.0;
-        for _ in 0..n {
-            val *= self;
+    fn powi(mut self, n: i32) -> Self {
+        match n {
+            0 => 1.0,
+            i32::MIN => self.powi(i32::MAX) * self,
+            x if x < 0 => self.recip().powi(n.wrapping_neg()),
+            mut exp => {
+                while exp & 1 == 0 {
+                    self *= self;
+                    exp >>= 1;
+                }
+                if exp == 1 {
+                    return self;
+                }
+                let mut acc = self;
+                while exp > 1 {
+                    exp >>= 1;
+                    self *= self;
+                    if exp & 1 == 1 {
+                        acc *= self;
+                    }
+                }
+                acc
+            }
         }
-        val
     }
 
     #[inline(always)]
     fn rem_euclid(self, rhs: Self) -> Self {
         let r = self % rhs;
-        if r < 0.0 { r + rhs.abs() } else { r }
+        if r < 0.0 {
+            r + rhs.abs()
+        } else {
+            r
+        }
     }
 
     #[inline(always)]
@@ -65,36 +99,70 @@ impl Libm for f32 {
 
 impl Libm for f64 {
     #[inline(always)]
-    fn sin(self) -> Self { libm::sin(self) }
+    fn sin(self) -> Self {
+        libm::sin(self)
+    }
 
     #[inline(always)]
-    fn cos(self) -> Self { libm::cos(self) }
+    fn cos(self) -> Self {
+        libm::cos(self)
+    }
 
     #[inline(always)]
-    fn floor(self) -> Self { libm::floor(self) }
+    fn floor(self) -> Self {
+        libm::floor(self)
+    }
 
     #[inline(always)]
-    fn ceil(self) -> Self { libm::ceil(self) }
+    fn ceil(self) -> Self {
+        libm::ceil(self)
+    }
 
     #[inline(always)]
-    fn abs(self) -> Self { libm::fabs(self) }
+    fn abs(self) -> Self {
+        libm::fabs(self)
+    }
 
     #[inline(always)]
-    fn trunc(self) -> Self { libm::trunc(self) }
+    fn trunc(self) -> Self {
+        libm::trunc(self)
+    }
 
     #[inline(always)]
-    fn powi(self, n: i32) -> Self {
-        let mut val = 1.0;
-        for _ in 0..n {
-            val *= self;
+    fn powi(mut self, n: i32) -> Self {
+        match n {
+            0 => 1.0,
+            i32::MIN => self.powi(i32::MAX) * self,
+            x if x < 0 => self.recip().powi(n.wrapping_neg()),
+            mut exp => {
+                while exp & 1 == 0 {
+                    self *= self;
+                    exp >>= 1;
+                }
+                if exp == 1 {
+                    return self;
+                }
+                let mut acc = self;
+                while exp > 1 {
+                    exp >>= 1;
+                    self *= self;
+                    if exp & 1 == 1 {
+                        acc *= self;
+                    }
+                }
+                acc
+            }
         }
-        val
     }
 
     #[inline(always)]
     fn rem_euclid(self, rhs: Self) -> Self {
         let r = self % rhs;
-        if r < 0.0 { r + rhs.abs() } else { r }
+        if r < 0.0 {
+            r + rhs.abs()
+        } else {
+            r
+        }
     }
 
     #[inline(always)]
@@ -110,20 +178,43 @@ mod tests {
     use core::f32::consts::PI as PI_F32;
     use core::f64::consts::PI as PI_F64;
 
-    const EPS32: f32 = 0.000016;
-    const EPS64: f64 = 0.000016;
+    fn assert_approx_eq_f32(a: f32, b: f32) {
+        if a != b {
+            let c = (a - b).abs();
+            if c >= 4.0 / 3.0 {
+                panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
+            }
+        }
+    }
+
+    fn assert_approx_eq_f64(a: f64, b: f64) {
+        if a != b {
+            let c = (a - b).abs();
+            if c >= 0.000000005 {
+                panic!("libm powi(x, i) = {} ≠ std powi() = {}", a, b);
+            }
+        }
+    }
 
     #[test]
     fn powi() {
         for x in [0.0, 1.0, 1.5, -0.4, -1000.09301, 564.33333, PI_F64] {
-            for i in 0..5 {
-                assert_eq!((Libm::powi(x, i) - f64::powi(x, i)).abs().max(EPS64), EPS64);
+            // fon implementation has slightly more accurate results for neg.
+            for i in -16..0 {
+                assert_approx_eq_f64(Libm::powi(x, i), f64::powi(x, i));
+            }
+            for i in 0..16 {
+                assert_eq!(Libm::powi(x, i), f64::powi(x, i));
             }
         }
 
         for x in [0.0, 1.0, 1.5, -0.4, -1000.09301, 564.33333, PI_F32] {
-            for i in 0..5 {
-                assert_eq!((Libm::powi(x, i) - f32::powi(x, i)).abs().max(EPS32), EPS32);
+            // fon implementation has slightly more accurate results for neg.
+            for i in -16..0 {
+                assert_approx_eq_f32(Libm::powi(x, i), f32::powi(x, i));
+            }
+            for i in 0..16 {
+                assert_eq!(Libm::powi(x, i), f32::powi(x, i));
             }
         }
     }
@@ -135,7 +226,7 @@ mod tests {
                 assert_eq!(Libm::rem_euclid(x, y), f64::rem_euclid(x, y));
             }
         }
-        
+
         for x in [0.0, 1.0, 1.5, -0.4, -1000.09301, 564.33333, PI_F32] {
             for y in [3.0, 0.0001, 100.0, -5.0, -0.00001, -250.0] {
                 assert_eq!(Libm::rem_euclid(x, y), f32::rem_euclid(x, y));

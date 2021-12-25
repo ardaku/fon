@@ -105,10 +105,10 @@ extern crate alloc;
 
 mod audio;
 mod frame;
+mod math;
 mod private;
 mod sink;
 mod stream;
-mod math;
 
 pub mod chan;
 
