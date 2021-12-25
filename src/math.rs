@@ -199,22 +199,16 @@ mod tests {
     #[test]
     fn powi() {
         for x in [0.0, 1.0, 1.5, -0.4, -1000.09301, 564.33333, PI_F64] {
-            // fon implementation has slightly more accurate results for neg.
-            for i in -16..0 {
+            //std implementation has slightly different results across platforms
+            for i in -16..16 {
                 assert_approx_eq_f64(Libm::powi(x, i), f64::powi(x, i));
-            }
-            for i in 0..16 {
-                assert_eq!(Libm::powi(x, i), f64::powi(x, i));
             }
         }
 
         for x in [0.0, 1.0, 1.5, -0.4, -1000.09301, 564.33333, PI_F32] {
-            // fon implementation has slightly more accurate results for neg.
-            for i in -16..0 {
+            //std implementation has slightly different results across platforms
+            for i in -16..16 {
                 assert_approx_eq_f32(Libm::powi(x, i), f32::powi(x, i));
-            }
-            for i in 0..16 {
-                assert_eq!(Libm::powi(x, i), f32::powi(x, i));
             }
         }
     }
