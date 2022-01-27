@@ -1,4 +1,4 @@
-// Copyright © 2020-2021 The Fon Contributors.
+// Copyright © 2020-2022 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
