@@ -1,5 +1,4 @@
-// Fon
-// Copyright © 2020-2021 Jeron Aldaron Lau.
+// Copyright © 2020-2021 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -8,42 +7,43 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-//! Audio channels (left, right, etc. samples that make up each audio
-//! [`Frame`](crate::Frame))
+//! Audio channels (left, right, etc.).  Each channel contains a single sample.
+//!
+//! An audio [`Frame`](crate::frame::Frame) is used to group multiple channels.
 
-use crate::{math, private::Sealed};
-use core::{
-    fmt::Debug,
-    ops::{
-        Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign,
-    },
-};
+#[cfg(not(test))]
+use crate::math::Libm;
+
+use crate::private::Sealed;
+use core::fmt::Debug;
+use core::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Component of a speaker configuration, such as *front left*, *lfe*, *etc*.
 pub trait Channel:
     Copy
+    + Clone
     + Debug
     + Default
+    + From<f32>
     + PartialOrd
     + Add<Output = Self>
-    + Div<Output = Self>
-    + Mul<Output = Self>
-    + Sub<Output = Self>
-    + Neg<Output = Self>
     + AddAssign
+    + Sub<Output = Self>
     + SubAssign
-    + DivAssign
+    + Mul<Output = Self>
     + MulAssign
-    + Sealed
-    + Unpin
-    + From<Ch8>
+    + Neg<Output = Self>
     + From<Ch16>
+    + From<Ch24>
     + From<Ch32>
     + From<Ch64>
-    + Into<Ch8>
     + Into<Ch16>
+    + Into<Ch24>
     + Into<Ch32>
     + Into<Ch64>
+    + Sealed
+    + Unpin
+    + Sized
     + 'static
 {
     /// Minimum value (*negative one*)
@@ -55,11 +55,8 @@ pub trait Channel:
     /// Maximum value (*one*)
     const MAX: Self;
 
-    /// Convert to `f64`
-    fn to_f64(self) -> f64;
-
-    /// Convert from `f64`
-    fn from_f64(from: f64) -> Self;
+    /// Convert to `f32`
+    fn to_f32(self) -> f32;
 
     /// Linear interpolation
     #[inline(always)]
@@ -68,263 +65,83 @@ pub trait Channel:
     }
 }
 
-/// 8-bit sample [Channel](Channel).
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
-#[repr(transparent)]
-pub struct Ch8(i8);
-
 /// 16-bit sample [Channel](Channel).
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Ch16(i16);
 
-/// 32-bit sample [Channel](Channel).
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct Ch32(f32);
+impl Channel for Ch16 {
+    const MIN: Ch16 = Ch16(-32_768);
+    const MID: Ch16 = Ch16(0);
+    const MAX: Ch16 = Ch16(32_767);
 
-/// 64-bit sample [Channel](Channel).
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct Ch64(f64);
-
-impl Eq for Ch32 {}
-
-impl Eq for Ch64 {}
-
-impl Ch8 {
-    /// Create a new 8-bit [`Channel`](Channel) value.
     #[inline(always)]
-    pub fn new(value: i8) -> Self {
-        Ch8(value)
+    fn to_f32(self) -> f32 {
+        (f32::from(self.0) + 0.5) * 32_767.5_f32.recip()
     }
 }
 
 impl Ch16 {
     /// Create a new 16-bit [`Channel`](Channel) value.
     #[inline(always)]
-    pub fn new(value: i16) -> Self {
-        Ch16(value)
+    pub const fn new(value: i16) -> Self {
+        Self(value)
     }
 }
 
-impl Ch32 {
-    /// Create a new 32-bit [`Channel`](Channel) value.
+impl From<f32> for Ch16 {
     #[inline(always)]
-    pub fn new(value: f32) -> Self {
-        Ch32(value.min(1.0).max(-1.0))
+    fn from(value: f32) -> Self {
+        Self::new((value.clamp(-1.0, 1.0) * 32_767.5).floor() as i16)
     }
 }
 
-impl Ch64 {
-    /// Create a new 64-bit [`Channel`](Channel) value.
+impl From<Ch24> for Ch16 {
     #[inline(always)]
-    pub fn new(value: f64) -> Self {
-        Ch64(value.min(1.0).max(-1.0))
+    fn from(ch: Ch24) -> Self {
+        Self::new(ch.0)
     }
 }
 
-impl From<i8> for Ch8 {
+impl From<Ch32> for Ch16 {
     #[inline(always)]
-    fn from(value: i8) -> Self {
-        Ch8(value)
+    fn from(ch: Ch32) -> Self {
+        Self::from(ch.0)
     }
 }
 
-impl From<Ch8> for i8 {
+impl From<Ch64> for Ch16 {
     #[inline(always)]
-    fn from(c: Ch8) -> i8 {
-        c.0
-    }
-}
-
-impl From<i16> for Ch16 {
-    #[inline(always)]
-    fn from(value: i16) -> Self {
-        Ch16(value)
+    fn from(ch: Ch64) -> Self {
+        Self::from(ch.0 as f32)
     }
 }
 
 impl From<Ch16> for i16 {
     #[inline(always)]
-    fn from(c: Ch16) -> i16 {
-        c.0
+    fn from(ch: Ch16) -> i16 {
+        ch.0
     }
 }
 
-impl From<f32> for Ch32 {
-    #[inline(always)]
-    fn from(value: f32) -> Self {
-        Self(value.min(1.0).max(-1.0))
-    }
-}
-
-impl From<Ch32> for f32 {
-    #[inline(always)]
-    fn from(c: Ch32) -> f32 {
-        c.0
-    }
-}
-
-impl From<Ch64> for f64 {
-    #[inline(always)]
-    fn from(c: Ch64) -> f64 {
-        c.0
-    }
-}
-
-// test: ch8_arith()
-impl<R: Into<Self>> Sub<R> for Ch8 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn sub(self, rhs: R) -> Self {
-        Self(self.0.saturating_sub(rhs.into().0))
-    }
-}
-
-// test: ch16_arith()
-impl<R: Into<Self>> Sub<R> for Ch16 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn sub(self, rhs: R) -> Self {
-        Self(self.0.saturating_sub(rhs.into().0))
-    }
-}
-
-// test: ch32_arith()
-impl<R: Into<Self>> Sub<R> for Ch32 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn sub(self, rhs: R) -> Self {
-        Self((self.0 - rhs.into().0).min(1.0).max(-1.0))
-    }
-}
-
-// test: ch64_arith()
-impl<R: Into<Self>> Sub<R> for Ch64 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn sub(self, rhs: R) -> Self {
-        Self((self.0 - rhs.into().0).min(1.0).max(-1.0))
-    }
-}
-
-// test: ch8_arith()
-impl<R: Into<Self>> Add<R> for Ch8 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn add(self, rhs: R) -> Self {
-        Self(self.0.saturating_add(rhs.into().0))
-    }
-}
-
-// test: ch16_arith()
 impl<R: Into<Self>> Add<R> for Ch16 {
     type Output = Self;
 
     #[inline(always)]
     fn add(self, rhs: R) -> Self {
-        Self(self.0.saturating_add(rhs.into().0))
+        Self::new(i16::from(self).saturating_add(i16::from(rhs.into())))
     }
 }
 
-// test: ch32_arith()
-impl<R: Into<Self>> Add<R> for Ch32 {
+impl<R: Into<Self>> Sub<R> for Ch16 {
     type Output = Self;
 
     #[inline(always)]
-    fn add(self, rhs: R) -> Self {
-        let value = self.0 + rhs.into().0;
-        Self(value.min(1.0).max(-1.0))
+    fn sub(self, rhs: R) -> Self {
+        Self::new(i16::from(self).saturating_sub(i16::from(rhs.into())))
     }
 }
 
-// test: ch64_arith()
-impl<R: Into<Self>> Add<R> for Ch64 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn add(self, rhs: R) -> Self {
-        let value = self.0 + rhs.into().0;
-        Self(value.min(1.0).max(-1.0))
-    }
-}
-
-// test: ch8_arith()
-impl<R: Into<Self>> Div<R> for Ch8 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn div(self, rhs: R) -> Self {
-        let rhs = rhs.into().0;
-        if rhs != 0 {
-            let ss = i32::from(self.0) << 8;
-            let rr = i32::from(rhs);
-            let value = (ss / rr).min(127).max(-128) as i8;
-            Self(value)
-        } else {
-            Self::MAX
-        }
-    }
-}
-
-// test: ch16_arith()
-impl<R: Into<Self>> Div<R> for Ch16 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn div(self, rhs: R) -> Self {
-        let rhs = rhs.into().0;
-        if rhs != 0 {
-            let ss = i32::from(self.0) << 16;
-            let rr = i32::from(rhs);
-            let value = (ss / rr).min(i16::MAX.into()).max(i16::MIN.into());
-            Self(value as i16)
-        } else {
-            Self::MAX
-        }
-    }
-}
-
-// test: ch32_arith()
-impl<R: Into<Self>> Div<R> for Ch32 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn div(self, rhs: R) -> Self {
-        Self((self.0 / rhs.into().0).min(1.0).max(-1.0))
-    }
-}
-
-// test: ch64_arith()
-impl<R: Into<Self>> Div<R> for Ch64 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn div(self, rhs: R) -> Self {
-        Self((self.0 / rhs.into().0).min(1.0).max(-1.0))
-    }
-}
-
-// test: ch8_arith()
-impl<R: Into<Self>> Mul<R> for Ch8 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn mul(self, rhs: R) -> Self {
-        let l = i16::from(self.0);
-        let r = i16::from(rhs.into().0);
-        let v = (l * r) / 127;
-        Self(v.min(127) as i8)
-    }
-}
-
-// test: ch16_arith()
 impl<R: Into<Self>> Mul<R> for Ch16 {
     type Output = Self;
 
@@ -332,366 +149,396 @@ impl<R: Into<Self>> Mul<R> for Ch16 {
     fn mul(self, rhs: R) -> Self {
         let l = i32::from(self.0);
         let r = i32::from(rhs.into().0);
-        let v = (l * r) / 32767;
-        Self(v.min(32767) as i16)
+        let v = (l * r) / 32_767;
+        Self::new(v.max(-32_768).min(32_767) as i16)
     }
 }
 
-// test: ch32_arith()
-impl<R: Into<Self>> Mul<R> for Ch32 {
+impl Neg for Ch16 {
+    type Output = Ch16;
+
+    #[inline(always)]
+    fn neg(self) -> Self {
+        Self::new((u16::MAX - i16::from(self) as u16) as i16)
+    }
+}
+
+/// 24-bit sample [Channel](Channel).
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(C, packed)]
+pub struct Ch24(i16, u8);
+
+impl Channel for Ch24 {
+    const MIN: Ch24 = Ch24::new(-8_388_608);
+    const MID: Ch24 = Ch24::new(0);
+    const MAX: Ch24 = Ch24::new(8_388_607);
+
+    #[inline(always)]
+    fn to_f32(self) -> f32 {
+        (i32::from(self) as f32 + 0.5) * 8_388_607.5_f32.recip()
+    }
+}
+
+impl Ch24 {
+    /// Create a new 24-bit [`Channel`](Channel) value.
+    #[inline(always)]
+    pub const fn new(value: i32) -> Self {
+        let value = if value < -8_388_608 {
+            -8_388_608
+        } else if value > 8_388_607 {
+            8_388_607
+        } else {
+            value
+        };
+        Self((value >> 8) as i16, value as u8)
+    }
+}
+
+impl From<f32> for Ch24 {
+    #[inline(always)]
+    fn from(value: f32) -> Self {
+        Self::new((value.clamp(-1.0, 1.0) * 8_388_607.5).floor() as i32)
+    }
+}
+
+impl From<Ch16> for Ch24 {
+    #[inline(always)]
+    fn from(ch: Ch16) -> Self {
+        Self(i16::from(ch), (i16::from(ch) >> 8) as u8 ^ 0b1000_0000)
+    }
+}
+
+impl From<Ch32> for Ch24 {
+    #[inline(always)]
+    fn from(ch: Ch32) -> Self {
+        Self::from(ch.0)
+    }
+}
+
+impl From<Ch64> for Ch24 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> Self {
+        Self::from(ch.0 as f32)
+    }
+}
+
+impl From<Ch24> for i32 {
+    #[inline(always)]
+    fn from(ch: Ch24) -> i32 {
+        ((ch.0 as i32) << 8) | ch.1 as i32
+    }
+}
+
+impl<R: Into<Self>> Add<R> for Ch24 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        Self::new(i32::from(self) + i32::from(rhs.into()))
+    }
+}
+
+impl<R: Into<Self>> Sub<R> for Ch24 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(self, rhs: R) -> Self {
+        Self::new(i32::from(self) - i32::from(rhs.into()))
+    }
+}
+
+impl<R: Into<Self>> Mul<R> for Ch24 {
     type Output = Self;
 
     #[inline(always)]
     fn mul(self, rhs: R) -> Self {
-        Self(self.0 * rhs.into().0)
+        let l: i64 = i32::from(self).into();
+        let r: i64 = i32::from(rhs.into()).into();
+        let v = (l * r) / 8_388_607;
+        Self::new(v.max(-8_388_608).min(8_388_607) as i32)
     }
 }
 
-// test: ch64_arith()
-impl<R: Into<Self>> Mul<R> for Ch64 {
-    type Output = Self;
+impl Neg for Ch24 {
+    type Output = Ch24;
 
     #[inline(always)]
-    fn mul(self, rhs: R) -> Self {
-        Self(self.0 * rhs.into().0)
+    fn neg(self) -> Self {
+        Self::new((u32::MAX - i32::from(self) as u32) as i32)
     }
 }
 
-// test: See Add
-impl<R: Into<Self>> AddAssign<R> for Ch8 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: R) {
-        *self = *self + rhs.into();
-    }
-}
+/// 32-bit sample [Channel](Channel).
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct Ch32(f32);
 
-// test: See Add
-impl<R: Into<Self>> AddAssign<R> for Ch16 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: R) {
-        *self = *self + rhs.into();
-    }
-}
-
-// test: See Add
-impl<R: Into<Self>> AddAssign<R> for Ch32 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: R) {
-        *self = *self + rhs.into();
-    }
-}
-
-// test: See Add
-impl<R: Into<Self>> AddAssign<R> for Ch64 {
-    #[inline(always)]
-    fn add_assign(&mut self, rhs: R) {
-        *self = *self + rhs.into();
-    }
-}
-
-// test: See Sub
-impl<R: Into<Self>> SubAssign<R> for Ch8 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: R) {
-        *self = *self - rhs.into();
-    }
-}
-
-// test: See Sub
-impl<R: Into<Self>> SubAssign<R> for Ch16 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: R) {
-        *self = *self - rhs.into();
-    }
-}
-
-// test: See Sub
-impl<R: Into<Self>> SubAssign<R> for Ch32 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: R) {
-        *self = *self - rhs.into();
-    }
-}
-
-// test: See Sub
-impl<R: Into<Self>> SubAssign<R> for Ch64 {
-    #[inline(always)]
-    fn sub_assign(&mut self, rhs: R) {
-        *self = *self - rhs.into();
-    }
-}
-
-// test: See Mul
-impl<R: Into<Self>> MulAssign<R> for Ch8 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: R) {
-        *self = *self * rhs.into();
-    }
-}
-
-// test: See Mul
-impl<R: Into<Self>> MulAssign<R> for Ch16 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: R) {
-        *self = *self * rhs.into();
-    }
-}
-
-// test: See Mul
-impl<R: Into<Self>> MulAssign<R> for Ch32 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: R) {
-        *self = *self * rhs.into();
-    }
-}
-
-// test: See Mul
-impl<R: Into<Self>> MulAssign<R> for Ch64 {
-    #[inline(always)]
-    fn mul_assign(&mut self, rhs: R) {
-        *self = *self * rhs.into();
-    }
-}
-
-// test: See Div
-impl<R: Into<Self>> DivAssign<R> for Ch8 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: R) {
-        *self = *self / rhs.into();
-    }
-}
-
-// test: See Div
-impl<R: Into<Self>> DivAssign<R> for Ch16 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: R) {
-        *self = *self / rhs.into();
-    }
-}
-
-// test: See Div
-impl<R: Into<Self>> DivAssign<R> for Ch32 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: R) {
-        *self = *self / rhs.into();
-    }
-}
-
-// test: See Div
-impl<R: Into<Self>> DivAssign<R> for Ch64 {
-    #[inline(always)]
-    fn div_assign(&mut self, rhs: R) {
-        *self = *self / rhs.into();
-    }
-}
-
-// test: all
-impl Channel for Ch8 {
-    const MIN: Ch8 = Ch8(i8::MIN);
-    const MID: Ch8 = Ch8(0);
-    const MAX: Ch8 = Ch8(i8::MAX);
-
-    #[inline(always)]
-    fn to_f64(self) -> f64 {
-        Ch64::from(self).0
-    }
-
-    #[inline(always)]
-    fn from_f64(from: f64) -> Self {
-        Self::from(Ch64::new(from))
-    }
-}
-
-// test: all
-impl Channel for Ch16 {
-    const MIN: Ch16 = Ch16(i16::MIN);
-    const MID: Ch16 = Ch16(0);
-    const MAX: Ch16 = Ch16(i16::MAX);
-
-    #[inline(always)]
-    fn to_f64(self) -> f64 {
-        Ch64::from(self).0
-    }
-
-    #[inline(always)]
-    fn from_f64(from: f64) -> Self {
-        Self::from(Ch64::new(from))
-    }
-}
-
-// test: all
 impl Channel for Ch32 {
     const MIN: Ch32 = Ch32(-1.0);
     const MID: Ch32 = Ch32(0.0);
     const MAX: Ch32 = Ch32(1.0);
 
     #[inline(always)]
-    fn to_f64(self) -> f64 {
-        self.0 as f64
-    }
-
-    #[inline(always)]
-    fn from_f64(from: f64) -> Self {
-        Self(from as f32)
+    fn to_f32(self) -> f32 {
+        self.0
     }
 }
 
-// test: all
+impl Ch32 {
+    /// Create a new 32-bit [`Channel`](Channel) value.
+    #[inline(always)]
+    pub const fn new(value: f32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<f32> for Ch32 {
+    #[inline(always)]
+    fn from(value: f32) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<Ch16> for Ch32 {
+    #[inline(always)]
+    fn from(ch: Ch16) -> Self {
+        Self::new(ch.to_f32())
+    }
+}
+
+impl From<Ch24> for Ch32 {
+    #[inline(always)]
+    fn from(ch: Ch24) -> Self {
+        Self::new(ch.to_f32())
+    }
+}
+
+impl From<Ch64> for Ch32 {
+    #[inline(always)]
+    fn from(ch: Ch64) -> Self {
+        Self::new(ch.to_f32())
+    }
+}
+
+impl From<Ch32> for f32 {
+    #[inline(always)]
+    fn from(ch: Ch32) -> f32 {
+        ch.0
+    }
+}
+
+impl<R: Into<Self>> Add<R> for Ch32 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn add(self, rhs: R) -> Self {
+        Self::new(f32::from(self) + f32::from(rhs.into()))
+    }
+}
+
+impl<R: Into<Self>> Sub<R> for Ch32 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn sub(self, rhs: R) -> Self {
+        Self::new(f32::from(self) - f32::from(rhs.into()))
+    }
+}
+
+impl<R: Into<Self>> Mul<R> for Ch32 {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: R) -> Self {
+        Self::new(f32::from(self) * f32::from(rhs.into()))
+    }
+}
+
+impl Neg for Ch32 {
+    type Output = Ch32;
+
+    #[inline(always)]
+    fn neg(self) -> Self {
+        Self(-f32::from(self))
+    }
+}
+
+/// 64-bit sample [Channel](Channel).
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+#[repr(transparent)]
+pub struct Ch64(f64);
+
 impl Channel for Ch64 {
     const MIN: Ch64 = Ch64(-1.0);
     const MID: Ch64 = Ch64(0.0);
     const MAX: Ch64 = Ch64(1.0);
 
     #[inline(always)]
-    fn to_f64(self) -> f64 {
-        self.0
-    }
-
-    #[inline(always)]
-    fn from_f64(from: f64) -> Self {
-        Self(from)
+    fn to_f32(self) -> f32 {
+        self.0 as f32
     }
 }
 
-// test: ch8_roundtrip()
-impl From<Ch64> for Ch8 {
+impl Ch64 {
+    /// Create a new 32-bit [`Channel`](Channel) value.
     #[inline(always)]
-    fn from(value: Ch64) -> Self {
-        Ch8::new(math::floor_i8(value.0 * 127.5))
+    pub const fn new(value: f64) -> Self {
+        Self(value)
     }
 }
 
-// test: ch16_roundtrip()
-impl From<Ch64> for Ch16 {
+impl From<f32> for Ch64 {
     #[inline(always)]
-    fn from(value: Ch64) -> Self {
-        Ch16::new(math::floor_i16(value.0 * 32767.5))
+    fn from(value: f32) -> Self {
+        Self::new(value as f64)
     }
 }
 
-// test:
-impl From<Ch64> for Ch32 {
-    #[inline(always)]
-    fn from(value: Ch64) -> Self {
-        Ch32::new(value.0 as f32)
-    }
-}
-
-// test: ch8_roundtrip()
-impl From<Ch32> for Ch8 {
-    #[inline(always)]
-    fn from(value: Ch32) -> Self {
-        Ch8::new(math::floorh_i8(value.0 * 127.5))
-    }
-}
-
-// test: ch16_roundtrip()
-impl From<Ch32> for Ch16 {
-    #[inline(always)]
-    fn from(value: Ch32) -> Self {
-        Ch16::new(math::floorh_i16(value.0 * 32767.5))
-    }
-}
-
-// test: ch32_roundtrip()
-impl From<Ch32> for Ch64 {
-    #[inline(always)]
-    fn from(value: Ch32) -> Self {
-        Ch64::new(value.0.into())
-    }
-}
-
-// test: ch16_to_ch8()
-impl From<Ch16> for Ch8 {
-    #[inline(always)]
-    fn from(c: Ch16) -> Self {
-        Ch8::new((c.0 >> 8) as i8)
-    }
-}
-
-// test: ch16_roundtrip()
-impl From<Ch16> for Ch32 {
-    #[inline(always)]
-    fn from(c: Ch16) -> Self {
-        Self((f32::from(c.0) / 32767.5) + (1.0 / 65535.0))
-    }
-}
-
-// test: ch16_roundtrip()
 impl From<Ch16> for Ch64 {
     #[inline(always)]
-    fn from(c: Ch16) -> Self {
-        Self((f64::from(c.0) / 32767.5) + (1.0 / 65535.0))
+    fn from(ch: Ch16) -> Self {
+        Self::new(ch.to_f32() as f64)
     }
 }
 
-// test: ch8_to_ch16()
-impl From<Ch8> for Ch16 {
+impl From<Ch24> for Ch64 {
     #[inline(always)]
-    fn from(c: Ch8) -> Self {
-        let c = c.0.wrapping_sub(-128) as u8;
-        let v = u16::from_ne_bytes([c, c]).wrapping_add(32768) as i16;
-        Ch16::from(v)
+    fn from(ch: Ch24) -> Self {
+        Self::new(ch.to_f32() as f64)
     }
 }
 
-// test: ch8_roundtrip()
-impl From<Ch8> for Ch32 {
+impl From<Ch32> for Ch64 {
     #[inline(always)]
-    fn from(c: Ch8) -> Self {
-        Self((f32::from(c.0) / 127.5) + (1.0 / 255.0))
+    fn from(ch: Ch32) -> Self {
+        Self::new(ch.0 as f64)
     }
 }
 
-// test: ch8_roundtrip()
-impl From<Ch8> for Ch64 {
+impl From<Ch64> for f64 {
     #[inline(always)]
-    fn from(c: Ch8) -> Self {
-        Self((f64::from(c.0) / 127.5) + (1.0 / 255.0))
+    fn from(ch: Ch64) -> f64 {
+        ch.0
     }
 }
 
-// test: channel_neg()
-impl Neg for Ch8 {
-    type Output = Ch8;
+impl<R: Into<Self>> Add<R> for Ch64 {
+    type Output = Self;
 
-    /// Invert sound wave (-x).
     #[inline(always)]
-    fn neg(self) -> Self {
-        Ch8((u8::MAX - self.0 as u8) as i8)
+    fn add(self, rhs: R) -> Self {
+        Self::new(self.0 + rhs.into().0)
     }
 }
 
-// test: channel_neg()
-impl Neg for Ch16 {
-    type Output = Ch16;
+impl<R: Into<Self>> Sub<R> for Ch64 {
+    type Output = Self;
 
-    /// Invert sound wave (-x).
     #[inline(always)]
-    fn neg(self) -> Self {
-        Ch16((u16::MAX - self.0 as u16) as i16)
+    fn sub(self, rhs: R) -> Self {
+        Self::new(self.0 - rhs.into().0)
     }
 }
 
-// test: channel_neg()
-impl Neg for Ch32 {
-    type Output = Ch32;
+impl<R: Into<Self>> Mul<R> for Ch64 {
+    type Output = Self;
 
-    /// Invert sound wave (-x).
     #[inline(always)]
-    fn neg(self) -> Self {
-        Ch32(-self.0)
+    fn mul(self, rhs: R) -> Self {
+        Self::new(self.0 * rhs.into().0)
     }
 }
 
-// test: channel_neg()
 impl Neg for Ch64 {
     type Output = Ch64;
 
-    /// Invert sound wave (-x).
     #[inline(always)]
     fn neg(self) -> Self {
-        Ch64(-self.0)
+        Self(-self.0)
+    }
+}
+
+impl AddAssign for Ch16 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch24 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch32 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl AddAssign for Ch64 {
+    #[inline(always)]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = *self + rhs;
+    }
+}
+
+impl SubAssign for Ch16 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch24 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch32 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl SubAssign for Ch64 {
+    #[inline(always)]
+    fn sub_assign(&mut self, rhs: Self) {
+        *self = *self - rhs;
+    }
+}
+
+impl MulAssign for Ch16 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch24 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch32 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
+    }
+}
+
+impl MulAssign for Ch64 {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: Self) {
+        *self = *self * rhs;
     }
 }
 
@@ -700,97 +547,83 @@ mod tests {
     use super::*;
 
     #[test]
-    fn channel_neg() {
-        assert_eq!(Ch8::new(-128), -Ch8::new(127));
-        assert_eq!(Ch16::new(-32768), -Ch16::new(32767));
-        assert_eq!(Ch32::new(-1.0), -Ch32::new(1.0));
-        assert_eq!(Ch64::new(-1.0), -Ch64::new(1.0));
+    fn ch16() {
+        assert_eq!(-1.0, Ch16::MIN.to_f32());
+        assert_eq!(0.000015259022, Ch16::MID.to_f32());
+        assert_eq!(1.0, Ch16::MAX.to_f32());
 
-        assert_eq!(Ch8::new(127), -Ch8::new(-128));
-        assert_eq!(Ch16::new(32767), -Ch16::new(-32768));
-        assert_eq!(Ch32::new(1.0), -Ch32::new(-1.0));
-        assert_eq!(Ch64::new(1.0), -Ch64::new(-1.0));
-
-        assert_eq!(Ch8::new(-1), -Ch8::new(0));
-        assert_eq!(Ch8::new(0), -Ch8::new(-1));
-        assert_eq!(Ch16::new(-1), -Ch16::new(0));
-        assert_eq!(Ch16::new(0), -Ch16::new(-1));
-        assert_eq!(Ch32::new(0.0), -Ch32::new(0.0));
-        assert_eq!(Ch64::new(0.0), -Ch64::new(0.0));
-    }
-
-    #[test]
-    fn ch8_roundtrip() {
-        assert_eq!(-1.0, Ch8::new(-128).to_f64());
-        assert_eq!(1.0, Ch8::new(127).to_f64());
-
-        assert_eq!(Ch8::new(-128), Ch8::from_f64(Ch8::new(-128).to_f64()));
-        assert_eq!(Ch8::new(0), Ch8::from_f64(Ch8::new(0).to_f64()));
-        assert_eq!(Ch8::new(127), Ch8::from_f64(Ch8::new(127).to_f64()));
+        assert_eq!(Ch16::MIN, Ch16::from(Ch16::MIN.to_f32()));
+        assert_eq!(Ch16::MID, Ch16::from(Ch16::MID.to_f32()));
+        assert_eq!(Ch16::MAX, Ch16::from(Ch16::MAX.to_f32()));
     }
 
     #[test]
     fn ch16_roundtrip() {
-        assert_eq!(-1.0, Ch16::new(-32768).to_f64());
-        assert_eq!(1.0, Ch16::new(32767).to_f64());
+        assert_eq!(-32768, i16::from(Ch16::MIN));
+        assert_eq!(0, i16::from(Ch16::MID));
+        assert_eq!(32767, i16::from(Ch16::MAX));
 
-        assert_eq!(
-            Ch16::new(-32768),
-            Ch16::from_f64(Ch16::new(-32768).to_f64())
-        );
-        assert_eq!(Ch16::new(0), Ch16::from_f64(Ch16::new(0).to_f64()));
-        assert_eq!(Ch16::new(32767), Ch16::from_f64(Ch16::new(32767).to_f64()));
+        assert_eq!(Ch16::MIN, Ch16::new(i16::from(Ch16::MIN)));
+        assert_eq!(Ch16::MID, Ch16::new(i16::from(Ch16::MID)));
+        assert_eq!(Ch16::MAX, Ch16::new(i16::from(Ch16::MAX)));
     }
 
     #[test]
-    fn ch32_roundtrip() {
-        assert_eq!(-1.0, Ch32::new(-1.0).to_f64());
-        assert_eq!(0.0, Ch32::new(0.0).to_f64());
-        assert_eq!(1.0, Ch32::new(1.0).to_f64());
+    fn ch24() {
+        assert_eq!(-1.0, Ch24::MIN.to_f32());
+        assert_eq!(0.00000005960465, Ch24::MID.to_f32());
+        assert_eq!(1.0, Ch24::MAX.to_f32());
 
-        assert_eq!(Ch32::new(-1.0), Ch32::from_f64(Ch32::new(-1.0).to_f64()));
-        assert_eq!(Ch32::new(0.0), Ch32::from_f64(Ch32::new(0.0).to_f64()));
-        assert_eq!(Ch32::new(1.0), Ch32::from_f64(Ch32::new(1.0).to_f64()));
+        assert_eq!(Ch24::MIN, Ch24::from(Ch24::MIN.to_f32()));
+        assert_eq!(Ch24::MID, Ch24::from(Ch24::MID.to_f32()));
+        assert_eq!(Ch24::MAX, Ch24::from(Ch24::MAX.to_f32()));
     }
 
     #[test]
-    fn ch8_to_ch16() {
-        assert_eq!(Ch16::new(-32768), Ch16::from(Ch8::new(-128)));
-        assert_eq!(Ch16::new(32767), Ch16::from(Ch8::new(127)));
+    fn ch24_roundtrip() {
+        assert_eq!(-8388608, i32::from(Ch24::MIN));
+        assert_eq!(0, i32::from(Ch24::MID));
+        assert_eq!(8388607, i32::from(Ch24::MAX));
+
+        assert_eq!(Ch24::MIN, Ch24::new(i32::from(Ch24::MIN)));
+        assert_eq!(Ch24::MID, Ch24::new(i32::from(Ch24::MID)));
+        assert_eq!(Ch24::MAX, Ch24::new(i32::from(Ch24::MAX)));
     }
 
     #[test]
-    fn ch16_to_ch8() {
-        assert_eq!(Ch8::new(-128), Ch8::from(Ch16::new(-32768)));
-        assert_eq!(Ch8::new(0), Ch8::from(Ch16::new(0)));
-        assert_eq!(Ch8::new(127), Ch8::from(Ch16::new(32767)));
+    fn ch32() {
+        assert_eq!(-1.0, Ch32::MIN.to_f32());
+        assert_eq!(0.0, Ch32::MID.to_f32());
+        assert_eq!(1.0, Ch32::MAX.to_f32());
+
+        assert_eq!(Ch32::MIN, Ch32::from(Ch32::MIN.to_f32()));
+        assert_eq!(Ch32::MID, Ch32::from(Ch32::MID.to_f32()));
+        assert_eq!(Ch32::MAX, Ch32::from(Ch32::MAX.to_f32()));
     }
 
     #[test]
-    fn ch8_arith() {
-        // Test addition
-        assert_eq!(Ch8::new(-1), Ch8::new(-128) + Ch8::new(127));
-        assert_eq!(Ch8::new(32), Ch8::new(-32) + Ch8::new(64));
-        assert_eq!(Ch8::new(127), Ch8::new(0) + Ch8::new(127));
-        assert_eq!(Ch8::new(-128), Ch8::new(-64) + Ch8::new(-64));
-        // Test subtraction
-        assert_eq!(Ch8::new(0), Ch8::new(-128) - Ch8::new(-128));
-        assert_eq!(Ch8::new(0), Ch8::new(127) - Ch8::new(127));
-        assert_eq!(Ch8::new(-127), Ch8::new(0) - Ch8::new(127));
-        // Test multiplication
-        assert_eq!(Ch8::new(0), Ch8::new(0) * Ch8::new(127));
-        assert_eq!(Ch8::new(127), Ch8::new(127) * Ch8::new(127));
-        assert_eq!(Ch8::new(-128), Ch8::new(127) * Ch8::new(-128));
-        assert_eq!(Ch8::new(-128), Ch8::new(-128) * Ch8::new(127));
-        assert_eq!(Ch8::new(127), Ch8::new(-128) * Ch8::new(-128));
-        assert_eq!(Ch8::new(-64), Ch8::new(127) * Ch8::new(-64));
-        // Test division
-        assert_eq!(Ch8::new(0), Ch8::new(0) / Ch8::new(127));
-        assert_eq!(Ch8::new(127), Ch8::new(127) / Ch8::new(127));
-        assert_eq!(Ch8::new(-128), Ch8::new(127) / Ch8::new(-128));
-        assert_eq!(Ch8::new(-128), Ch8::new(-128) / Ch8::new(127));
-        assert_eq!(Ch8::new(127), Ch8::new(-128) / Ch8::new(-128));
-        assert_eq!(Ch8::new(-128), Ch8::new(64) / Ch8::new(-64));
+    fn ch64() {
+        assert_eq!(-1.0, Ch64::MIN.to_f32());
+        assert_eq!(0.0, Ch64::MID.to_f32());
+        assert_eq!(1.0, Ch64::MAX.to_f32());
+
+        assert_eq!(Ch64::MIN, Ch64::from(Ch64::MIN.to_f32()));
+        assert_eq!(Ch64::MID, Ch64::from(Ch64::MID.to_f32()));
+        assert_eq!(Ch64::MAX, Ch64::from(Ch64::MAX.to_f32()));
+    }
+
+    #[test]
+    fn ch16_to_ch24() {
+        assert_eq!(Ch24::MIN, Ch24::from(Ch16::MIN));
+        assert_eq!(Ch24::new(128), Ch24::from(Ch16::MID));
+        assert_eq!(Ch24::MAX, Ch24::from(Ch16::MAX));
+    }
+
+    #[test]
+    fn ch24_to_ch16() {
+        assert_eq!(Ch16::MIN, Ch16::from(Ch24::MIN));
+        assert_eq!(Ch16::MID, Ch16::from(Ch24::MID));
+        assert_eq!(Ch16::MAX, Ch16::from(Ch24::MAX));
     }
 
     #[test]
@@ -798,8 +631,8 @@ mod tests {
         // Test addition
         assert_eq!(Ch16::new(-1), Ch16::new(-32768) + Ch16::new(32767));
         assert_eq!(Ch16::new(8192), Ch16::new(-8192) + Ch16::new(16384));
-        assert_eq!(Ch16::new(32767), Ch16::new(0) + Ch16::new(32767));
-        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) + Ch16::new(-16384));
+        assert_eq!(Ch16::MAX, Ch16::MID + Ch16::MAX);
+        assert_eq!(Ch16::MIN, Ch16::new(-16384) + Ch16::new(-16384));
         // Test subtraction
         assert_eq!(Ch16::new(0), Ch16::new(-32768) - Ch16::new(-32768));
         assert_eq!(Ch16::new(0), Ch16::new(32767) - Ch16::new(32767));
@@ -811,13 +644,51 @@ mod tests {
         assert_eq!(Ch16::new(-32768), Ch16::new(-32768) * Ch16::new(32767));
         assert_eq!(Ch16::new(32767), Ch16::new(-32768) * Ch16::new(-32768));
         assert_eq!(Ch16::new(-16384), Ch16::new(32767) * Ch16::new(-16384));
-        // Test division
-        assert_eq!(Ch16::new(0), Ch16::new(0) / Ch16::new(32767));
-        assert_eq!(Ch16::new(32767), Ch16::new(32767) / Ch16::new(32767));
-        assert_eq!(Ch16::new(-32768), Ch16::new(32767) / Ch16::new(-32768));
-        assert_eq!(Ch16::new(-32768), Ch16::new(-32768) / Ch16::new(32767));
-        assert_eq!(Ch16::new(32767), Ch16::new(-32768) / Ch16::new(-32768));
-        assert_eq!(Ch16::new(-32768), Ch16::new(16384) / Ch16::new(-16384));
+        // Test negation
+        assert_eq!(Ch16::MIN, -Ch16::MAX);
+        assert_eq!(Ch16::MAX, -Ch16::MIN);
+        assert_eq!(Ch16::new(-1), -Ch16::new(0));
+        assert_eq!(Ch16::new(0), -Ch16::new(-1));
+    }
+
+    #[test]
+    fn ch24_arith() {
+        // Test addition
+        assert_eq!(Ch24::new(-1), Ch24::new(-8388608) + Ch24::new(8388607));
+        assert_eq!(
+            Ch24::new(2097152),
+            Ch24::new(-2097152) + Ch24::new(4194304)
+        );
+        assert_eq!(Ch24::MAX, Ch24::MID + Ch24::MAX);
+        assert_eq!(Ch24::MIN, Ch24::new(-4194304) + Ch24::new(-4194304));
+        // Test subtraction
+        assert_eq!(Ch24::new(0), Ch24::new(-8388608) - Ch24::new(-8388608));
+        assert_eq!(Ch24::new(0), Ch24::new(8388607) - Ch24::new(8388607));
+        assert_eq!(Ch24::new(-8388607), Ch24::new(0) - Ch24::new(8388607));
+        // Test multiplication
+        assert_eq!(Ch24::new(0), Ch24::new(0) * Ch24::new(8388607));
+        assert_eq!(Ch24::new(8388607), Ch24::new(8388607) * Ch24::new(8388607));
+        assert_eq!(
+            Ch24::new(-8388608),
+            Ch24::new(8388607) * Ch24::new(-8388608)
+        );
+        assert_eq!(
+            Ch24::new(-8388608),
+            Ch24::new(-8388608) * Ch24::new(8388607)
+        );
+        assert_eq!(
+            Ch24::new(8388607),
+            Ch24::new(-8388608) * Ch24::new(-8388608)
+        );
+        assert_eq!(
+            Ch24::new(-4194304),
+            Ch24::new(8388607) * Ch24::new(-4194304)
+        );
+        // Test negation
+        assert_eq!(Ch24::MIN, -Ch24::MAX);
+        assert_eq!(Ch24::MAX, -Ch24::MIN);
+        assert_eq!(Ch24::new(-1), -Ch24::new(0));
+        assert_eq!(Ch24::new(0), -Ch24::new(-1));
     }
 
     #[test]
@@ -837,13 +708,10 @@ mod tests {
         assert_eq!(Ch32::new(-1.0), Ch32::new(1.0) * Ch32::new(-1.0));
         assert_eq!(Ch32::new(1.0), Ch32::new(-1.0) * Ch32::new(-1.0));
         assert_eq!(Ch32::new(-0.5), Ch32::new(1.0) * Ch32::new(-0.5));
-        // Test division
-        assert_eq!(Ch32::new(0.0), Ch32::new(0.0) / Ch32::new(1.0));
-        assert_eq!(Ch32::new(1.0), Ch32::new(1.0) / Ch32::new(1.0));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(1.0) / Ch32::new(-1.0));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(-1.0) / Ch32::new(1.0));
-        assert_eq!(Ch32::new(1.0), Ch32::new(-1.0) / Ch32::new(-1.0));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(0.5) / Ch32::new(-0.5));
+        // Test negation
+        assert_eq!(Ch32::MIN, -Ch32::MAX);
+        assert_eq!(Ch32::MAX, -Ch32::MIN);
+        assert_eq!(Ch32::new(0.0), -Ch32::new(0.0));
     }
 
     #[test]
@@ -863,48 +731,37 @@ mod tests {
         assert_eq!(Ch64::new(-1.0), Ch64::new(1.0) * Ch64::new(-1.0));
         assert_eq!(Ch64::new(1.0), Ch64::new(-1.0) * Ch64::new(-1.0));
         assert_eq!(Ch64::new(-0.5), Ch64::new(1.0) * Ch64::new(-0.5));
-        // Test division
-        assert_eq!(Ch64::new(0.0), Ch64::new(0.0) / Ch64::new(1.0));
-        assert_eq!(Ch64::new(1.0), Ch64::new(1.0) / Ch64::new(1.0));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(1.0) / Ch64::new(-1.0));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(-1.0) / Ch64::new(1.0));
-        assert_eq!(Ch64::new(1.0), Ch64::new(-1.0) / Ch64::new(-1.0));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(0.5) / Ch64::new(-0.5));
-    }
-
-    #[test]
-    fn ch8_saturation() {
-        assert_eq!(Ch8::new(127), Ch8::new(96) + Ch8::new(64));
-        assert_eq!(Ch8::new(-128), Ch8::new(-64) + Ch8::new(-96));
-        assert_eq!(Ch8::new(-128), Ch8::new(-64) - Ch8::new(96));
-        assert_eq!(Ch8::new(127), Ch8::new(64) / Ch8::new(32));
-        assert_eq!(Ch8::new(-128), Ch8::new(64) / Ch8::new(-32));
+        // Test negation
+        assert_eq!(Ch64::MIN, -Ch64::MAX);
+        assert_eq!(Ch64::MAX, -Ch64::MIN);
+        assert_eq!(Ch64::new(0.0), -Ch64::new(0.0));
     }
 
     #[test]
     fn ch16_saturation() {
-        assert_eq!(Ch16::new(32767), Ch16::new(24576) + Ch16::new(16384));
-        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) + Ch16::new(-24576));
-        assert_eq!(Ch16::new(-32768), Ch16::new(-16384) - Ch16::new(24576));
-        assert_eq!(Ch16::new(32767), Ch16::new(16384) / Ch16::new(8192));
-        assert_eq!(Ch16::new(-32768), Ch16::new(16384) / Ch16::new(-8192));
+        assert_eq!(Ch16::MAX, Ch16::new(24576) + Ch16::new(16384));
+        assert_eq!(Ch16::MIN, Ch16::new(-16384) + Ch16::new(-24576));
+        assert_eq!(Ch16::MIN, Ch16::new(-16384) - Ch16::new(24576));
     }
 
     #[test]
-    fn ch32_saturation() {
-        assert_eq!(Ch32::new(1.0), Ch32::new(0.75) + Ch32::new(0.5));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(-0.5) + Ch32::new(-0.75));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(-0.5) - Ch32::new(0.75));
-        assert_eq!(Ch32::new(1.0), Ch32::new(0.5) / Ch32::new(0.25));
-        assert_eq!(Ch32::new(-1.0), Ch32::new(0.5) / Ch32::new(-0.25));
+    fn ch24_saturation() {
+        assert_eq!(Ch24::MAX, Ch24::new(6291456) + Ch24::new(4194304));
+        assert_eq!(Ch24::MIN, Ch24::new(-4194304) + Ch24::new(-6291456));
+        assert_eq!(Ch24::MIN, Ch24::new(-4194304) - Ch24::new(6291456));
     }
 
     #[test]
-    fn ch64_saturation() {
-        assert_eq!(Ch64::new(1.0), Ch64::new(0.75) + Ch64::new(0.5));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) + Ch64::new(-0.75));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(-0.5) - Ch64::new(0.75));
-        assert_eq!(Ch64::new(1.0), Ch64::new(0.5) / Ch64::new(0.25));
-        assert_eq!(Ch64::new(-1.0), Ch64::new(0.5) / Ch64::new(-0.25));
+    fn ch32_unsaturation() {
+        assert_eq!(Ch32::new(1.25), Ch32::new(0.75) + Ch32::new(0.5));
+        assert_eq!(Ch32::new(-1.25), Ch32::new(-0.5) + Ch32::new(-0.75));
+        assert_eq!(Ch32::new(-1.25), Ch32::new(-0.5) - Ch32::new(0.75));
+    }
+
+    #[test]
+    fn ch64_unsaturation() {
+        assert_eq!(Ch64::new(1.25), Ch64::new(0.75) + Ch64::new(0.5));
+        assert_eq!(Ch64::new(-1.25), Ch64::new(-0.5) + Ch64::new(-0.75));
+        assert_eq!(Ch64::new(-1.25), Ch64::new(-0.5) - Ch64::new(0.75));
     }
 }

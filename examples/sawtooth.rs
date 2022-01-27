@@ -1,19 +1,24 @@
-use fon::chan::Ch8;
-use fon::mono::Mono8;
-use fon::stereo::Stereo16;
-use fon::{Audio, Frame};
+use fon::chan::{Ch16, Ch32};
+use fon::pos::Mono;
+use fon::Audio;
 
 fn main() {
-    let mut a = Audio::<Mono8>::with_silence(44_100, 256);
-    for (i, s) in a.iter_mut().enumerate() {
-        s.channels_mut()[0] = Ch8::new((i as i16 - 128) as i8);
+    // Create mono 32-bit floating point audio buffer.
+    let mut a = Audio::<Ch32, 1>::with_silence(48_000, 256);
+    let mut counter = 0.0;
+    for f in a.iter_mut() {
+        f[Mono] = counter.into();
+        counter += 0.05;
+        counter %= 1.0;
     }
 
-    // Convert to stereo 16-Bit 48_000 KHz audio format
-    let mut audio = Audio::<Stereo16>::with_stream(48_000, &a);
+    // Convert to 16-Bit audio format
+    let mut audio = Audio::<Ch16, 1>::with_audio(48_000, &a);
 
     // Print out converted wave.
-    for sample in audio.as_i16_slice() {
-        println!("{}", sample);
+    for (sample, other) in
+        audio.as_i16_slice().iter().zip(a.as_f32_slice().iter())
+    {
+        println!("{} {}", sample, other);
     }
 }

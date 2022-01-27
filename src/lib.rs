@@ -1,5 +1,4 @@
-// Fon
-// Copyright © 2020-2021 Jeron Aldaron Lau.
+// Copyright © 2020-2021 The Fon Contributors.
 //
 // Licensed under any of:
 // - Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
@@ -10,18 +9,32 @@
 
 //! Rust audio types and conversions.
 //!
-//! An [audio buffer] can be cheaply converted to and from raw samples (i8, i16,
+//! An [audio buffer] can be cheaply converted to and from raw samples (i16, u8,
 //! f32, and f64) buffers, enabling interoperability with other crates.
 //!
 //! Many audio formats are supported:
-//! - Any sample rate
-//! - Bit depth: [8]- or [16]-bit integer and [32]- or [64]-bit float
-//! - [Mono], [Stereo], [5.1 Surround]
-//!
-//! Blending [operations] are supported for all formats.
+//!  - Any integer sample rate (32 bits needed to support at least 96_000 Hz)
+//!  - Common bit depths (you can use 16-bit to fake 12-/10-/8-bit, as well as
+//!    fake unsigned by XOR'ing the top bit)
+//!    - [16-bit Signed Integer PCM] (Listening/publishing standard)
+//!    - [24-bit Signed Integer PCM] (Older recording/processing standard)
+//!    - [32-bit Float PCM] (Newer recording/processing standard)
+//!    - [64-bit Float PCM] (Ultra high-quality audio standard)
+//!  - Up to 8 channels (following FLAC/SMPTE/ITU-R recommendations):
+//!    - 1 Channel: Mono ([Mono])
+//!    - 2 Channels: Stereo ([Left], [Right])
+//!    - 3 Channels: Surround 3.0 ([Left], [Right], [Center])
+//!    - 4 Channels: Surround 4.0 ([FrontL], [FrontR], [SurroundL], [SurroundR])
+//!    - 5 Channels: Surround 5.0 ([FrontL], [FrontR], [Front], [SurroundL],
+//!      [SurroundR])
+//!    - 6 Channels: Surround 5.1 ([FrontL], [FrontR], [Front], [Lfe],
+//!      [SurroundL], [SurroundR])
+//!    - 7 Channels: Surround 6.1 ([FrontL], [FrontR], [Front], [Lfe], [Back],
+//!      [Left], [Right])
+//!    - 8 Channels: Surround 7.1 ([FrontL], [FrontR], [Front], [Lfe], [BackL],
+//!      [BackR], [Left], [Right])
 //!
 //! # Getting Started
-//! 
 //! To understand some of the concepts used in this library,
 //! [this MDN article] is a good read (although the stuff about compression
 //! isn't relevant to this crate's functionality).  This crate uses the MDN
@@ -29,40 +42,49 @@
 //!
 //! ## 8-Bit Sawtooth Wave Example
 //! ```rust
-//! use fon::chan::Ch8;
-//! use fon::mono::Mono8;
-//! use fon::stereo::Stereo16;
-//! use fon::{Audio, Frame};
+//! use fon::chan::{Ch16, Ch32};
+//! use fon::pos::Mono;
+//! use fon::Audio;
 //!
-//! let mut a = Audio::<Mono8>::with_silence(44_100, 256);
-//! for (i, s) in a.iter_mut().enumerate() {
-//!     s.channels_mut()[0] = Ch8::new(i as i8);
+//! let mut a = Audio::<Ch32, 1>::with_silence(48_000, 256);
+//! let mut counter = 0.0;
+//! for f in a.iter_mut() {
+//!     f[Mono] = counter.into();
+//!     counter += 0.05;
+//!     counter %= 1.0;
 //! }
-//! // Convert to stereo 16-Bit 48_000 KHz audio format
-//! let audio = Audio::<Stereo16>::with_stream(48_000, &a);
+//!
+//! let mut audio = Audio::<Ch16, 1>::with_audio(48_000, &a);
 //! ```
 //!
 //! [audio buffer]: crate::Audio
-//! [8]: crate::chan::Ch8
-//! [16]: crate::chan::Ch16
-//! [32]: crate::chan::Ch32
-//! [64]: crate::chan::Ch64
-//! [Mono]: crate::mono::Mono
-//! [Stereo]: crate::stereo::Stereo
-//! [5.1 Surround]: crate::surround::Surround
+//! [16-bit Signed Integer PCM]: crate::chan::Ch16
+//! [24-bit Signed Integer PCM]: crate::chan::Ch24
+//! [32-bit Float PCM]: crate::chan::Ch32
+//! [64-bit Float PCM]: crate::chan::Ch64
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
+//! [Mono]: crate::pos::Mono
+//! [Left]: crate::pos::Left
+//! [Right]: crate::pos::Right
+//! [Center]: crate::pos::Center
+//! [FrontL]: crate::pos::FrontL
+//! [FrontR]: crate::pos::FrontR
+//! [SurroundL]: crate::pos::SurroundL
+//! [SurroundR]: crate::pos::SurroundR
+//! [Front]: crate::pos::Front
+//! [Lfe]: crate::pos::Lfe
+//! [Back]: crate::pos::Back
+//! [BackL]: crate::pos::BackL
+//! [BackR]: crate::pos::BackR
 
-// FIXME: Doesn't quite work yet because fon needs sine and cosine.  No_std trig
-// crate would be nice for a fon feature enabling no_std, but I couldn't find
-// one.
-//#![no_std]
+#![no_std]
 #![doc(
     html_logo_url = "https://libcala.github.io/logo.svg",
     html_favicon_url = "https://libcala.github.io/icon.svg",
     html_root_url = "https://docs.rs/fon"
 )]
-// #![deny(unsafe_code)]
+#![deny(unsafe_code)]
 #![warn(
     anonymous_parameters,
     missing_copy_implementations,
@@ -82,17 +104,17 @@
 extern crate alloc;
 
 mod audio;
-pub mod chan;
 mod frame;
 mod math;
-pub mod mono;
-pub mod ops;
 mod private;
-pub mod stereo;
-mod streaming;
-pub mod surround;
-// mod resampler;
+mod sink;
+mod stream;
 
-pub use audio::Audio;
+pub mod chan;
+
+pub mod pos;
+
+pub use audio::{Audio, AudioSink};
 pub use frame::Frame;
-pub use streaming::{Resampler, Sink, Stream};
+pub use sink::Sink;
+pub use stream::Stream;

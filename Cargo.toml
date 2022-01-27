@@ -10,7 +10,7 @@
 
 [package]
 name = "fon"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
 edition = "2018"
 
@@ -25,3 +25,4 @@ categories = ["multimedia::audio", "multimedia", "algorithms", "data-structures"
 include = ["Cargo.toml", "src/*"]
 
 [dependencies]
+libm = "0.2"
