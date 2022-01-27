@@ -11,17 +11,28 @@
 [package]
 name = "fon"
 version = "0.6.0"
-authors = ["Jeron Aldaron Lau <jeronlau@plopgrizzly.com>"]
-edition = "2018"
-
+edition = "2021"
+rust-version = "1.56.1"
 license = "Apache-2.0 OR MIT OR BSL-1.0"
 documentation = "https://docs.rs/fon"
 homepage = "https://github.com/AldaronLau/fon/blob/main/CHANGELOG.md"
 repository = "https://github.com/AldaronLau/fon"
 readme = "README.md"
 description = "Rust audio types, resampling, processing and mixing library."
-keywords = ["audio", "resample", "processing", "wave", "sound"]
-categories = ["multimedia::audio", "multimedia", "algorithms", "data-structures"]
+keywords = [
+    "audio",
+    "resample",
+    "processing",
+    "sample",
+    "sound",
+]
+categories = [
+    "multimedia::audio",
+    "multimedia",
+    "algorithms",
+    "data-structures",
+    "no-std",
+]
 include = ["Cargo.toml", "src/*"]
 
 [dependencies]
