@@ -16,7 +16,7 @@ too.  I mark feature requests as "enhancements" on GitHub issues.
 
 Happy coding!
 
-[open an issue]: https://github.com/AldaronLau/fon/issues
+[open an issue]: https://github.com/ardaku/fon/issues
 [send me an email]: mailto:aldaronlau@gmail.com
-[open a PR]: https://github.com/AldaronLau/fon/pulls
-[Post to GitHub Discussions]: https://github.com/AldaronLau/fon/discussions
+[open a PR]: https://github.com/ardaku/fon/pulls
+[Post to GitHub Discussions]: https://github.com/ardaku/fon/discussions
