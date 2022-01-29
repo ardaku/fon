@@ -36,12 +36,6 @@ pub struct Audio<Chan: Channel, const CH: usize> {
 }
 
 impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
-    /// Construct an empty `Audio` buffer.
-    #[inline(always)]
-    pub fn new(hz: u32) -> Self {
-        Self::with_frames::<[Frame<Chan, CH>; 0]>(hz, [])
-    }
-
     /// Construct an `Audio` buffer with all all samples set to zero.
     #[inline(always)]
     pub fn with_silence(hz: u32, len: usize) -> Self {

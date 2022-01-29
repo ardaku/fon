@@ -10,7 +10,6 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `chan::Ch24`, a 24-bit integer channel
  - `chan::Channel::to_f32()`
  - `pos` module containing types for type-safe channel indexing on `Frame`
- - `Audio::new()`
  - `Audio::as_u8_slice()`
  - `Audio::silence()` to silence the entire audio buffer
  - `AudioSink` public type returned from `Audio::sink()`
