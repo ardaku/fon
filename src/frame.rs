@@ -417,7 +417,8 @@ impl<Chan: Channel, const CH: usize> Frame<Chan, CH> {
         let left = self.0[LEFT].into();
         let right = self.0[RIGHT].into();
         if N == 1 {
-            frame.0[0] = left * 0.5.into() + right * 0.5.into();
+            let half = 0.5.into();
+            frame.0[0] = left * half + right * half;
         } else {
             // stereo should always be mixed up to first two channels.
             frame.0[0] = left;

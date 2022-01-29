@@ -4,7 +4,7 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
-## [0.6.0] - Unreleased
+## [0.6.0] - 2022-01-29
 ### Added
  - Support for no-std!
  - `chan::Ch24`, a 24-bit integer channel
@@ -20,6 +20,9 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Frame::pan()`
  - `Frame::gain()`
  - `SinkTo` struct for converting audio while streaming
+ - `Sink::len()`
+ - `Sink::sink_with()`
+ - `Sink::is_empty()`
 
 ### Changed
  - Renamed `Audio::as_slice()` to `Audio::as_mut_slice()`, and
@@ -29,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - Rename `Frame::convert()` to `Frame::to()`
  - Merged `Stream` trait and `Resampler` struct into a new `Stream` struct
  - Changed `Audio` back to being backed by a `Box<[Frame]>`
+ - `Sink` is now object-safe
+ - Sample rates are now represented as `NonZeroU32`
 
 ### Removed
  - `chan::Ch8` because 8-bit audio is uncommon today and you can use `Ch16`
@@ -42,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Frame::from_channel()`
  - `Frame::from_channels()`
  - `Frame::from_mono()`
+ - `Sink::buffer()`
+ - `Sink::resampler()`
+ - `Sink::flush()`
+ - `Sink::stream()`
 
 ### Fixed
  - Resampler now does proper resampling

@@ -77,7 +77,8 @@ impl Channel for Ch16 {
 
     #[inline(always)]
     fn to_f32(self) -> f32 {
-        (f32::from(self.0) + 0.5) * 32_767.5_f32.recip()
+        const MULTIPLIER: f32 = 1.0 / 32_767.5;
+        (f32::from(self.0) + 0.5) * MULTIPLIER
     }
 }
 
@@ -175,7 +176,8 @@ impl Channel for Ch24 {
 
     #[inline(always)]
     fn to_f32(self) -> f32 {
-        (i32::from(self) as f32 + 0.5) * 8_388_607.5_f32.recip()
+        const MULTIPLIER: f32 = 1.0 / 8_388_607.5;
+        (i32::from(self) as f32 + 0.5) * MULTIPLIER
     }
 }
 
