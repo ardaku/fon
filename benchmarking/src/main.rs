@@ -1,5 +1,5 @@
 use nanorand::{Rng, WyRand};
-use std::time::{Instant};
+use std::time::Instant;
 
 // Number of i16 samples (8mb)
 const SIZE: usize = 4_194_304;

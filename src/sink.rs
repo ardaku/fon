@@ -7,8 +7,8 @@
 // At your choosing (See accompanying files LICENSE_APACHE_2_0.txt,
 // LICENSE_MIT.txt and LICENSE_BOOST_1_0.txt).
 
-use core::num::NonZeroU32;
 use core::fmt::Debug;
+use core::num::NonZeroU32;
 
 use crate::chan::Channel;
 use crate::Frame;
@@ -40,29 +40,36 @@ pub trait Sink<Chan: Channel, const CH: usize>: Debug {
 #[derive(Debug)]
 pub struct SinkTo<Chan, C, S, const CH: usize, const N: usize>
 where
-    Chan: Channel + From<C>, C: Channel, S: Sink<Chan, CH>
+    Chan: Channel + From<C>,
+    C: Channel,
+    S: Sink<Chan, CH>,
 {
     sink: S,
     _phantom: core::marker::PhantomData<(Chan, C)>,
 }
 
-impl<Chan, C, S, const CH: usize, const N: usize> SinkTo<Chan, C, S, CH, N> 
+impl<Chan, C, S, const CH: usize, const N: usize> SinkTo<Chan, C, S, CH, N>
 where
-    Chan: Channel + From<C>, C: Channel, S: Sink<Chan,CH>
+    Chan: Channel + From<C>,
+    C: Channel,
+    S: Sink<Chan, CH>,
 {
-    /// 
+    ///
     pub fn new(sink: S) -> Self {
         Self {
-            sink, _phantom: core::marker::PhantomData
+            sink,
+            _phantom: core::marker::PhantomData,
         }
     }
 }
 
 #[allow(single_use_lifetimes)]
 impl<Chan, C, S, const CH: usize, const N: usize> Sink<C, N>
-    for &mut SinkTo<Chan, C, S, CH, N> 
+    for &mut SinkTo<Chan, C, S, CH, N>
 where
-    Chan: Channel + From<C>, C: Channel, S: Sink<Chan,CH>
+    Chan: Channel + From<C>,
+    C: Channel,
+    S: Sink<Chan, CH>,
 {
     /// Get the sample rate of the sink in hertz.
     fn sample_rate(&self) -> NonZeroU32 {
@@ -88,9 +95,11 @@ where
 
 #[allow(single_use_lifetimes)]
 impl<Chan, C, S, const CH: usize, const N: usize> Sink<C, N>
-    for SinkTo<Chan, C, S, CH, N> 
+    for SinkTo<Chan, C, S, CH, N>
 where
-    Chan: Channel + From<C>, C: Channel, S: Sink<Chan, CH>
+    Chan: Channel + From<C>,
+    C: Channel,
+    S: Sink<Chan, CH>,
 {
     /// Get the sample rate of the sink in hertz.
     fn sample_rate(&self) -> NonZeroU32 {

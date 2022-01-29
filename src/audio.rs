@@ -155,7 +155,9 @@ pub struct AudioSink<'a, Chan: Channel, const CH: usize> {
 
 // Using '_ results in reserved lifetime error.
 #[allow(single_use_lifetimes)]
-impl<'a, Chan: Channel, const CH: usize> Sink<Chan, CH> for AudioSink<'a, Chan, CH> {
+impl<'a, Chan: Channel, const CH: usize> Sink<Chan, CH>
+    for AudioSink<'a, Chan, CH>
+{
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
         self.audio.sample_rate()
@@ -173,7 +175,9 @@ impl<'a, Chan: Channel, const CH: usize> Sink<Chan, CH> for AudioSink<'a, Chan, 
     }
 }
 
-impl<Chan: Channel, const CH: usize> Sink<Chan, CH> for &mut AudioSink<'_, Chan, CH> {
+impl<Chan: Channel, const CH: usize> Sink<Chan, CH>
+    for &mut AudioSink<'_, Chan, CH>
+{
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
         self.audio.sample_rate()
