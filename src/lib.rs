@@ -80,8 +80,8 @@
 
 #![no_std]
 #![doc(
-    html_logo_url = "https://libcala.github.io/logo.svg",
-    html_favicon_url = "https://libcala.github.io/icon.svg",
+    html_logo_url = "https://ardaku.github.io/mm/logo.svg",
+    html_favicon_url = "https://ardaku.github.io/mm/icon.svg",
     html_root_url = "https://docs.rs/fon"
 )]
 #![deny(unsafe_code)]
