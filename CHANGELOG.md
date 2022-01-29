@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
  - `Frame::new()`
  - `Frame::pan()`
  - `Frame::gain()`
+ - `SinkTo` struct for converting audio while streaming
 
 ### Changed
  - Renamed `Audio::as_slice()` to `Audio::as_mut_slice()`, and
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/
    generics
  - Rename `Frame::convert()` to `Frame::to()`
  - Merged `Stream` trait and `Resampler` struct into a new `Stream` struct
+ - Changed `Audio` back to being backed by a `Box<[Frame]>`
 
 ### Removed
  - `chan::Ch8` because 8-bit audio is uncommon today and you can use `Ch16`

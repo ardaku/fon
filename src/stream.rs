@@ -135,7 +135,7 @@ impl<const CH: usize> Stream<CH> {
         if self.channels[0].state.started == 0
             && sink.sample_rate() == audio.sample_rate()
         {
-            sink.sink_with(audio.iter().cloned().map(|x| x.to()));
+            sink.sink_with(&mut audio.iter().cloned().map(|x| x.to()));
             return;
         }
 

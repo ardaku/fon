@@ -116,5 +116,5 @@ pub mod pos;
 
 pub use audio::{Audio, AudioSink};
 pub use frame::Frame;
-pub use sink::Sink;
+pub use sink::{Sink, SinkTo};
 pub use stream::Stream;

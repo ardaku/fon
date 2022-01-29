@@ -18,7 +18,6 @@ use alloc::boxed::Box;
 use alloc::slice::{Iter, IterMut};
 use alloc::{vec, vec::Vec};
 
-use core::borrow::BorrowMut;
 use core::convert::TryInto;
 use core::num::NonZeroU32;
 use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
@@ -56,20 +55,20 @@ impl<Chan: Channel, const CH: usize> Audio<Chan, CH> {
         }
     }
 
-    /// Construct an `Audio` buffer from another `Audio` buffer of a differnt
+    /// Construct an `Audio` buffer from another `Audio` buffer of a different
     /// format.
     #[inline(always)]
-    pub fn with_audio<Ch>(hz: u32, audio: &Audio<Ch, CH>) -> Self
+    pub fn with_audio<Ch, const N: usize>(hz: u32, audio: &Audio<Ch, N>) -> Self
     where
         Ch: Channel,
         Ch32: From<Ch>,
         Chan: From<Ch>,
     {
-        let rate =
+        let len =
             audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
-        let mut output = Self::with_silence(hz, rate.ceil() as usize);
+        let mut output = Self::with_silence(hz, len.ceil() as usize);
         let mut stream = Stream::new(hz);
-        let mut sink = output.sink();
+        let mut sink = crate::SinkTo::<_, Chan, _, CH, N>::new(output.sink());
         stream.pipe(audio, &mut sink);
         stream.flush(&mut sink);
         output
@@ -156,30 +155,44 @@ pub struct AudioSink<'a, Chan: Channel, const CH: usize> {
 
 // Using '_ results in reserved lifetime error.
 #[allow(single_use_lifetimes)]
-impl<'a, T, Chan: Channel, const CH: usize> Sink<Chan, CH> for T
-where
-    T: BorrowMut<AudioSink<'a, Chan, CH>>,
-{
+impl<'a, Chan: Channel, const CH: usize> Sink<Chan, CH> for AudioSink<'a, Chan, CH> {
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
-        self.borrow().audio.sample_rate()
+        self.audio.sample_rate()
     }
 
     #[inline(always)]
     fn len(&self) -> usize {
-        self.borrow().audio.len()
+        self.audio.len()
     }
 
     #[inline(always)]
-    fn sink_with<I: Iterator<Item = Frame<Chan, CH>>>(&mut self, mut iter: I) {
-        let audio = self.borrow_mut();
-        for frame in audio.audio.iter_mut().skip(audio.index) {
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
+        let mut this = self;
+        Sink::<Chan, CH>::sink_with(&mut this, iter)
+    }
+}
+
+impl<Chan: Channel, const CH: usize> Sink<Chan, CH> for &mut AudioSink<'_, Chan, CH> {
+    #[inline(always)]
+    fn sample_rate(&self) -> NonZeroU32 {
+        self.audio.sample_rate()
+    }
+
+    #[inline(always)]
+    fn len(&self) -> usize {
+        self.audio.len()
+    }
+
+    #[inline(always)]
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Chan, CH>>) {
+        for frame in self.audio.iter_mut().skip(self.index) {
             *frame = if let Some(frame) = iter.next() {
                 frame
             } else {
                 break;
             };
-            audio.index += 1;
+            self.index += 1;
         }
     }
 }
