@@ -4,6 +4,47 @@ All notable changes to `fon` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://github.com/AldaronLau/semver).
 
+## [0.6.0] - Unreleased
+### Added
+ - Support for no-std!
+ - `chan::Ch24`, a 24-bit integer channel
+ - `chan::Channel::to_f32()`
+ - `pos` module containing types for type-safe channel indexing on `Frame`
+ - `Audio::new()`
+ - `Audio::as_u8_slice()`
+ - `Audio::silence()` to silence the entire audio buffer
+ - `AudioSink` public type returned from `Audio::sink()`
+ - `Audio::with_u8_buffer()`
+ - `Audio::with_audio()`
+ - `From<Audio>` for both boxed primitive samples and `Vec<Frame>`
+ - `Frame::new()`
+ - `Frame::pan()`
+ - `Frame::gain()`
+
+### Changed
+ - Renamed `Audio::as_slice()` to `Audio::as_mut_slice()`, and
+   `Audio::as_slice()` now returns an immutable slice
+ - `Frame` is now a struct (rather than a trait), and makes use of const
+   generics
+ - Rename `Frame::convert()` to `Frame::to()`
+ - Merged `Stream` trait and `Resampler` struct into a new `Stream` struct
+
+### Removed
+ - `chan::Ch8` because 8-bit audio is uncommon today and you can use `Ch16`
+   for 8-bit audio as well as 12-bit audio.
+ - `Audio::with_i8_buffer()`
+ - `chan::Channel::to_f64()` and `chan::Channel::from_f64()`
+ - `Audio::with_frame()`; Use `Audio::with_frames(hz, vec![_; len])` instead
+ - `Audio::with_stream()`; Use `Audio::with_audio()` or `Audio::sink()` instead
+ - `Audio as IntoIterator`; Use `Audio::iter()` instead.
+ - `Frame::from_f64()`
+ - `Frame::from_channel()`
+ - `Frame::from_channels()`
+ - `Frame::from_mono()`
+
+### Fixed
+ - Resampler now does proper resampling
+
 ## [0.5.0] - 2021-01-17
 ### Changed
  - `Audio` is now stored as a `VecDeque<F>` instead of a `Box<[F]>`
