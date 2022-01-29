@@ -51,4 +51,26 @@ fn main() {
 
     let elapsed = start.elapsed();
     println!("fon6 {}µs", elapsed.as_micros());
+
+    ////
+    std::thread::sleep(std::time::Duration::from_millis(200));
+
+    let samples = gen_buffer();
+    let start = Instant::now();
+
+    let audio: Box<[i16]> = samples.into_boxed_slice();
+    let mut mono32: Vec<fon6::Frame<fon6::chan::Ch32, 1>> = Vec::with_capacity(audio.len() / 2);
+
+    for sample in audio.chunks(2) {
+        let left = fon6::chan::Ch16::new(sample[0]);
+        let right = fon6::chan::Ch16::new(sample[1]);
+        let frame = fon6::Frame::<fon6::chan::Ch16, 2>::new(left, right);
+        mono32.push(frame.to());
+    }
+
+    let slice = mono32.as_mut_slice();
+    std::convert::identity(slice);
+
+    let elapsed = start.elapsed();
+    println!("raw6 {}µs", elapsed.as_micros());
 }

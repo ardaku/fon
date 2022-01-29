@@ -36,7 +36,8 @@ pub trait Sink<Chan: Channel, const CH: usize>: Debug {
     }
 }
 
-/// Sink created by [`Sink::To`](crate::Sink::to)
+/// Sink that converts to a different audio format before passing to another
+/// [`Sink`](crate::Sink).
 #[derive(Debug)]
 pub struct SinkTo<Chan, C, S, const CH: usize, const N: usize>
 where
@@ -54,7 +55,7 @@ where
     C: Channel,
     S: Sink<Chan, CH>,
 {
-    ///
+    /// Convert an arbitrary `Sink` type to a different format.
     pub fn new(sink: S) -> Self {
         Self {
             sink,

@@ -24,8 +24,6 @@ use core::{fmt::Debug, mem::size_of, slice::from_raw_parts_mut};
 
 /// Audio buffer (fixed-size array of audio [`Frame`](crate::frame::Frame)s at
 /// sample rate specified in hertz).
-///
-/// `Audio` implements the [`Stream`](crate::Stream) trait.
 #[derive(Debug)]
 pub struct Audio<Chan: Channel, const CH: usize> {
     // Sample rate of the audio in hertz.
