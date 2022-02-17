@@ -33,7 +33,7 @@ categories = [
     "data-structures",
     "no-std",
 ]
-include = ["Cargo.toml", "src/*"]
+include = ["README.md", "Cargo.toml", "src/*"]
 
 [dependencies]
 libm = "0.2"

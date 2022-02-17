@@ -9,7 +9,7 @@
 
 use core::ops::Rem;
 
-/// Floating point methods currently only availabe on std, that may be
+/// Floating point methods currently only available on std, that may be
 /// implemented with the libm crate as dependency of core in the future.
 pub(crate) trait Libm: Rem<Output = Self> + Sized {
     fn sin(self) -> Self;
