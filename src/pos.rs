@@ -2,7 +2,7 @@
 
 use core::ops::{Index, IndexMut};
 
-use crate::{frame::Frame, samp::Sample};
+use crate::{chan::Channel, frame::Frame};
 
 /// All directions
 ///  - Mono
@@ -96,15 +96,15 @@ pub struct BackR;
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<Mono> for Frame<Samp, 1> {
-    type Output = Samp;
+impl<C: Channel> Index<Mono> for Frame<C, 1> {
+    type Output = C;
 
     fn index(&self, _: Mono) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<Mono> for Frame<Samp, 1> {
+impl<C: Channel> IndexMut<Mono> for Frame<C, 1> {
     fn index_mut(&mut self, _: Mono) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
@@ -112,29 +112,29 @@ impl<Samp: Sample> IndexMut<Mono> for Frame<Samp, 1> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<Left> for Frame<Samp, 2> {
-    type Output = Samp;
+impl<C: Channel> Index<Left> for Frame<C, 2> {
+    type Output = C;
 
     fn index(&self, _: Left) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<Left> for Frame<Samp, 2> {
+impl<C: Channel> IndexMut<Left> for Frame<C, 2> {
     fn index_mut(&mut self, _: Left) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<Right> for Frame<Samp, 2> {
-    type Output = Samp;
+impl<C: Channel> Index<Right> for Frame<C, 2> {
+    type Output = C;
 
     fn index(&self, _: Right) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 2> {
+impl<C: Channel> IndexMut<Right> for Frame<C, 2> {
     fn index_mut(&mut self, _: Right) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
@@ -142,43 +142,43 @@ impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 2> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<Left> for Frame<Samp, 3> {
-    type Output = Samp;
+impl<C: Channel> Index<Left> for Frame<C, 3> {
+    type Output = C;
 
     fn index(&self, _: Left) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<Left> for Frame<Samp, 3> {
+impl<C: Channel> IndexMut<Left> for Frame<C, 3> {
     fn index_mut(&mut self, _: Left) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<Right> for Frame<Samp, 3> {
-    type Output = Samp;
+impl<C: Channel> Index<Right> for Frame<C, 3> {
+    type Output = C;
 
     fn index(&self, _: Right) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 3> {
+impl<C: Channel> IndexMut<Right> for Frame<C, 3> {
     fn index_mut(&mut self, _: Right) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<Center> for Frame<Samp, 3> {
-    type Output = Samp;
+impl<C: Channel> Index<Center> for Frame<C, 3> {
+    type Output = C;
 
     fn index(&self, _: Center) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<Center> for Frame<Samp, 3> {
+impl<C: Channel> IndexMut<Center> for Frame<C, 3> {
     fn index_mut(&mut self, _: Center) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
@@ -186,57 +186,57 @@ impl<Samp: Sample> IndexMut<Center> for Frame<Samp, 3> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<FrontL> for Frame<Samp, 4> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontL> for Frame<C, 4> {
+    type Output = C;
 
     fn index(&self, _: FrontL) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontL> for Frame<Samp, 4> {
+impl<C: Channel> IndexMut<FrontL> for Frame<C, 4> {
     fn index_mut(&mut self, _: FrontL) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<FrontR> for Frame<Samp, 4> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontR> for Frame<C, 4> {
+    type Output = C;
 
     fn index(&self, _: FrontR) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontR> for Frame<Samp, 4> {
+impl<C: Channel> IndexMut<FrontR> for Frame<C, 4> {
     fn index_mut(&mut self, _: FrontR) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<SurroundL> for Frame<Samp, 4> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundL> for Frame<C, 4> {
+    type Output = C;
 
     fn index(&self, _: SurroundL) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundL> for Frame<Samp, 4> {
+impl<C: Channel> IndexMut<SurroundL> for Frame<C, 4> {
     fn index_mut(&mut self, _: SurroundL) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
 }
 
-impl<Samp: Sample> Index<SurroundR> for Frame<Samp, 4> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundR> for Frame<C, 4> {
+    type Output = C;
 
     fn index(&self, _: SurroundR) -> &Self::Output {
         &self.samples()[3]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 4> {
+impl<C: Channel> IndexMut<SurroundR> for Frame<C, 4> {
     fn index_mut(&mut self, _: SurroundR) -> &mut Self::Output {
         &mut self.samples_mut()[3]
     }
@@ -244,71 +244,71 @@ impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 4> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<FrontL> for Frame<Samp, 5> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontL> for Frame<C, 5> {
+    type Output = C;
 
     fn index(&self, _: FrontL) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontL> for Frame<Samp, 5> {
+impl<C: Channel> IndexMut<FrontL> for Frame<C, 5> {
     fn index_mut(&mut self, _: FrontL) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<FrontR> for Frame<Samp, 5> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontR> for Frame<C, 5> {
+    type Output = C;
 
     fn index(&self, _: FrontR) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontR> for Frame<Samp, 5> {
+impl<C: Channel> IndexMut<FrontR> for Frame<C, 5> {
     fn index_mut(&mut self, _: FrontR) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<Front> for Frame<Samp, 5> {
-    type Output = Samp;
+impl<C: Channel> Index<Front> for Frame<C, 5> {
+    type Output = C;
 
     fn index(&self, _: Front) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<Front> for Frame<Samp, 5> {
+impl<C: Channel> IndexMut<Front> for Frame<C, 5> {
     fn index_mut(&mut self, _: Front) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
 }
 
-impl<Samp: Sample> Index<SurroundL> for Frame<Samp, 5> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundL> for Frame<C, 5> {
+    type Output = C;
 
     fn index(&self, _: SurroundL) -> &Self::Output {
         &self.samples()[3]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundL> for Frame<Samp, 5> {
+impl<C: Channel> IndexMut<SurroundL> for Frame<C, 5> {
     fn index_mut(&mut self, _: SurroundL) -> &mut Self::Output {
         &mut self.samples_mut()[3]
     }
 }
 
-impl<Samp: Sample> Index<SurroundR> for Frame<Samp, 5> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundR> for Frame<C, 5> {
+    type Output = C;
 
     fn index(&self, _: SurroundR) -> &Self::Output {
         &self.samples()[4]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 5> {
+impl<C: Channel> IndexMut<SurroundR> for Frame<C, 5> {
     fn index_mut(&mut self, _: SurroundR) -> &mut Self::Output {
         &mut self.samples_mut()[4]
     }
@@ -316,85 +316,85 @@ impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 5> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<FrontL> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontL> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: FrontL) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontL> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<FrontL> for Frame<C, 6> {
     fn index_mut(&mut self, _: FrontL) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<FrontR> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontR> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: FrontR) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontR> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<FrontR> for Frame<C, 6> {
     fn index_mut(&mut self, _: FrontR) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<Front> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<Front> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: Front) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<Front> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<Front> for Frame<C, 6> {
     fn index_mut(&mut self, _: Front) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
 }
 
-impl<Samp: Sample> Index<Lfe> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<Lfe> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: Lfe) -> &Self::Output {
         &self.samples()[3]
     }
 }
 
-impl<Samp: Sample> IndexMut<Lfe> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<Lfe> for Frame<C, 6> {
     fn index_mut(&mut self, _: Lfe) -> &mut Self::Output {
         &mut self.samples_mut()[3]
     }
 }
 
-impl<Samp: Sample> Index<SurroundL> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundL> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: SurroundL) -> &Self::Output {
         &self.samples()[4]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundL> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<SurroundL> for Frame<C, 6> {
     fn index_mut(&mut self, _: SurroundL) -> &mut Self::Output {
         &mut self.samples_mut()[4]
     }
 }
 
-impl<Samp: Sample> Index<SurroundR> for Frame<Samp, 6> {
-    type Output = Samp;
+impl<C: Channel> Index<SurroundR> for Frame<C, 6> {
+    type Output = C;
 
     fn index(&self, _: SurroundR) -> &Self::Output {
         &self.samples()[5]
     }
 }
 
-impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 6> {
+impl<C: Channel> IndexMut<SurroundR> for Frame<C, 6> {
     fn index_mut(&mut self, _: SurroundR) -> &mut Self::Output {
         &mut self.samples_mut()[5]
     }
@@ -402,99 +402,99 @@ impl<Samp: Sample> IndexMut<SurroundR> for Frame<Samp, 6> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<FrontL> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontL> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: FrontL) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontL> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<FrontL> for Frame<C, 7> {
     fn index_mut(&mut self, _: FrontL) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<FrontR> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontR> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: FrontR) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontR> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<FrontR> for Frame<C, 7> {
     fn index_mut(&mut self, _: FrontR) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<Front> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<Front> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: Front) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<Front> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<Front> for Frame<C, 7> {
     fn index_mut(&mut self, _: Front) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
 }
 
-impl<Samp: Sample> Index<Lfe> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<Lfe> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: Lfe) -> &Self::Output {
         &self.samples()[3]
     }
 }
 
-impl<Samp: Sample> IndexMut<Lfe> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<Lfe> for Frame<C, 7> {
     fn index_mut(&mut self, _: Lfe) -> &mut Self::Output {
         &mut self.samples_mut()[3]
     }
 }
 
-impl<Samp: Sample> Index<Back> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<Back> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: Back) -> &Self::Output {
         &self.samples()[4]
     }
 }
 
-impl<Samp: Sample> IndexMut<Back> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<Back> for Frame<C, 7> {
     fn index_mut(&mut self, _: Back) -> &mut Self::Output {
         &mut self.samples_mut()[4]
     }
 }
 
-impl<Samp: Sample> Index<Left> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<Left> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: Left) -> &Self::Output {
         &self.samples()[5]
     }
 }
 
-impl<Samp: Sample> IndexMut<Left> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<Left> for Frame<C, 7> {
     fn index_mut(&mut self, _: Left) -> &mut Self::Output {
         &mut self.samples_mut()[5]
     }
 }
 
-impl<Samp: Sample> Index<Right> for Frame<Samp, 7> {
-    type Output = Samp;
+impl<C: Channel> Index<Right> for Frame<C, 7> {
+    type Output = C;
 
     fn index(&self, _: Right) -> &Self::Output {
         &self.samples()[6]
     }
 }
 
-impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 7> {
+impl<C: Channel> IndexMut<Right> for Frame<C, 7> {
     fn index_mut(&mut self, _: Right) -> &mut Self::Output {
         &mut self.samples_mut()[6]
     }
@@ -502,113 +502,113 @@ impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 7> {
 
 ////////////////////////////////////////////////////////////
 
-impl<Samp: Sample> Index<FrontL> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontL> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: FrontL) -> &Self::Output {
         &self.samples()[0]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontL> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<FrontL> for Frame<C, 8> {
     fn index_mut(&mut self, _: FrontL) -> &mut Self::Output {
         &mut self.samples_mut()[0]
     }
 }
 
-impl<Samp: Sample> Index<FrontR> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<FrontR> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: FrontR) -> &Self::Output {
         &self.samples()[1]
     }
 }
 
-impl<Samp: Sample> IndexMut<FrontR> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<FrontR> for Frame<C, 8> {
     fn index_mut(&mut self, _: FrontR) -> &mut Self::Output {
         &mut self.samples_mut()[1]
     }
 }
 
-impl<Samp: Sample> Index<Front> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<Front> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: Front) -> &Self::Output {
         &self.samples()[2]
     }
 }
 
-impl<Samp: Sample> IndexMut<Front> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<Front> for Frame<C, 8> {
     fn index_mut(&mut self, _: Front) -> &mut Self::Output {
         &mut self.samples_mut()[2]
     }
 }
 
-impl<Samp: Sample> Index<Lfe> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<Lfe> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: Lfe) -> &Self::Output {
         &self.samples()[3]
     }
 }
 
-impl<Samp: Sample> IndexMut<Lfe> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<Lfe> for Frame<C, 8> {
     fn index_mut(&mut self, _: Lfe) -> &mut Self::Output {
         &mut self.samples_mut()[3]
     }
 }
 
-impl<Samp: Sample> Index<BackL> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<BackL> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: BackL) -> &Self::Output {
         &self.samples()[4]
     }
 }
 
-impl<Samp: Sample> IndexMut<BackL> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<BackL> for Frame<C, 8> {
     fn index_mut(&mut self, _: BackL) -> &mut Self::Output {
         &mut self.samples_mut()[4]
     }
 }
 
-impl<Samp: Sample> Index<BackR> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<BackR> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: BackR) -> &Self::Output {
         &self.samples()[5]
     }
 }
 
-impl<Samp: Sample> IndexMut<BackR> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<BackR> for Frame<C, 8> {
     fn index_mut(&mut self, _: BackR) -> &mut Self::Output {
         &mut self.samples_mut()[5]
     }
 }
 
-impl<Samp: Sample> Index<Left> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<Left> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: Left) -> &Self::Output {
         &self.samples()[6]
     }
 }
 
-impl<Samp: Sample> IndexMut<Left> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<Left> for Frame<C, 8> {
     fn index_mut(&mut self, _: Left) -> &mut Self::Output {
         &mut self.samples_mut()[6]
     }
 }
 
-impl<Samp: Sample> Index<Right> for Frame<Samp, 8> {
-    type Output = Samp;
+impl<C: Channel> Index<Right> for Frame<C, 8> {
+    type Output = C;
 
     fn index(&self, _: Right) -> &Self::Output {
         &self.samples()[7]
     }
 }
 
-impl<Samp: Sample> IndexMut<Right> for Frame<Samp, 8> {
+impl<C: Channel> IndexMut<Right> for Frame<C, 8> {
     fn index_mut(&mut self, _: Right) -> &mut Self::Output {
         &mut self.samples_mut()[7]
     }

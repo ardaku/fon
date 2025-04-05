@@ -3,20 +3,20 @@
 use std::num::NonZeroU32;
 
 use fon::{
-    samp::{Samp32, Sample},
+    chan::{Samp32, Channel},
     Audio, Frame, Resampler, Sink,
 };
 
 #[derive(Debug)]
-pub struct Mixer<'a, Samp: Sample, const N: usize> {
+pub struct Mixer<'a, C: Channel, const N: usize> {
     index: usize,
-    audio: &'a mut Audio<Samp, N>,
+    audio: &'a mut Audio<C, N>,
 }
 
 #[allow(single_use_lifetimes)]
-impl<'a, Samp: Sample, const N: usize> Mixer<'a, Samp, N> {
+impl<'a, C: Channel, const N: usize> Mixer<'a, C, N> {
     #[inline(always)]
-    fn new(audio: &'a mut Audio<Samp, N>) -> Self {
+    fn new(audio: &'a mut Audio<C, N>) -> Self {
         let index = 0;
 
         Mixer { index, audio }
@@ -25,7 +25,7 @@ impl<'a, Samp: Sample, const N: usize> Mixer<'a, Samp, N> {
 
 // Using '_ results in reserved lifetime error.
 #[allow(single_use_lifetimes)]
-impl<'a, Samp: Sample, const N: usize> Sink<Samp, N> for Mixer<'a, Samp, N> {
+impl<'a, C: Channel, const N: usize> Sink<C, N> for Mixer<'a, C, N> {
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
         self.audio.sample_rate()
@@ -37,13 +37,13 @@ impl<'a, Samp: Sample, const N: usize> Sink<Samp, N> for Mixer<'a, Samp, N> {
     }
 
     #[inline(always)]
-    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Samp, N>>) {
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<C, N>>) {
         let mut this = self;
-        Sink::<Samp, N>::sink_with(&mut this, iter)
+        Sink::<C, N>::sink_with(&mut this, iter)
     }
 }
 
-impl<Samp: Sample, const N: usize> Sink<Samp, N> for &mut Mixer<'_, Samp, N> {
+impl<C: Channel, const N: usize> Sink<C, N> for &mut Mixer<'_, C, N> {
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
         self.audio.sample_rate()
@@ -55,7 +55,7 @@ impl<Samp: Sample, const N: usize> Sink<Samp, N> for &mut Mixer<'_, Samp, N> {
     }
 
     #[inline(always)]
-    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<Samp, N>>) {
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<C, N>>) {
         for frame in self.audio.iter_mut().skip(self.index) {
             if let Some(other) = iter.next() {
                 for (sample, samp) in

@@ -13,7 +13,7 @@ use crate::math::Libm;
 use crate::private::Sealed;
 
 /// Component of a speaker configuration, such as *front left*, *lfe*, *etc*.
-pub trait Sample:
+pub trait Channel:
     Copy
     + Clone
     + Debug
@@ -59,12 +59,12 @@ pub trait Sample:
     }
 }
 
-/// 16-bit sample [`Sample`].
+/// 16-bit audio [`Channel`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Samp16(i16);
 
-impl Sample for Samp16 {
+impl Channel for Samp16 {
     const MAX: Samp16 = Samp16(32_767);
     const MID: Samp16 = Samp16(0);
     const MIN: Samp16 = Samp16(-32_768);
@@ -77,7 +77,7 @@ impl Sample for Samp16 {
 }
 
 impl Samp16 {
-    /// Create a new 16-bit [`Sample`] value.
+    /// Create a new 16-bit [`Channel`] value.
     #[inline(always)]
     pub const fn new(value: i16) -> Self {
         Self(value)
@@ -158,12 +158,12 @@ impl Neg for Samp16 {
     }
 }
 
-/// 24-bit sample [`Sample`].
+/// 24-bit audio [`Channel`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(C, packed)]
 pub struct Samp24(i16, u8);
 
-impl Sample for Samp24 {
+impl Channel for Samp24 {
     const MAX: Samp24 = Samp24::new(8_388_607);
     const MID: Samp24 = Samp24::new(0);
     const MIN: Samp24 = Samp24::new(-8_388_608);
@@ -176,7 +176,7 @@ impl Sample for Samp24 {
 }
 
 impl Samp24 {
-    /// Create a new 24-bit [`Sample`] value.
+    /// Create a new 24-bit [`Channel`] value.
     #[inline(always)]
     pub const fn new(value: i32) -> Self {
         let value = if value < -8_388_608 {
@@ -264,12 +264,12 @@ impl Neg for Samp24 {
     }
 }
 
-/// 32-bit sample [`Sample`].
+/// 32-bit audio [`Channel`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Samp32(f32);
 
-impl Sample for Samp32 {
+impl Channel for Samp32 {
     const MAX: Samp32 = Samp32(1.0);
     const MID: Samp32 = Samp32(0.0);
     const MIN: Samp32 = Samp32(-1.0);
@@ -281,7 +281,7 @@ impl Sample for Samp32 {
 }
 
 impl Samp32 {
-    /// Create a new 32-bit [`Sample`] value.
+    /// Create a new 32-bit [`Channel`] value.
     #[inline(always)]
     pub const fn new(value: f32) -> Self {
         Self(value)
@@ -359,12 +359,12 @@ impl Neg for Samp32 {
     }
 }
 
-/// 64-bit sample [`Sample`].
+/// 64-bit audio [`Channel`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Samp64(f64);
 
-impl Sample for Samp64 {
+impl Channel for Samp64 {
     const MAX: Samp64 = Samp64(1.0);
     const MID: Samp64 = Samp64(0.0);
     const MIN: Samp64 = Samp64(-1.0);
@@ -376,7 +376,7 @@ impl Sample for Samp64 {
 }
 
 impl Samp64 {
-    /// Create a new 64-bit [`Sample`] value.
+    /// Create a new 64-bit [`Channel`] value.
     #[inline(always)]
     pub const fn new(value: f64) -> Self {
         Self(value)

@@ -93,7 +93,7 @@ pub(crate) type ResamplerBasicFunc = Option<
 
 // FIXME: Evaluate macro.
 macro_rules! chunk_assign {
-    ($ch_mut:ident, $lbound_mut:expr, $ubound_mut:expr, $val:expr) => {
+    ($ch_mut:ident, $lbound_mut:expr_2021, $ubound_mut:expr_2021, $val:expr_2021) => {
         $ch_mut[$lbound_mut as usize..$ubound_mut as usize]
             .iter_mut()
             .for_each(|x| *x = $val);
@@ -102,8 +102,8 @@ macro_rules! chunk_assign {
 
 // FIXME: macro => function.
 macro_rules! chunk_copy {
-    ($ch_mut:ident, $lbound_mut:expr, $ubound_mut:expr,
-     $ch:ident, $lbound:expr, $ubound:expr) => {{
+    ($ch_mut:ident, $lbound_mut:expr_2021, $ubound_mut:expr_2021,
+     $ch:ident, $lbound:expr_2021, $ubound:expr_2021) => {{
         $ch_mut[$lbound_mut as usize..$ubound_mut as usize]
             .iter_mut()
             .zip($ch[$lbound as usize..$ubound as usize].iter())
@@ -114,7 +114,7 @@ macro_rules! chunk_copy {
 // FIXME: Evaluate macro.
 macro_rules! algo {
     ($self:ident, $ch_mut:ident, $ch:ident,
-     $old_length:ident, $magic:expr) => {
+     $old_length:ident, $magic:expr_2021) => {
         let olen = $old_length + 2 * $magic;
         let filt_len = $self.filt_len - 1;
         if $self.filt_len > olen {

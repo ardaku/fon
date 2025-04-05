@@ -1,8 +1,8 @@
 [package]
 name = "fon"
-version = "0.7.0"
-edition = "2021"
-rust-version = "1.70"
+version = "1.0.0-pre.0"
+edition = "2024"
+rust-version = "1.85"
 license = "Apache-2.0 OR BSL-1.0 OR MIT"
 documentation = "https://docs.rs/fon"
 homepage = "https://github.com/ardaku/fon/releases"
