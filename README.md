@@ -26,13 +26,13 @@ For audio recording and playback, check out [wavy][15].
 
 ## MSRV
 
-The current MSRV is Rust 1.70.
+The current MSRV is Rust 1.85.
 
-MSRV is updated according to the [Ardaku MSRV guidelines].
+Any future MSRV updates will follow the [Ardaku MSRV guidelines].
 
 ## License
 
-Copyright © 2020-2024 The Fon Crate Contributor(s)
+Copyright © 2020-2025 The Fon Crate Contributor(s)
 
 Licensed under any of
  - Apache License, Version 2.0, ([LICENSE_APACHE_2_0.txt][7]

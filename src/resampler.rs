@@ -2,8 +2,8 @@ use alloc::vec::Vec;
 use core::{array, mem, num::NonZeroU32};
 
 use crate::{
+    chan::{Channel, Samp32},
     frame::Frame,
-    samp::{Samp32, Sample},
     Audio, Sink,
 };
 
@@ -76,10 +76,10 @@ impl<const N: usize> Resampler<N> {
     }
 
     /// Flush audio to sink and end stream.
-    pub fn flush<S, K>(mut self, sink: K)
+    pub fn flush<C, K>(mut self, sink: K)
     where
-        S: Sample,
-        K: Sink<S, N>,
+        C: Channel,
+        K: Sink<C, N>,
     {
         if self.samples[0].state.started == 0 {
             return;
@@ -104,12 +104,12 @@ impl<const N: usize> Resampler<N> {
     /// If the sink gets full, then no more audio will be written.  If there is
     /// not enough audio then the sink chooses whether or not to fill the rest
     /// of it's buffer with silence.
-    pub fn pipe<Samp, S, K>(&mut self, audio: &Audio<Samp, N>, mut sink: K)
+    pub fn pipe<F, C, K>(&mut self, audio: &Audio<F, N>, mut sink: K)
     where
-        Samp: Sample,
-        S: Sample + From<Samp>,
-        K: Sink<S, N>,
-        Samp32: From<Samp>,
+        F: Channel,
+        C: Channel + From<F>,
+        K: Sink<C, N>,
+        Samp32: From<F>,
     {
         // Make sure that the sample rates match.
         assert_eq!(sink.sample_rate().get(), self.output_sample_rate);
@@ -152,10 +152,10 @@ impl<const N: usize> Resampler<N> {
         self.resample_audio(sink);
     }
 
-    fn resample_audio<S, K>(&mut self, mut sink: K)
+    fn resample_audio<C, K>(&mut self, mut sink: K)
     where
-        S: Sample,
-        K: Sink<S, N>,
+        C: Channel,
+        K: Sink<C, N>,
     {
         // If no input samples, skip doing the work.
         if self.samples[0].input.is_empty() {
@@ -180,10 +180,10 @@ impl<const N: usize> Resampler<N> {
 
         // Then, re-interleave the samples back.
         sink.sink_with(&mut (0..out as usize).map(|i| {
-            let mut out_frame = Frame::<S, N>::default();
+            let mut out_frame = Frame::<C, N>::default();
             for samp in 0..N {
                 out_frame.samples_mut()[samp] =
-                    S::from(self.samples[samp].output[i]);
+                    C::from(self.samples[samp].output[i]);
             }
             out_frame
         }));

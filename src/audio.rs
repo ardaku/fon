@@ -12,26 +12,26 @@ use core::{
 #[cfg(not(test))]
 use crate::math::Libm;
 use crate::{
+    chan::{Channel, Samp16, Samp24, Samp32, Samp64},
     frame::Frame,
-    samp::{Samp16, Samp24, Samp32, Samp64, Sample},
     Resampler, Sink,
 };
 
 /// Audio buffer (fixed-size array of audio [`Frame`](crate::frame::Frame)s at
 /// sample rate specified in hertz).
 #[derive(Debug)]
-pub struct Audio<Samp: Sample, const COUNT: usize> {
+pub struct Audio<C: Channel, const COUNT: usize> {
     // Sample rate of the audio in hertz.
     sample_rate: NonZeroU32,
     // Audio frames.
-    frames: Box<[Frame<Samp, COUNT>]>,
+    frames: Box<[Frame<C, COUNT>]>,
 }
 
-impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
+impl<C: Channel, const COUNT: usize> Audio<C, COUNT> {
     /// Construct an `Audio` buffer with all all samples set to zero.
     #[inline(always)]
     pub fn with_silence(hz: u32, len: usize) -> Self {
-        Self::with_frames(hz, vec![Frame::<Samp, COUNT>::default(); len])
+        Self::with_frames(hz, vec![Frame::<C, COUNT>::default(); len])
     }
 
     /// Construct an `Audio` buffer with owned sample data.   You can get
@@ -40,7 +40,7 @@ impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
     #[inline(always)]
     pub fn with_frames<B>(hz: u32, frames: B) -> Self
     where
-        B: Into<Box<[Frame<Samp, COUNT>]>>,
+        B: Into<Box<[Frame<C, COUNT>]>>,
     {
         Audio {
             sample_rate: hz.try_into().unwrap(),
@@ -51,18 +51,17 @@ impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
     /// Construct an `Audio` buffer from another `Audio` buffer of a different
     /// format.
     #[inline(always)]
-    pub fn with_audio<S, const N: usize>(hz: u32, audio: &Audio<S, N>) -> Self
+    pub fn with_audio<F, const N: usize>(hz: u32, audio: &Audio<F, N>) -> Self
     where
-        S: Sample,
-        Samp32: From<S>,
-        Samp: From<S>,
+        F: Channel,
+        Samp32: From<F>,
+        C: From<F>,
     {
         let len =
             audio.len() as f64 * hz as f64 / audio.sample_rate().get() as f64;
         let mut output = Self::with_silence(hz, len.ceil() as usize);
         let mut stream = Resampler::new(hz);
-        let mut sink =
-            crate::SinkTo::<_, Samp, _, COUNT, N>::new(output.sink());
+        let mut sink = crate::SinkTo::<_, C, _, COUNT, N>::new(output.sink());
         stream.pipe(audio, &mut sink);
         stream.flush(&mut sink);
         output
@@ -70,37 +69,37 @@ impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
 
     /// Get an audio frame.
     #[inline(always)]
-    pub fn get(&self, index: usize) -> Option<Frame<Samp, COUNT>> {
+    pub fn get(&self, index: usize) -> Option<Frame<C, COUNT>> {
         self.frames.get(index).cloned()
     }
 
     /// Get a mutable reference to an audio frame.
     #[inline(always)]
-    pub fn get_mut(&mut self, index: usize) -> Option<&mut Frame<Samp, COUNT>> {
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Frame<C, COUNT>> {
         self.frames.get_mut(index)
     }
 
     /// Get a slice of all audio frames.
     #[inline(always)]
-    pub fn as_slice(&self) -> &[Frame<Samp, COUNT>] {
+    pub fn as_slice(&self) -> &[Frame<C, COUNT>] {
         &self.frames
     }
 
     /// Get a slice of all audio frames.
     #[inline(always)]
-    pub fn as_mut_slice(&mut self) -> &mut [Frame<Samp, COUNT>] {
+    pub fn as_mut_slice(&mut self) -> &mut [Frame<C, COUNT>] {
         &mut self.frames
     }
 
     /// Returns an iterator over the audio frames.
     #[inline(always)]
-    pub fn iter(&self) -> Iter<'_, Frame<Samp, COUNT>> {
+    pub fn iter(&self) -> Iter<'_, Frame<C, COUNT>> {
         self.frames.iter()
     }
 
     /// Returns an iterator that allows modifying each audio frame.
     #[inline(always)]
-    pub fn iter_mut(&mut self) -> IterMut<'_, Frame<Samp, COUNT>> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, Frame<C, COUNT>> {
         self.frames.iter_mut()
     }
 
@@ -126,13 +125,13 @@ impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
     #[inline(always)]
     pub fn silence(&mut self) {
         for f in self.frames.iter_mut() {
-            *f = Frame::<Samp, COUNT>::default()
+            *f = Frame::<C, COUNT>::default()
         }
     }
 
     /// Sink audio into this audio buffer from a [`Resampler`].
     #[inline(always)]
-    pub fn sink(&mut self) -> AudioSink<'_, Samp, COUNT> {
+    pub fn sink(&mut self) -> AudioSink<'_, C, COUNT> {
         AudioSink {
             index: 0,
             audio: self,
@@ -142,15 +141,15 @@ impl<Samp: Sample, const COUNT: usize> Audio<Samp, COUNT> {
 
 /// Returned from [`Audio::sink()`](crate::Audio::sink).
 #[derive(Debug)]
-pub struct AudioSink<'a, Samp: Sample, const COUNT: usize> {
+pub struct AudioSink<'a, C: Channel, const COUNT: usize> {
     index: usize,
-    audio: &'a mut Audio<Samp, COUNT>,
+    audio: &'a mut Audio<C, COUNT>,
 }
 
 // Using '_ results in reserved lifetime error.
 #[allow(single_use_lifetimes)]
-impl<'a, Samp: Sample, const COUNT: usize> Sink<Samp, COUNT>
-    for AudioSink<'a, Samp, COUNT>
+impl<C: Channel, const COUNT: usize> Sink<C, COUNT>
+    for AudioSink<'_, C, COUNT>
 {
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
@@ -163,17 +162,14 @@ impl<'a, Samp: Sample, const COUNT: usize> Sink<Samp, COUNT>
     }
 
     #[inline(always)]
-    fn sink_with(
-        &mut self,
-        iter: &mut dyn Iterator<Item = Frame<Samp, COUNT>>,
-    ) {
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<C, COUNT>>) {
         let mut this = self;
-        Sink::<Samp, COUNT>::sink_with(&mut this, iter)
+        Sink::<C, COUNT>::sink_with(&mut this, iter)
     }
 }
 
-impl<Samp: Sample, const COUNT: usize> Sink<Samp, COUNT>
-    for &mut AudioSink<'_, Samp, COUNT>
+impl<C: Channel, const COUNT: usize> Sink<C, COUNT>
+    for &mut AudioSink<'_, C, COUNT>
 {
     #[inline(always)]
     fn sample_rate(&self) -> NonZeroU32 {
@@ -186,10 +182,7 @@ impl<Samp: Sample, const COUNT: usize> Sink<Samp, COUNT>
     }
 
     #[inline(always)]
-    fn sink_with(
-        &mut self,
-        iter: &mut dyn Iterator<Item = Frame<Samp, COUNT>>,
-    ) {
+    fn sink_with(&mut self, iter: &mut dyn Iterator<Item = Frame<C, COUNT>>) {
         for frame in self.audio.iter_mut().skip(self.index) {
             *frame = if let Some(frame) = iter.next() {
                 frame
@@ -333,23 +326,22 @@ impl<const COUNT: usize> Audio<Samp64, COUNT> {
     }
 }
 
-impl<Samp, const COUNT: usize> From<Audio<Samp, COUNT>>
-    for Vec<Frame<Samp, COUNT>>
+impl<C, const COUNT: usize> From<Audio<C, COUNT>> for Vec<Frame<C, COUNT>>
 where
-    Samp: Sample,
+    C: Channel,
 {
     /// Get internal sample data as `Vec` of audio frames.
-    fn from(audio: Audio<Samp, COUNT>) -> Self {
+    fn from(audio: Audio<C, COUNT>) -> Self {
         audio.frames.into()
     }
 }
 
-impl<Samp: Sample, const COUNT: usize> From<Audio<Samp, COUNT>>
-    for Box<[Frame<Samp, COUNT>]>
+impl<C: Channel, const COUNT: usize> From<Audio<C, COUNT>>
+    for Box<[Frame<C, COUNT>]>
 {
     /// Get internal sample data as `Vec` of audio frames.
-    fn from(audio: Audio<Samp, COUNT>) -> Self {
-        let audio: Vec<Frame<Samp, COUNT>> = audio.frames.into();
+    fn from(audio: Audio<C, COUNT>) -> Self {
+        let audio: Vec<Frame<C, COUNT>> = audio.frames.into();
         audio.into()
     }
 }

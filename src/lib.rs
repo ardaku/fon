@@ -35,7 +35,7 @@
 //! ```rust
 //! use fon::{
 //!     pos::Mono,
-//!     samp::{Samp16, Samp32},
+//!     chan::{Samp16, Samp32},
 //!     Audio,
 //! };
 //!
@@ -51,10 +51,10 @@
 //! ```
 //!
 //! [audio buffer]: crate::Audio
-//! [16-bit Signed Integer PCM]: crate::samp::Samp16
-//! [24-bit Signed Integer PCM]: crate::samp::Samp24
-//! [32-bit Float PCM]: crate::samp::Samp32
-//! [64-bit Float PCM]: crate::samp::Samp64
+//! [16-bit Signed Integer PCM]: crate::chan::Samp16
+//! [24-bit Signed Integer PCM]: crate::chan::Samp24
+//! [32-bit Float PCM]: crate::chan::Samp32
+//! [64-bit Float PCM]: crate::chan::Samp64
 //! [operations]: crate::ops
 //! [this MDN article]: https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Audio_concepts
 //! [Mono]: crate::pos::Mono
@@ -103,8 +103,8 @@ mod private;
 mod resampler;
 mod sink;
 
+pub mod chan;
 pub mod pos;
-pub mod samp;
 
 pub use audio::{Audio, AudioSink};
 pub use frame::Frame;

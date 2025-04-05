@@ -1,4 +1,4 @@
-use crate::samp::{Samp16, Samp24, Samp32, Samp64};
+use crate::chan::{Samp16, Samp24, Samp32, Samp64};
 
 pub trait Sealed {}
 impl Sealed for Samp16 {}
